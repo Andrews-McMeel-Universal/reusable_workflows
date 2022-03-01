@@ -166,3 +166,12 @@ jobs:
             autoscaling.maxReplicas:${{ inputs.application_maximum_replicas }}
         id: bake
 
+      - name: Deploy to Azure
+        uses: Azure/k8s-deploy@v1
+        with:
+          namespace: ${{ inputs.environment }}
+          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+          images: |
+            ${{ inputs.container_registry }}/${{ inputs.docker_image_name }}:${{ inputs.docker_image_tag }}
+          imagepullsecrets: |
+            ${{ inputs.image_pull_secret_name }}
