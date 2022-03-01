@@ -29,7 +29,7 @@ on:
         required: true
         type: string
         description: "Name for docker image tag."
-      docker_file_path:
+      dockerfile_path:
         required: true
         type: string
         description: "Relative path to Dockerfile."
