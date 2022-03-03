@@ -13,14 +13,14 @@ on:
         required: true
         type: string
         description: "Deploy environment. Can be development, staging, or production."
+      charts_path:
+        required: true
+        type: string
+        description: "Relative path to Helm charts."
       container_registry:
         required: true
         type: string
         description: "Azure Container Registry name."
-      image_pull_secret_name:
-        required: true
-        type: string
-        description: "Name of K8s Imagepull Secret."
       docker_image_name:
         required: true
         type: string
@@ -33,14 +33,6 @@ on:
         required: true
         type: string
         description: "Relative path to Dockerfile."
-      configmap_path:
-        required: false
-        type: string
-        description: "Relative path to K8s configmap yaml."
-      secret_name:
-        required: false
-        type: string
-        description: "Name for application Kubernetes secret."
       secret_value:
         required: false
         type: string
@@ -49,22 +41,10 @@ on:
         required: true
         type: string
         description: "FQDN for Azure Kubernetes Ingress."
-      application_hostname:
-        required: true
-        type: string
-        description: "DNS Hostname for Application."
-      application_domainname:
-        required: true
-        type: string
-        description: "DNS Domainname for Application."
       dns_rg:
         required: true
         type: string
         description: "Azure Resource Group for DNS Domain."
-      application_fqdn:
-        required: true
-        type: string
-        description: "FQDN for Application."
       application_maximum_replicas:
         required: false
         type: string
@@ -84,6 +64,75 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - id: getlatestrelease
+        uses: thebritican/fetch-latest-release@v1.0.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout
+        if: ${{ inputs.environment != 'production'}}
+        uses: actions/checkout@master
+
+      - name: Checkout Latest release
+        if: ${{ inputs.environment == 'production'}}
+        uses: actions/checkout@v2
+        with: 
+          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
+
+      - name: Get Env
+        id: getenvs
+        shell: pwsh
+        run: |
+          function Get-Envs {
+            param (
+                  [parameter(Mandatory = $true, ValueFromPipeline = $true)]
+                  [string]$PathToYaml
+                  )
+
+                  #Check to see if powershell-yaml is installed 
+                  if (Get-Module -Name powershell-yaml) {
+                    #It's installed, this would be if you are running locally. 
+                  }
+                  else {
+                      Write-Host "Installing Powershell-Yaml."
+                      Install-Module -Name powershell-yaml -Confirm:$false -Force
+                  }
+
+                  Import-Module powershell-yaml
+
+                  Write-Host "Getting configuration from: $PathToYaml."
+
+                  $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
+
+                  return $Values
+          }
+
+          $AppEnv = "${{ inputs.environment }}"
+          $BasePath = Get-Location
+          $YamlPath = Join-Path $BasePath ${{ inputs.charts_path }} "values.yaml"
+          $AppConfig = Get-Envs -PathToYaml $YamlPath
+          $YamlPath = Join-Path $BasePath ${{ inputs.charts_path }} "Chart.yaml"
+          $ChartConfig = Get-Envs -PathToYaml $YamlPath
+          $AppName = $ChartConfig.name
+          $ConfigMap = $AppConfig.deployment.configMap
+          $ConfigSecret = $AppConfig.deployment.secret
+          $Ingress = $AppConfig.ingress.host
+          $DomainName = ($Ingress.Split('.') | Select-Object -Last 2) -join '.'
+          $HostName = $Ingress -replace $DomainName, ''
+          $HostName = $HostName.Substring(0,$HostName.Length-1)
+          switch ($AppEnv) {
+            'development' {$HostName = "development.$Hostname"; $Ingress = "development.$Ingress"}
+            'staging' {$HostName = "staging.$Hostname"; $Ingress = "staging.$Ingress"}
+          }
+          $ImagePullSecret = "$AppName-pull-secret"
+          echo "::set-output name=APPNAME::$AppName"
+          echo "::set-output name=CONFIGMAP::$ConfigMap"
+          echo "::set-output name=CONFIGSECRET::$ConfigSecret"
+          echo "::set-output name=APPINGRESS::$Ingress"
+          echo "::set-output name=DOMAINNAME::$DomainName"
+          echo "::set-output name=HOSTNAME::$HostName"
+          echo "::set-output name=IMAGEPULLSECRET::$ImagePullSecret"
+
       - name: Login via Az module
         uses: azure/login@v1
         with:
@@ -108,26 +157,26 @@ jobs:
         run: kubectl config set-context --current --namespace=${{ inputs.environment }}
       
       - name: Apply ConfigMap
-        if: ${{ inputs.configmap_path != null }}
+        if: ${{ steps.getenvs.outputs.CONFIGMAP != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
-          k8-config-file-paths: ${{ inputs.configmap_path }}
+          k8-config-file-paths: deployments/k8s/${{ steps.getenvs.outputs.CONFIGMAP }}
       
       - name: Add GitHub secrets to k8s
-        if: ${{ inputs.secret_name != null }}
+        if: ${{ steps.getenvs.outputs.CONFIGSECRET != null }}
         uses: Azure/k8s-create-secret@v1
         with:
           namespace: ${{ inputs.environment }}
           secret-type: 'generic'
           arguments: ${{ inputs.secret_value }}
-          secret-name: ${{ inputs.secret_name }}
+          secret-name: ${{ steps.getenvs.outputs.CONFIGSECRET }}
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aks_ingress_fqdn }};
-            New-AzDnsRecordSet -Name "${{ inputs.application_hostname }}" -RecordType CNAME -ZoneName ${{ inputs.application_domainname }} -ResourceGroupName ${{ inputs.dns_rg }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            New-AzDnsRecordSet -Name "${{ steps.getenvs.outputs.HOSTNAME  }}" -RecordType CNAME -ZoneName ${{ steps.getenvs.outputs.DOMAINNAME  }} -ResourceGroupName ${{ inputs.dns_rg }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: '3.1.0'
 
       - name: Create k8s Image Pull Secret
@@ -136,7 +185,7 @@ jobs:
           container-registry-url: ${{ inputs.container_registry }}
           container-registry-username: ${{ secrets.registry_username }}
           container-registry-password: ${{ secrets.registry_password }}
-          secret-name: ${{ inputs.image_pull_secret_name }}
+          secret-name: ${{ steps.getenvs.outputs.IMAGEPULLSECRET }}
 
       - name: Build & Push Docker Image
         run: |
@@ -162,7 +211,7 @@ jobs:
           overrides: |
             image.repository:${{ inputs.container_registry }}/${{ inputs.docker_image_name }}
             image.tag:${{ inputs.docker_image_tag }}
-            ingress.host:${{ inputs.application_fqdn }}
+            ingress.host:${{ steps.getenvs.outputs.INGRESS }}
             autoscaling.maxReplicas:${{ inputs.application_maximum_replicas }}
         id: bake
 
@@ -174,4 +223,4 @@ jobs:
           images: |
             ${{ inputs.container_registry }}/${{ inputs.docker_image_name }}:${{ inputs.docker_image_tag }}
           imagepullsecrets: |
-            ${{ inputs.image_pull_secret_name }}
+            ${{ steps.getenvs.outputs.IMAGEPULLSECRET }}
