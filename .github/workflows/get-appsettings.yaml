@@ -45,9 +45,9 @@ jobs:
           $AppEnv = "${{ inputs.environment }}"
           $BasePath = Get-Location
           $YamlPath = Join-Path $BasePath ${{ inputs.charts_path }} "values.yaml"
-          $AppConfig = ./deployments/scripts/Get-Envs.ps1 -PathToYaml $YamlPath
+          $AppConfig = Get-Envs -PathToYaml $YamlPath
           $YamlPath = Join-Path $BasePath ${{ inputs.charts_path }} "Chart.yaml"
-          $ChartConfig = ./deployments/scripts/Get-Envs.ps1 -PathToYaml $YamlPath
+          $ChartConfig = Get-Envs -PathToYaml $YamlPath
           $AppName = $ChartConfig.name
           $ConfigMap = $AppConfig.deployment.configMap
           $ConfigSecret = $AppConfig.deployment.secret
