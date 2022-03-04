@@ -1,0 +1,74 @@
+on:
+  workflow_call:
+    inputs:
+      fqdn:
+        required: true
+        type: string
+        description: "FQDN of deployed service."
+      api_specification_path:
+        required: true
+        type: string
+        description: "Relative Path to Open API Specification."
+      api_id:
+        required: true
+        type: string
+        description: "API Name for Azure API Management."
+      api_product_id:
+        required: true
+        type: string
+        description: "Azure API Management Product Name for API."
+      api_subscription_required:
+        required: true
+        type: boolean
+        description: "Is a subcription required to access the API."
+      api_service_name:
+        required: true
+        type: string
+        description: "Name of API Management Service."
+      api_service_rg:
+        required: true
+        type: string
+        description: "API Service Resource Group."
+    secrets:
+        azure_user:
+          required: true
+        azure_password:
+          required: true
+        azure_subcription:
+          required: true
+
+        
+jobs:
+  Update-Azure-API-Management:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Azure API Management
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            Start-Sleep -Seconds 60
+            $FQDN = "${{ inputs.fqdn }}"
+            $APISpecPath = "${{ inputs.api_specification_path }}"
+            $SwaggerURL = "https://$FQDN$APISpecPath"
+            $ServiceURL = "https://$FQDN"
+            $AppEnv = "${{ env.application_environment }}"
+            $ApiId = "${{ inputs.api_id }}"
+            $ApiProductId = "${{ inputs.api_product_id }}"
+            $ApiSubcriptionRequired = "${{ env.api_subscription_required }}"
+            if ($ApiSubcriptionRequired -eq 'false') {$ApiSubcriptionRequired = $false}
+            #Login to Azure subscription
+            $User = ${{ secrets.azure_user }}
+            $Password = ConvertTo-SecureString -String "${{ secrets.azure_password }}" -AsPlainText -Force
+            $Subcription = ${{ secrets.azure_subscription }}
+            $Credential = New-Object -TypeName "System.Management.Automation.PSCredential" -ArgumentList $User,$Password
+            $ResourceGroup = ${{ inputs.api_service_rg }}
+            $ServiceName = ${{ inputs.api_service_name }}
+            Connect-AzAccount -Subscription $Subcription -Credential $Credential
+            $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
+            Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId $ApiId
+            $Api = Get-AzApiManagementApi -Context $Context -ApiId $ApiId
+            $Api.ServiceURL = $ServiceURL
+            $Api.SubscriptionRequired = $ApiSubcriptionRequired
+            Set-AzApiManagementApi -InputObject $Api
+            Add-AzApiManagementApiToProduct -Context $Context -ApiId $ApiId -ProductId $ApiProductId
+          azPSVersion: "latest"
