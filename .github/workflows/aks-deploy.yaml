@@ -211,7 +211,7 @@ jobs:
           overrides: |
             image.repository:${{ inputs.container_registry }}/${{ inputs.docker_image_name }}
             image.tag:${{ inputs.docker_image_tag }}
-            ingress.host:${{ steps.getenvs.outputs.INGRESS }}
+            ingress.host:${{ steps.getenvs.outputs.APPINGRESS }}
             autoscaling.maxReplicas:${{ inputs.application_maximum_replicas }}
         id: bake
 
@@ -230,4 +230,4 @@ jobs:
       domainName: ${{ steps.getenvs.outputs.DOMAINNAME }}
       fqdn: ${{ steps.getenvs.outputs.INGRESS }}
       aks_ingress_fqdn: ${{ inputs.aks_ingress_fqdn }}
-      
+
