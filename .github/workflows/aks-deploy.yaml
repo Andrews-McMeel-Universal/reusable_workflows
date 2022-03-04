@@ -272,6 +272,6 @@ jobs:
       environment: ${{ inputs.environment }}
       hostName: ${{ steps.getenvs.outputs.HOSTNAME }}
       domainName: ${{ steps.getenvs.outputs.DOMAINNAME }}
-      fqdn: ${{ steps.getenvs.outputs.INGRESS }}
+      ingress_fqdn: ${{ steps.getenvs.outputs.INGRESS }}
       aks_ingress_fqdn: ${{ inputs.aks_ingress_fqdn }}
 
