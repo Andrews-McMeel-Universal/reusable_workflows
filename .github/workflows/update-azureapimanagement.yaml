@@ -53,11 +53,11 @@ jobs:
             $ServiceURL = "https://$FQDN"
             $ApiId = "${{ inputs.api_id }}"
             $ApiProductId = "${{ inputs.api_product_id }}"
-            $ApiSubcriptionRequired = "${{ env.api_subscription_required }}"
+            $ApiSubcriptionRequired = ${{ inputs.api_subscription_required }}
             #Login to Azure subscription
-            $User = ${{ secrets.azure_user }}
+            $User = "${{ secrets.azure_user }}"
             $Password = ConvertTo-SecureString -String "${{ secrets.azure_password }}" -AsPlainText -Force
-            $Subcription = ${{ secrets.azure_subscription }}
+            $Subcription = "${{ secrets.azure_subscription }}"
             $Credential = New-Object -TypeName "System.Management.Automation.PSCredential" -ArgumentList $User,$Password
             $ResourceGroup = ${{ inputs.api_service_rg }}
             $ServiceName = ${{ inputs.api_service_name }}
