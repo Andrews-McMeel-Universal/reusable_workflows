@@ -34,7 +34,7 @@ on:
           required: true
         azure_password:
           required: true
-        azure_subcription:
+        azure_subscription:
           required: true
 
         
@@ -57,11 +57,11 @@ jobs:
             #Login to Azure subscription
             $User = "${{ secrets.azure_user }}"
             $Password = ConvertTo-SecureString -String "${{ secrets.azure_password }}" -AsPlainText -Force
-            $Subcription = "${{ secrets.azure_subscription }}"
+            $Subscription = "${{ secrets.azure_subscription }}"
             $Credential = New-Object -TypeName "System.Management.Automation.PSCredential" -ArgumentList $User,$Password
             $ResourceGroup = "${{ inputs.api_service_rg }}"
             $ServiceName = "${{ inputs.api_service_name }}"
-            Connect-AzAccount -Subscription $Subcription -Credential $Credential
+            Connect-AzAccount -Subscription $Subscription -Credential $Credential
             $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
             Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId $ApiId
             $Api = Get-AzApiManagementApi -Context $Context -ApiId $ApiId
