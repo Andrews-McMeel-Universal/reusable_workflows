@@ -33,10 +33,6 @@ on:
         required: true
         type: string
         description: "Relative path to Dockerfile."
-      secret_value:
-        required: false
-        type: string
-        description: "Value for application Kubernetes secret."
       aks_ingress_fqdn:
         required: true
         type: string
@@ -50,6 +46,38 @@ on:
         type: string
         description: "Maximum number of replicas for the application HPA."
         default: 4
+      secret_key1:
+        required: false
+        type: string
+        description: "Key for 1st Kubernetes Secret."
+      secret_key2:
+        required: false
+        type: string
+        description: "Key for 2nd Kubernetes Secret."
+      secret_key3:
+        required: false
+        type: string
+        description: "Key for 3rd Kubernetes Secret."
+      secret_key4:
+        required: false
+        type: string
+        description: "Key for 4th Kubernetes Secret."
+      secret_key5:
+        required: false
+        type: string
+        description: "Key for 5th Kubernetes Secret."
+      secret_key6:
+        required: false
+        type: string
+        description: "Key for 6th Kubernetes Secret."
+      secret_key7:
+        required: false
+        type: string
+        description: "Key for 7th Kubernetes Secret."
+      secret_key8:
+        required: false
+        type: string
+        description: "Key for 8th Kubernetes Secret."
     secrets:
       azure_credentials:
         required: true
@@ -57,6 +85,22 @@ on:
         required: true
       registry_password:
         required: true
+      secret_value1:
+        required: false
+      secret_value2:
+        required: false
+      secret_value3:
+        required: false
+      secret_value4:
+        required: false
+      secret_value5:
+        required: false
+      secret_value6:
+        required: false
+      secret_value7:
+        required: false
+      secret_value8:
+        required: false
          
       
 jobs:
@@ -168,7 +212,14 @@ jobs:
         with:
           namespace: ${{ inputs.environment }}
           secret-type: 'generic'
-          arguments: ${{ inputs.secret_value }}
+          arguments: '--from-literal=${{ inputs.secret_key1 }}=${{ secrets.secret_value1 }}
+                      --from-literal=${{ inputs.secret_key2 }}=${{ secrets.secret_value2 }}
+                      --from-literal=${{ inputs.secret_key3 }}=${{ secrets.secret_value3 }}
+                      --from-literal=${{ inputs.secret_key4 }}=${{ secrets.secret_value4 }}
+                      --from-literal=${{ inputs.secret_key5 }}=${{ secrets.secret_value5 }}
+                      --from-literal=${{ inputs.secret_key6 }}=${{ secrets.secret_value6 }}
+                      --from-literal=${{ inputs.secret_key7 }}=${{ secrets.secret_value7 }}
+                      --from-literal=${{ inputs.secret_key8 }}=${{ secrets.secret_value8 }}'
           secret-name: ${{ steps.getenvs.outputs.CONFIGSECRET }}
 
       - name: Create or Update Public DNS Record
