@@ -1,0 +1,53 @@
+on:
+  workflow_call:
+    inputs:
+      hostName:
+        required: true
+        type: string
+        description: "DNS Hostname."
+      domainName:
+        required: true
+        type: string
+        description: "DNS Domain Name."
+      fqdn:
+        required: true
+        type: string
+        description: "FQDN of DNS Record."
+      aks_ingress_fqdn:
+        required: true
+        type: string
+        description: "FQDN for Azure Kubernetes Ingress."
+    secrets:
+      azure_credentials:
+        required: true
+        description: "Credentials for your azure subscription."
+      domain_controller:
+        required: true
+        description: "Domain Controller Server Name."
+          
+jobs:
+  Update-AD-DNS:
+    runs-on: [self-hosted,Windows,boley]
+    continue-on-error: false
+    timeout-minutes: 10
+
+    steps:
+      - name: Login via Az module
+        uses: azure/login@v1
+        with:
+          creds: '${{ secrets.azure_credentials }}'
+          enable-AzPSSession: true
+
+      - name: Update Internal DNS
+        run:
+          | 
+          try {Add-DnsServerResourceRecordCName -Name "${{ inputs.hostName }}" -HostNameAlias "${{ inputs.aks_ingress_fqdn }}" -ZoneName "${{ inputs.domainName }}" -ComputerName ${{ secrets.domain_controller }} } catch {Write-Host "Record Already Exists"}
+          Get-DnsServerResourceRecord -ZoneName "${{ inputs.domainName }}" -ComputerName ${{ secrets.domain_controller }} | Where-Object HostName -eq "${{ inputs.fqdn }}" | Format-List
+          try {Sync-DnsServerZone -Name "${{ inputs.domainName }}" -ComputerName ${{ secrets.domain_controller }}} catch {Write-Host "Skipping zone sync. Zone is currently being synced."}
+      
+      - name: Azure CLI script #needed because this is a self hosted runner so its not emphemeral
+        uses: azure/CLI@v1
+        with:
+          azcliversion: 2.0.72
+          inlineScript: |
+            az logout
