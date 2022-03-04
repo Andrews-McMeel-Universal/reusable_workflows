@@ -213,13 +213,13 @@ jobs:
           namespace: ${{ inputs.environment }}
           secret-type: 'generic'
           arguments: '--from-literal=${{ inputs.secret_key1 }}=${{ secrets.secret_value1 }}
-                      --from-literal=${{ inputs.secret_key2 }}=${{ secrets.secret_value2 }}
-                      --from-literal=${{ inputs.secret_key3 }}=${{ secrets.secret_value3 }}
-                      --from-literal=${{ inputs.secret_key4 }}=${{ secrets.secret_value4 }}
-                      --from-literal=${{ inputs.secret_key5 }}=${{ secrets.secret_value5 }}
-                      --from-literal=${{ inputs.secret_key6 }}=${{ secrets.secret_value6 }}
-                      --from-literal=${{ inputs.secret_key7 }}=${{ secrets.secret_value7 }}
-                      --from-literal=${{ inputs.secret_key8 }}=${{ secrets.secret_value8 }}'
+                       --from-literal=${{ inputs.secret_key2 }}=${{ secrets.secret_value2 }}
+                       --from-literal=${{ inputs.secret_key3 }}=${{ secrets.secret_value3 }}
+                       --from-literal=${{ inputs.secret_key4 }}=${{ secrets.secret_value4 }}
+                       --from-literal=${{ inputs.secret_key5 }}=${{ secrets.secret_value5 }}
+                       --from-literal=${{ inputs.secret_key6 }}=${{ secrets.secret_value6 }}
+                       --from-literal=${{ inputs.secret_key7 }}=${{ secrets.secret_value7 }}
+                       --from-literal=${{ inputs.secret_key8 }}=${{ secrets.secret_value8 }}'
           secret-name: ${{ steps.getenvs.outputs.CONFIGSECRET }}
 
       - name: Create or Update Public DNS Record
