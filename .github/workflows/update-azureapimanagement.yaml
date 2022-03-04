@@ -51,7 +51,6 @@ jobs:
             $APISpecPath = "${{ inputs.api_specification_path }}"
             $SwaggerURL = "https://$FQDN$APISpecPath"
             $ServiceURL = "https://$FQDN"
-            $AppEnv = "${{ env.application_environment }}"
             $ApiId = "${{ inputs.api_id }}"
             $ApiProductId = "${{ inputs.api_product_id }}"
             $ApiSubcriptionRequired = "${{ env.api_subscription_required }}"
