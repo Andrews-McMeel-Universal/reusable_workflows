@@ -53,7 +53,7 @@ jobs:
             $ServiceURL = "https://$FQDN"
             $ApiId = "${{ inputs.api_id }}"
             $ApiProductId = "${{ inputs.api_product_id }}"
-            $ApiSubcriptionRequired = ${{ inputs.api_subscription_required }}
+            $ApiSubscriptionRequired = ${{ inputs.api_subscription_required }}
             #Login to Azure subscription
             $User = "${{ secrets.azure_user }}"
             $Password = ConvertTo-SecureString -String "${{ secrets.azure_password }}" -AsPlainText -Force
@@ -66,7 +66,7 @@ jobs:
             Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId $ApiId
             $Api = Get-AzApiManagementApi -Context $Context -ApiId $ApiId
             $Api.ServiceURL = $ServiceURL
-            $Api.SubscriptionRequired = $ApiSubcriptionRequired
+            $Api.SubscriptionRequired = $ApiSubscriptionRequired
             Set-AzApiManagementApi -InputObject $Api
             Add-AzApiManagementApiToProduct -Context $Context -ApiId $ApiId -ProductId $ApiProductId
           azPSVersion: "latest"
