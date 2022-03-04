@@ -54,7 +54,6 @@ jobs:
             $ApiId = "${{ inputs.api_id }}"
             $ApiProductId = "${{ inputs.api_product_id }}"
             $ApiSubcriptionRequired = "${{ env.api_subscription_required }}"
-            if ($ApiSubcriptionRequired -eq 'false') {$ApiSubcriptionRequired = $false}
             #Login to Azure subscription
             $User = ${{ secrets.azure_user }}
             $Password = ConvertTo-SecureString -String "${{ secrets.azure_password }}" -AsPlainText -Force
