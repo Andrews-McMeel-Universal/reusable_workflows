@@ -1,10 +1,10 @@
 on:
   workflow_call:
     inputs:
-      fqdn:
+      serviceFqdn:
         required: true
         type: string
-        description: "FQDN of deployed service."
+        description: "serviceFqdn of deployed service."
       apiSpecificationPath:
         required: true
         type: string
@@ -49,12 +49,12 @@ jobs:
         with:
           inlineScript: |
             #Start-Sleep -Seconds 60 #Wait a minute before starting in case the service is new and we need to wait for cert requests to complete.
-            $FQDN = "${{ inputs.fqdn }}"
-            Write-Host $FQDN
+            $serviceFqdn = "${{ inputs.serviceFqdn }}"
+            Write-Host $serviceFqdn
             $APISpecPath = "${{ inputs.apiSpecificationPath }}"
-            $SwaggerURL = "https://$FQDN$APISpecPath"
+            $SwaggerURL = "https://$serviceFqdn$APISpecPath"
             Write-Host $SwaggerURL
-            $ServiceURL = "https://$FQDN"
+            $ServiceURL = "https://$serviceFqdn"
             $ApiId = "${{ inputs.apiId }}"
             $ApiProductId = "${{ inputs.apiProductId }}"
             $ApiSubscriptionRequired = ${{ inputs.apiSubscriptionRequired }}
