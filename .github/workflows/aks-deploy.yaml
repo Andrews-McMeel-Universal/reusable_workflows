@@ -236,7 +236,7 @@ jobs:
           overrides: |
             image.repository:${{ steps.getenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.getenvs.outputs.APPingress }}
+            ingress.host:${{ steps.getenvs.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
         id: bake
 
@@ -251,7 +251,7 @@ jobs:
           overrides: |
             image.repository:${{ steps.getenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.getenvs.outputs.APPingress }}
+            ingress.host:${{ steps.getenvs.outputs.ingress }}
         id: bakeproduction
 
       - name: Deploy to Azure ${{ inputs.environment }}
