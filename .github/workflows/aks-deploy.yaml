@@ -64,6 +64,7 @@ jobs:
     timeout-minutes: 20     
     steps:
       - id: getlatestrelease
+        if: ${{ inputs.environment == 'production'}}
         uses: thebritican/fetch-latest-release@v1.0.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
