@@ -55,7 +55,11 @@ on:
       registryPassword:
         required: true
 
-         
+    outputs:
+      hostName: ${{ jobs.AKS_Deploy.ouputs.hostName }}
+      domainName: ${{ jobs.AKS_Deploy.ouputs.domainName }}
+      ingressFqdn: ${{ jobs.AKS_Deploy.ouputs.ingressFqdn }}
+      aksIngressFqdn: ${{ jobs.AKS_Deploy.ouputs.aksIngressFqdn }}
       
 jobs:
   AKS_Deploy:
@@ -278,5 +282,5 @@ jobs:
     outputs:
       hostName: ${{ steps.setenvs.outputs.hostName }}
       domainName: ${{ steps.setenvs.outputs.domainName }}
-      fqdn: ${{ steps.setenvs.outputs.ingress }}
+      ingressFqdn: ${{ steps.setenvs.outputs.ingress }}
       aksIngressFqdn: ${{ inputs.aksIngressFqdn }}
