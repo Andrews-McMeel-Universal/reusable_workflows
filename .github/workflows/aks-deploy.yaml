@@ -240,7 +240,7 @@ jobs:
         id: bake
 
       - name: Bake Helm templates for Production
-        if: ${{ inputs.environment = 'production'}}
+        if: ${{ inputs.environment == 'production'}}
         uses: azure/k8s-bake@v1
         with:
           renderEngine: 'helm'
