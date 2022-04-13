@@ -5,41 +5,43 @@ on:
         required: true
         type: string
         description: "FQDN of deployed service."
-      api_specification_path:
+      apiSpecificationPath:
         required: true
         type: string
         description: "Relative Path to Open API Specification."
-      api_id:
+      apiId:
         required: true
         type: string
         description: "API Name for Azure API Management."
-      api_product_id:
+      apiProductId:
         required: true
         type: string
         description: "Azure API Management Product Name for API."
-      api_subscription_required:
+      apiSubscriptionRequired:
         required: true
         type: boolean
         description: "Is a subcription required to access the API."
-      api_service_name:
+      apiServiceName:
         required: true
         type: string
         description: "Name of API Management Service."
-      api_service_rg:
+      apiServiceResourceGroup:
         required: true
         type: string
         description: "API Service Resource Group."
+      azureUser:
+        required: true
+        type: string
+        description: "Azure user with credentials to add APIs."
     secrets:
-        azure_user:
+        azurePassword:
           required: true
-        azure_password:
-          required: true
-        azure_subscription:
+        azureSubscription:
           required: true
 
         
 jobs:
-  Update-Azure-API-Management:
+  Update_Azure_API_Management:
     runs-on: ubuntu-latest
     steps:
       - name: Update Azure API Management
@@ -49,20 +51,20 @@ jobs:
             #Start-Sleep -Seconds 60 #Wait a minute before starting in case the service is new and we need to wait for cert requests to complete.
             $FQDN = "${{ inputs.fqdn }}"
             Write-Host $FQDN
-            $APISpecPath = "${{ inputs.api_specification_path }}"
+            $APISpecPath = "${{ inputs.apiSpecificationPath }}"
             $SwaggerURL = "https://$FQDN$APISpecPath"
             Write-Host $SwaggerURL
             $ServiceURL = "https://$FQDN"
-            $ApiId = "${{ inputs.api_id }}"
-            $ApiProductId = "${{ inputs.api_product_id }}"
-            $ApiSubscriptionRequired = ${{ inputs.api_subscription_required }}
+            $ApiId = "${{ inputs.apiId }}"
+            $ApiProductId = "${{ inputs.apiProductId }}"
+            $ApiSubscriptionRequired = ${{ inputs.apiSubscriptionRequired }}
             #Login to Azure subscription
-            $User = "${{ secrets.azure_user }}"
-            $Password = ConvertTo-SecureString -String "${{ secrets.azure_password }}" -AsPlainText -Force
-            $Subscription = "${{ secrets.azure_subscription }}"
+            $User = "${{ inputs.azureUser }}"
+            $Password = ConvertTo-SecureString -String "${{ secrets.azurePassword }}" -AsPlainText -Force
+            $Subscription = "${{ secrets.azureSubscription }}"
             $Credential = New-Object -TypeName "System.Management.Automation.PSCredential" -ArgumentList $User,$Password
-            $ResourceGroup = "${{ inputs.api_service_rg }}"
-            $ServiceName = "${{ inputs.api_service_name }}"
+            $ResourceGroup = "${{ inputs.apiServiceResourceGroup }}"
+            $ServiceName = "${{ inputs.apiServiceName }}"
             Connect-AzAccount -Subscription $Subscription -Credential $Credential
             $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
             Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId $ApiId
