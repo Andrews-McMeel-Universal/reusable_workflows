@@ -17,7 +17,7 @@ on:
         required: true
         type: string
         description: "AKS Cluster Resource Group."
-      aksIngressFqdn:
+      aksingressFqdn:
         required: true
         type: string
         description: "FQDN for AKS cluster ingress."
@@ -85,37 +85,34 @@ jobs:
         id: setenvs
         shell: pwsh
         run: |
-          $AppEnv = "${{ inputs.environment }}"
-          $BasePath = Get-Location
-          $YamlPath = Join-Path $BasePath ${{ inputs.chartsPath }} "values.yaml"
-          $AppConfig = ./deployments/scripts/Get-Envs.ps1 -PathToYaml $YamlPath
-          $YamlPath = Join-Path $BasePath ${{ inputs.chartsPath }} "Chart.yaml"
-          $ChartConfig = ./deployments/scripts/Get-Envs.ps1 -PathToYaml $YamlPath
-          $ContainerRegistry = $AppConfig.image.repository
-          $AppName = $ChartConfig.name
-          $ConfigMap = $AppConfig.deployment.configMap
-          $ConfigSecret = $AppConfig.deployment.secret
-          $Ingress = $AppConfig.ingress.host
-          $DomainName = ($Ingress.Split('.') | Select-Object -Last 2) -join '.'
-          $HostName = $Ingress -replace $DomainName, ''
-          if ($HostName.Length -gt 0) {$HostName = $HostName.Substring(0,$HostName.Length-1)} 
+          $appEnv= "${{ inputs.environment }}"
+          $basePath = Get-Location
+          $yamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
+          $appConfig = ./deployments/scripts/Get-Envs.ps1 -PathToYaml $yamlPath
+          $yamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
+          $chartConfig= ./deployments/scripts/Get-Envs.ps1 -PathToYaml $yamlPath
+          $containerRegistry = $appConfig.image.repository
+          $appName= $ChartConfig.name
+          $configMap = $appConfig.deployment.configMap
+          $configSecret = $appConfig.deployment.secret
+          $ingress = $appConfig.ingress.host
+          $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
+          $hostName = $ingress -replace $domainName, ''
+          if ($hostName.Length -gt 0) {$hostName = $hostName.Substring(0,$hostName.Length-1)} 
           switch ($AppEnv) {
-            'development' {$HostName = "development.$Hostname"; $Ingress = "development.$Ingress"}
-            'staging' {$HostName = "staging.$Hostname"; $Ingress = "staging.$Ingress"}
+            'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
+            'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
           }
-          $ImagePullSecret = "$AppName-pull-secret"
-          echo "::set-output name=APPNAME::$AppName"
-          echo "::set-output name=CONFIGMAP::$ConfigMap"
-          echo "::set-output name=CONFIGSECRET::$ConfigSecret"
-          echo "::set-output name=INGRESS::$Ingress"
-          echo "::set-output name=DOMAINNAME::$DomainName"
-          echo "::set-output name=HOSTNAME::$HostName"
-          echo "::set-output name=IMAGEPULLSECRET::$ImagePullSecret"
-          echo "::set-output name=CONTAINERREGISTRY::$ContainerRegistry"
-          echo "::set-output name=APISUBSCRIPTIONREQUIRED::$ApiSubscriptionRequired"
-          echo "::set-output name=APISPECPATH::$ApiSpecPath"
-          echo "::set-output name=APIID::$ApiId"
-          echo "::set-output name=APIPRODUCTID::$ApiProductId"
+          $imagePullSecret = "$appName-pull-secret"
+          echo "::set-output name=appName::$appName"
+          echo "::set-output name=configMap::$configMap"
+          echo "::set-output name=configSecret::$configSecret"
+          echo "::set-output name=ingress::$ingress"
+          echo "::set-output name=domainName::$domainName"
+          echo "::set-output name=hostName::$hostName"
+          echo "::set-output name=imagePullSecret::$imagePullSecret"
+          echo "::set-output name=containerRegistry::$containerRegistry"
+ 
                       
       - name: Login via Az module
         uses: azure/login@v1
@@ -163,14 +160,14 @@ jobs:
             }
             $k8sSecret = Get-EnvSecrets -KeyVaultName "${{ env.environment_key_vault }}"
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ env.environment_key_vault }}"
-            echo "::set-output name=KUBERNETESSECRET::$k8sSecret"
-            echo "::set-output name=BUILDARGUMENTS::$buildArguments"
+            echo "::set-output name=kubernetesSecret::$k8sSecret"
+            echo "::set-output name=buildArguments::$buildArguments"
           azPSVersion: "latest"
      
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
-          login-server: ${{ steps.setenvs.outputs.CONTAINERREGISTRY }}
+          login-server: ${{ steps.setenvs.outputs.containerRegistry }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
@@ -184,8 +181,8 @@ jobs:
       - name: Switch to ${{ inputs.environment }} Namespace
         run: kubectl config set-context --current --namespace=${{ inputs.environment }}
 
-      - name: Apply ConfigMap
-        if: ${{ steps.getenvs.outputs.CONFIGMAP != null }}
+      - name: Apply configMap
+        if: ${{ steps.getenvs.outputs.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
@@ -195,34 +192,34 @@ jobs:
         with:
           namespace: ${{ inputs.environment }}
           secret-type: 'generic'
-          arguments: ${{ steps.getsecrets.outputs.KUBERNETESSECRET }}
-          secret-name: ${{ steps.setenvs.outputs.CONFIGSECRET }}
+          arguments: ${{ steps.getsecrets.outputs.kubernetesSecret }}
+          secret-name: ${{ steps.setenvs.outputs.configSecret }}
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
-            New-AzDnsRecordSet -Name "${{ steps.setenvs.outputs.HOSTNAME }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.DOMAINNAME }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksingressFqdn }};
+            New-AzDnsRecordSet -Name "${{ steps.setenvs.outputs.hostName }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: '3.1.0'
 
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v1
         with:
-          container-registry-url: ${{ steps.setenvs.outputs.CONTAINERREGISTRY }}
+          container-registry-url: ${{ steps.setenvs.outputs.containerRegistry }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: ${{ steps.setenvs.outputs.IMAGEPULLSECRET }}
+          secret-name: ${{ steps.setenvs.outputs.imagePullSecret }}
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ env.application_path }} ${{ steps.getsecrets.outputs.BUILDARGUMENTS }} -t ${{ steps.setenvs.outputs.CONTAINERREGISTRY  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
-          docker push ${{ steps.setenvs.outputs.CONTAINERREGISTRY }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          docker build ${{ env.application_path }} ${{ steps.getsecrets.outputs.buildArguments }} -t ${{ steps.setenvs.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          docker push ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
 
       - name: Create valid release-name
         id: generate-release-name
         run: |
-          release=${{ steps.setenvs.outputs.APPNAME }}-${{ github.sha }}
+          release=${{ steps.setenvs.outputs.appName }}-${{ github.sha }}
           release=${release::53}
           release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
           echo ::set-output name=result::$release
@@ -236,9 +233,9 @@ jobs:
           releaseName: ${{steps.generate-release-name.outputs.result}}
           helm-version: 'latest'
           overrides: |
-            image.repository:${{ steps.getenvs.outputs.CONTAINERREGISTRY }}/${{ inputs.dockerImageName }}
+            image.repository:${{ steps.getenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.getenvs.outputs.APPINGRESS }}
+            ingress.host:${{ steps.getenvs.outputs.APPingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
         id: bake
 
@@ -251,9 +248,9 @@ jobs:
           releaseName: ${{steps.generate-release-name.outputs.result}}
           helm-version: 'latest'
           overrides: |
-            image.repository:${{ steps.getenvs.outputs.CONTAINERREGISTRY }}/${{ inputs.dockerImageName }}
+            image.repository:${{ steps.getenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.getenvs.outputs.APPINGRESS }}
+            ingress.host:${{ steps.getenvs.outputs.APPingress }}
         id: bake
 
       - name: Deploy to Azure
@@ -262,11 +259,11 @@ jobs:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            ${{ steps.setenvs.outputs.CONTAINERREGISTRY }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
-          imagepullsecrets: |
-            ${{ steps.setenvs.outputs.IMAGEPULLSECRET }}
+            ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          imagePullSecrets: |
+            ${{ steps.setenvs.outputs.imagePullSecret }}
 
     outputs:
-      hostName: ${{ steps.setenvs.outputs.HOSTNAME }}
-      domainName: ${{ steps.setenvs.outputs.DOMAINNAME }}
-      fqdn: ${{ steps.setenvs.outputs.INGRESS }}
+      hostName: ${{ steps.setenvs.outputs.hostName }}
+      domainName: ${{ steps.setenvs.outputs.domainName }}
+      fqdn: ${{ steps.setenvs.outputs.ingress }}
