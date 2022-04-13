@@ -159,8 +159,8 @@ jobs:
               }
               return $buildArgs
             }
-            $k8sSecret = Get-EnvSecrets -KeyVaultName "${{ env.environment_key_vault }}"
-            $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ env.environment_key_vault }}"
+            $k8sSecret = Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
+            $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
             echo "::set-output name=kubernetesSecret::$k8sSecret"
             echo "::set-output name=buildArguments::$buildArguments"
           azPSVersion: "latest"
@@ -214,7 +214,7 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ env.application_path }} ${{ steps.getsecrets.outputs.buildArguments }} -t ${{ steps.setenvs.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t ${{ steps.setenvs.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
           docker push ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
 
       - name: Create valid release-name
