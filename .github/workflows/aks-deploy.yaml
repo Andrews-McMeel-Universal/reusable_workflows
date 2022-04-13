@@ -183,7 +183,7 @@ jobs:
         run: kubectl config set-context --current --namespace=${{ inputs.environment }}
 
       - name: Apply configMap
-        if: ${{ steps.getenvs.outputs.configMap != null }}
+        if: ${{ steps.setenvs.outputs.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
@@ -234,9 +234,9 @@ jobs:
           releaseName: ${{steps.generate-release-name.outputs.result}}
           helm-version: 'latest'
           overrides: |
-            image.repository:${{ steps.getenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.repository:${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.getenvs.outputs.ingress }}
+            ingress.host:${{ steps.setenvs.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
         id: bake
 
@@ -249,9 +249,9 @@ jobs:
           releaseName: ${{steps.generate-release-name.outputs.result}}
           helm-version: 'latest'
           overrides: |
-            image.repository:${{ steps.getenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.repository:${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.getenvs.outputs.ingress }}
+            ingress.host:${{ steps.setenvs.outputs.ingress }}
         id: bakeproduction
 
       - name: Deploy to Azure ${{ inputs.environment }}
