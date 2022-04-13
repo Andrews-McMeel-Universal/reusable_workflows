@@ -251,9 +251,10 @@ jobs:
             image.repository:${{ steps.getenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ steps.getenvs.outputs.APPingress }}
-        id: bake
+        id: bakeproduction
 
-      - name: Deploy to Azure
+      - name: Deploy to Azure ${{ inputs.environment }}
+        if: ${{ inputs.environment != 'production'}}
         uses: Azure/k8s-deploy@v1
         with:
           namespace: ${{ inputs.environment }}
@@ -263,7 +264,18 @@ jobs:
           imagePullSecrets: |
             ${{ steps.setenvs.outputs.imagePullSecret }}
 
+      - name: Deploy to Azure production
+        if: ${{ inputs.environment == 'production'}}
+        uses: Azure/k8s-deploy@v1
+        with:
+          namespace: ${{ inputs.environment }}
+          manifests: ${{ steps.bakeproduction.outputs.manifestsBundle }}
+          images: |
+            ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          imagePullSecrets: |
+            ${{ steps.setenvs.outputs.imagePullSecret }}
     outputs:
       hostName: ${{ steps.setenvs.outputs.hostName }}
       domainName: ${{ steps.setenvs.outputs.domainName }}
       fqdn: ${{ steps.setenvs.outputs.ingress }}
+      aksIngressFqdn: ${{ inputs.aksIngressFqdn }}
