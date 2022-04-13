@@ -17,7 +17,7 @@ on:
         required: true
         type: string
         description: "AKS Cluster Resource Group."
-      aksingressFqdn:
+      aksIngressFqdn:
         required: true
         type: string
         description: "FQDN for AKS cluster ingress."
@@ -199,7 +199,7 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksingressFqdn }};
+            $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
             New-AzDnsRecordSet -Name "${{ steps.setenvs.outputs.hostName }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: '3.1.0'
 
