@@ -56,10 +56,14 @@ on:
         required: true
 
     outputs:
-      hostName: ${{ jobs.AKS_Deploy.ouputs.hostName }}
-      domainName: ${{ jobs.AKS_Deploy.ouputs.domainName }}
-      ingressFqdn: ${{ jobs.AKS_Deploy.ouputs.ingressFqdn }}
-      aksIngressFqdn: ${{ jobs.AKS_Deploy.ouputs.aksIngressFqdn }}
+      hostName: 
+        value: ${{ jobs.AKS_Deploy.ouputs.hostName }}
+      domainName:
+        value: ${{ jobs.AKS_Deploy.ouputs.domainName }}
+      ingressFqdn: 
+        value: ${{ jobs.AKS_Deploy.ouputs.ingressFqdn }}
+      aksIngressFqdn: 
+        value: ${{ jobs.AKS_Deploy.ouputs.aksIngressFqdn }}
       
 jobs:
   AKS_Deploy:
