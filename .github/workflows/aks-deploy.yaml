@@ -293,7 +293,7 @@ jobs:
         with: 
           inlineScript: |
             $storageAccountName = "${{ inputs.storageAccountName }}"
-            $storageAccountKey = "${{ secrets.storageAccountKey }}"
+            $storageAccountKey = ${{ secrets.storageAccountKey }}
             $appInfoTableName = "${{ inputs.appInfoTableName }}"
 
             $storageContext = New-AzStorageContext -StorageAccountName $atorageAccountName -StorageAccountKey $storageAccountKey
