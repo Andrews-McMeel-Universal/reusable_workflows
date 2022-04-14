@@ -317,7 +317,7 @@ jobs:
             $appHealthCheck = "${{ steps.setenvs.outputs.appHealthCheck }}"
             $appAksIngress = "${{ inputs.aksIngressFqdn }}"
             $appCluster = "${{ inputs.clusterName }}"
-            $appClusterResouceGroup "${{ inputs.clusterResourceGroup }}"
+            $appClusterResouceGroup = "${{ inputs.clusterResourceGroup }}"
             $appConfigSecret = "${{ steps.setenvs.outputs.configSecret }}"
             $appConfigMap = "${{ steps.setenvs.outputs.configMap }}"
             $appDeployDate = Get-Date
