@@ -9,6 +9,10 @@ on:
         required: true
         type: string
         description: "AKS Key vault."
+      repositoryName:
+        required: true
+        type: string
+        description: "GitHub Repository Name."
       clusterName: 
         required: true
         type: string
@@ -310,6 +314,7 @@ jobs:
                   return
                   }
             
+            $repoName = "${{ inputs.repositoryName }}"
             $appName = "${{ steps.setenvs.outputs.appName }}"
             $appVersion = "${{ steps.setenvs.outputs.appVersion }}"
             $appEnvironment = "${{ inputs.environment }}"
@@ -327,9 +332,9 @@ jobs:
 
             Add-AzTableRow `
                 -Table $appInfoTable `
-                -partitionKey $appName `
+                -partitionKey $repoName `
                 -RowKey $appEnvironment `
-                -property @{"version"="$appVersion";"key_vault"="$appKeyVault";"host_name"="$appHostName";"domain_name"="$appDomainName";"ingress_fqdn"="$appIngressFqdn";"healtcheck_path"="$appHealthCheck";"aks_ingress"="$appAksIngress"; `
+                -property @{"application_name"="$appName";"version"="$appVersion";"key_vault"="$appKeyVault";"host_name"="$appHostName";"domain_name"="$appDomainName";"ingress_fqdn"="$appIngressFqdn";"healtcheck_path"="$appHealthCheck";"aks_ingress"="$appAksIngress"; `
                             "application_ingress"="$appIngressFqdn";"cluster"="$appCluster";"cluster_resource_group"="$appClusterResouceGroup";"config_secret"="$appConfigSecret";"config_map"="$appConfigMap";"last_deploy"="$appDeployDate"} `
                 -UpdateExisting | Out-Null
 
