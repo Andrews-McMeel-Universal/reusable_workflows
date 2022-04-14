@@ -18,7 +18,7 @@ on:
         type: string
         description: "Application information storage table."
     secrets:
-      domain_controller:
+      domainController:
         required: true
         description: "Domain Controller Server Name."
       storageAccountKey:
