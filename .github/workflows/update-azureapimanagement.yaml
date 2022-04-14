@@ -1,10 +1,10 @@
 on:
   workflow_call:
     inputs:
-      serviceFqdn:
+      environment:
         required: true
         type: string
-        description: "serviceFqdn of deployed service."
+        description: "Deploy environment. Can be development, staging, or production."
       apiSpecificationPath:
         required: true
         type: string
@@ -33,23 +33,76 @@ on:
         required: true
         type: string
         description: "Azure user with credentials to add APIs."
+      repositoryName:
+        required: true
+        type: string
+        description: "GitHub Repository Name."
+      storageAccountName:
+        required: true
+        type: string
+        description: "Storage Account for application information table."
+      appInfoTableName:
+        required: true
+        type: string
+        description: "Application information storage table."
     secrets:
         azurePassword:
           required: true
         azureSubscription:
           required: true
+        storageAccountKey:
+          required: true
+
 
         
 jobs:
   Update_Azure_API_Management:
     runs-on: ubuntu-latest
     steps:
+      - name: Retrieve Application information
+        id: getappinfo
+        uses: azure/powershell@v1
+        with: 
+          inlineScript: |
+            Install-Module -Name AzTable -Force
+            Import-Module AzTable
+
+            $storageAccountName = "${{ inputs.storageAccountName }}"
+            $storageAccountKey = ${{ secrets.storageAccountKey }}
+            $appInfoTableName = "${{ inputs.appInfoTableName }}"
+
+            $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+
+            #Get Storage table
+            try {
+                $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
+                }
+            catch {
+                Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+                return
+                }
+
+            $repoName = "${{ inputs.repositoryName }}"
+            $appEnvironment = "${{ inputs.environment }}"
+
+            $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey $repoName -RowKey $appEnvironment
+
+            echo "::set-output name=applicationName::$appInfo.ApplicationName
+            echo "::set-output name=version::$appInfo.Version
+            echo "::set-output name=keyVault::$appInfo.KeyVault
+            echo "::set-output name=hostName::$appInfo.HostName
+            echo "::set-output name=domainName::$appInfo.DomainName
+            echo "::set-output name=applicationIngressFqdn::$appInfo.IngressFqdn
+            echo "::set-output name=healthCheckPath::$appInfo.HealthCheckPath
+            echo "::set-output name=aksIngress::$appInfo.AksIngress
+          azPSVersion: "latest"
+
       - name: Update Azure API Management
         uses: azure/powershell@v1
         with:
           inlineScript: |
             #Start-Sleep -Seconds 60 #Wait a minute before starting in case the service is new and we need to wait for cert requests to complete.
-            $serviceFqdn = "${{ inputs.serviceFqdn }}"
+            $serviceFqdn = "${{ steps.getappinfo.outputs.applicationIngressFqdn }}"
             Write-Host $serviceFqdn
             $APISpecPath = "${{ inputs.apiSpecificationPath }}"
             $SwaggerURL = "https://$serviceFqdn$APISpecPath"

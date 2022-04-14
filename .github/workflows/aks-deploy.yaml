@@ -306,13 +306,13 @@ jobs:
             $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
 
             #Get Storage table
-              try {
-                  $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
-                  }
-              catch {
-                  Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
-                  return
-                  }
+            try {
+                $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
+                }
+            catch {
+                Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+                return
+                }
             
             $repoName = "${{ inputs.repositoryName }}"
             $appName = "${{ steps.setenvs.outputs.appName }}"
@@ -334,8 +334,8 @@ jobs:
                 -Table $appInfoTable `
                 -partitionKey $repoName `
                 -RowKey $appEnvironment `
-                -property @{"ApplicationName"="$appName";"Version"="$appVersion";"KeyVault"="$appKeyVault";"HostName"="$appHostName";"DomainName"="$appDomainName";"IngressFqdn"="$appIngressFqdn";"HealtcheckPath"="$appHealthCheck";"AksIngress"="$appAksIngress"; `
-                            "ApplicationIngress"="$appIngressFqdn";"Cluster"="$appCluster";"ClusterResourceGroup"="$appClusterResouceGroup";"ConfigSecret"="$appConfigSecret";"ConfigMap"="$appConfigMap";"LastDeploy"="$appDeployDate"} `
+                -property @{"ApplicationName"="$appName";"Version"="$appVersion";"KeyVault"="$appKeyVault";"HostName"="$appHostName";"DomainName"="$appDomainName";"IngressFqdn"="$appIngressFqdn";"HealthCheckPath"="$appHealthCheck";"AksIngress"="$appAksIngress"; `
+                            "Cluster"="$appCluster";"ClusterResourceGroup"="$appClusterResouceGroup";"ConfigSecret"="$appConfigSecret";"ConfigMap"="$appConfigMap";"LastDeploy"="$appDeployDate"} `
                 -UpdateExisting | Out-Null
 
           azPSVersion: "latest"
