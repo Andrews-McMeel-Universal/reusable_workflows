@@ -31,11 +31,6 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      # - name: Login via Az module
-      #   uses: azure/login@v1
-      #   with:
-      #     creds: '${{ secrets.azure_credentials }}'
-      #     enable-AzPSSession: true
       - name: Retrieve Application information
         id: getappinfo
         uses: azure/powershell@v1
@@ -100,9 +95,4 @@ jobs:
           Get-DnsServerResourceRecord -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ steps.getappinfo.outputs.applicationIngressFqdn }}" | Format-List
           try {Sync-DnsServerZone -Name "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }}} catch {Write-Host "Skipping zone sync. Zone is currently being synced."}
       
-      # - name: Azure CLI script #needed because this is a self hosted runner so its not emphemeral
-      #   uses: azure/CLI@v1
-      #   with:
-      #     azcliversion: 2.0.72
-      #     inlineScript: |
-      #       az logout
+   
