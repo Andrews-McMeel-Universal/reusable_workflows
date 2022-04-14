@@ -87,14 +87,24 @@ jobs:
 
             $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey $repoName -RowKey $appEnvironment
 
-            echo "::set-output name=applicationName::$appInfo.ApplicationName
-            echo "::set-output name=version::$appInfo.Version
-            echo "::set-output name=keyVault::$appInfo.KeyVault
-            echo "::set-output name=hostName::$appInfo.HostName
-            echo "::set-output name=domainName::$appInfo.DomainName
-            echo "::set-output name=applicationIngressFqdn::$appInfo.IngressFqdn
-            echo "::set-output name=healthCheckPath::$appInfo.HealthCheckPath
-            echo "::set-output name=aksIngress::$appInfo.AksIngress
+            $applicationName = $appInfo.ApplicationName
+            $version = $appInfo.Version
+            $keyVault = $appInfo.KeyVault
+            $hostName = $appInfo.HostName
+            $domainName = $appInfo.DomainName
+            $ingressFqdn = $appInfo.IngressFqdn
+            $healthCheckPath = $appInfo.HealthCheckPath
+            $aksIngress = $appInfo.AksIngress
+
+
+            echo "::set-output name=applicationName::$applicationName
+            echo "::set-output name=version::$version
+            echo "::set-output name=keyVault::$keyVault
+            echo "::set-output name=hostName::$hostName
+            echo "::set-output name=domainName::$domainName
+            echo "::set-output name=applicationIngressFqdn::$ingressFqdn
+            echo "::set-output name=healthCheckPath::$healthCheckPath
+            echo "::set-output name=aksIngress::$aksIngress
           azPSVersion: "latest"
 
       - name: Update Azure API Management
