@@ -80,10 +80,7 @@ jobs:
         uses: thebritican/fetch-latest-release@v1.0.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Checkout
-        uses: actions/checkout@master
-
+          
       - name: Checkout if Staging or Development deployment.
         if: ${{ inputs.environment != 'production'}}
         uses: actions/checkout@master
