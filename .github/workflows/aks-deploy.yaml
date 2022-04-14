@@ -292,6 +292,9 @@ jobs:
         uses: azure/powershell@v1
         with: 
           inlineScript: |
+            Install-Module -Name AzTable -Force
+            Import-Module AzTable
+            
             $storageAccountName = "${{ inputs.storageAccountName }}"
             $storageAccountKey = ${{ secrets.storageAccountKey }}
             $appInfoTableName = "${{ inputs.appInfoTableName }}"
