@@ -334,8 +334,8 @@ jobs:
                 -Table $appInfoTable `
                 -partitionKey $repoName `
                 -RowKey $appEnvironment `
-                -property @{"application_name"="$appName";"version"="$appVersion";"key_vault"="$appKeyVault";"host_name"="$appHostName";"domain_name"="$appDomainName";"ingress_fqdn"="$appIngressFqdn";"healtcheck_path"="$appHealthCheck";"aks_ingress"="$appAksIngress"; `
-                            "application_ingress"="$appIngressFqdn";"cluster"="$appCluster";"cluster_resource_group"="$appClusterResouceGroup";"config_secret"="$appConfigSecret";"config_map"="$appConfigMap";"last_deploy"="$appDeployDate"} `
+                -property @{"ApplicationName"="$appName";"Version"="$appVersion";"KeyVault"="$appKeyVault";"HostName"="$appHostName";"DomainName"="$appDomainName";"IngressFqdn"="$appIngressFqdn";"HealtcheckPath"="$appHealthCheck";"AksIngress"="$appAksIngress"; `
+                            "ApplicationIngress"="$appIngressFqdn";"Cluster"="$appCluster";"ClusterResourceGroup"="$appClusterResouceGroup";"ConfigSecret"="$appConfigSecret";"ConfigMap"="$appConfigMap";"LastDeploy"="$appDeployDate"} `
                 -UpdateExisting | Out-Null
 
           azPSVersion: "latest"
