@@ -106,14 +106,14 @@ jobs:
             Write-Host $aksIngress
 
 
-            echo "::set-output name=applicationName::$applicationName
-            echo "::set-output name=version::$version
-            echo "::set-output name=keyVault::$keyVault
-            echo "::set-output name=hostName::$hostName
-            echo "::set-output name=domainName::$domainName
-            echo "::set-output name=applicationIngressFqdn::$ingressFqdn
-            echo "::set-output name=healthCheckPath::$healthCheckPath
-            echo "::set-output name=aksIngress::$aksIngress
+            echo "::set-output name=applicationName::$applicationName"
+            echo "::set-output name=version::$version"
+            echo "::set-output name=keyVault::$keyVault"
+            echo "::set-output name=hostName::$hostName"
+            echo "::set-output name=domainName::$domainName"
+            echo "::set-output name=applicationIngressFqdn::$ingressFqdn"
+            echo "::set-output name=healthCheckPath::$healthCheckPath"
+            echo "::set-output name=aksIngress::$aksIngress"
           azPSVersion: "latest"
 
       - name: Update Azure API Management
