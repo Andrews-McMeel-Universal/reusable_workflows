@@ -294,7 +294,7 @@ jobs:
           inlineScript: |
             Install-Module -Name AzTable -Force
             Import-Module AzTable
-            
+
             $storageAccountName = "${{ inputs.storageAccountName }}"
             $storageAccountKey = ${{ secrets.storageAccountKey }}
             $appInfoTableName = "${{ inputs.appInfoTableName }}"
@@ -330,7 +330,7 @@ jobs:
                 -partitionKey $appName `
                 -RowKey $appEnvironment `
                 -property @{"version"="$appVersion";"key_vault"="$appKeyVault";"host_name"="$appHostName";"domain_name"="$appDomainName";"ingress_fqdn"="$appIngressFqdn";"healtcheck_path"="$appHealthCheck";"aks_ingress"="$appAksIngress"; `
-                            "cluster"="$appCluster";"cluster_resource_group"="$appClusterResouceGroup";"config_secret"="$appConfigSecret";"config_map"="$appConfigMap";"last_deploy"="$appDeployDate"} `
+                            "application_ingress"="$appIngressFqdn";"cluster"="$appCluster";"cluster_resource_group"="$appClusterResouceGroup";"config_secret"="$appConfigSecret";"config_map"="$appConfigMap";"last_deploy"="$appDeployDate"} `
                 -UpdateExisting | Out-Null
 
           azPSVersion: "latest"
