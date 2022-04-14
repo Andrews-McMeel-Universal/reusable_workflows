@@ -98,12 +98,37 @@ jobs:
         id: setenvs
         shell: pwsh
         run: |
+          Function Get-Envs {
+            param (
+                [parameter(Mandatory = $true, ValueFromPipeline = $true)]
+                [string]$PathToYaml
+            )
+
+              #Check to see if powershell-yaml is installed 
+              if (Get-Module -Name powershell-yaml) {
+                #It's installed, this would be if you are running locally. 
+              }
+              else {
+                  Write-Host "Installing Powershell-Yaml."
+                  Install-Module -Name powershell-yaml -Confirm:$false -Force
+              }
+
+              Import-Module powershell-yaml
+
+              Write-Host "Getting configuration from: $PathToYaml."
+
+              $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
+
+              return $Values
+          }
+
+
           $appEnv= "${{ inputs.environment }}"
           $basePath = Get-Location
-          $yamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
-          $appConfig = ./deployments/scripts/Get-Envs.ps1 -PathToYaml $yamlPath
-          $yamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
-          $chartConfig= ./deployments/scripts/Get-Envs.ps1 -PathToYaml $yamlPath
+          $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
+          $appConfig = Get-Envs -PathToYaml $valuesYamlPath
+          $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
+          $chartConfig= Get-Envs -PathToYaml $chartYamlPath
           $containerRegistry = $appConfig.image.repository
           $appName = $chartConfig.name
           $appVersion = $chartConfig.appVersion
