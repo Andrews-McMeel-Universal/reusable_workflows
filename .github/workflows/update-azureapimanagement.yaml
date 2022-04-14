@@ -96,6 +96,15 @@ jobs:
             $healthCheckPath = $appInfo.HealthCheckPath
             $aksIngress = $appInfo.AksIngress
 
+            Write-Host $applicationName
+            Write-Host $version
+            Write-Host $keyVault
+            Write-Host $hostName
+            Write-Host $domainName
+            Write-Host $ingressFqdn
+            Write-Host $healthCheckPath
+            Write-Host $aksIngress
+
 
             echo "::set-output name=applicationName::$applicationName
             echo "::set-output name=version::$version
