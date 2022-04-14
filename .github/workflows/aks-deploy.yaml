@@ -171,34 +171,34 @@ jobs:
               param (
                   $KeyVaultName
               )
-              $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object -Property 'ContentType' -Contains 'Env').Name
-              $secretPredicate = "--from-literal="
-              $envSecrets | ForEach-Object {
-                  $envName = $_.ToUpper() 
-                  $envName = $envName.Replace("-","_")
-                  $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                  $kubernetesSecret= $kubernetesSecret + $secretPredicate + $envName + "=" + $envSecret + " "
-              }
-              return $kubernetesSecret
+                $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+                $secretPredicate = "--from-literal="
+                $envSecrets | ForEach-Object {
+                    $envName = $_.ToUpper() 
+                    $envName = $envName.Replace("-","_")
+                    $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
+                    $kubernetesSecret= $kubernetesSecret + $secretPredicate + $envName + "=" + $envSecret + " "
+                }
+                return $kubernetesSecret
               }
             Function Get-BuildArgSecrets {
               param (
                   $KeyVaultName
               )
-              $buildSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object -Property 'ContentType' -Contains 'BuildArg').Name
-              if ($buildSecrets.Count -gt 0) {
-                  $buildArgPredicate = ' --build-arg '
-              }
-              else {
-                  return
-              }
-              $buildSecrets | ForEach-Object {
-                  $argName = $_.ToUpper() 
-                  $argName = $argName.Replace("-","_")
-                  $argSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                  $buildArgs = $buildArgs + $buildArgPredicate + $argName + "=" + $argSecret
-              }
-              return $buildArgs
+                $buildSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'BuildArg') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+                if ($buildSecrets.Count -gt 0) {
+                    $buildArgPredicate = ' --build-arg '
+                }
+                else {
+                    return
+                }
+                $buildSecrets | ForEach-Object {
+                    $argName = $_.ToUpper() 
+                    $argName = $argName.Replace("-","_")
+                    $argSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
+                    $buildArgs = $buildArgs + $buildArgPredicate + $argName + "=" + $argSecret
+                }
+                return $buildArgs
             }
             $k8sSecret = Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
