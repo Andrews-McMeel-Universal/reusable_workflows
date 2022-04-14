@@ -59,21 +59,20 @@ jobs:
   Update_Azure_API_Management:
     runs-on: ubuntu-latest
     steps:
-      - name: Retrieve Application information
-        id: getappinfo
+      - name: Update Azure API Management
         uses: azure/powershell@v1
-        with: 
+        with:
           inlineScript: |
             Install-Module -Name AzTable -Force
             Import-Module AzTable
-
+            
             $storageAccountName = "${{ inputs.storageAccountName }}"
             $storageAccountKey = ${{ secrets.storageAccountKey }}
             $appInfoTableName = "${{ inputs.appInfoTableName }}"
 
             $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
 
-            #Get Storage table
+                #Get Storage table
             try {
                 $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
                 }
@@ -87,41 +86,8 @@ jobs:
 
             $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey $repoName -RowKey $appEnvironment
 
-            $applicationName = $appInfo.ApplicationName
-            $version = $appInfo.Version
-            $keyVault = $appInfo.KeyVault
-            $hostName = $appInfo.HostName
-            $domainName = $appInfo.DomainName
-            $ingressFqdn = $appInfo.IngressFqdn
-            $healthCheckPath = $appInfo.HealthCheckPath
-            $aksIngress = $appInfo.AksIngress
-
-            Write-Host $applicationName
-            Write-Host $version
-            Write-Host $keyVault
-            Write-Host $hostName
-            Write-Host $domainName
-            Write-Host $ingressFqdn
-            Write-Host $healthCheckPath
-            Write-Host $aksIngress
-
-
-            echo "::set-output name=applicationName::$applicationName
-            echo "::set-output name=version::$version
-            echo "::set-output name=keyVault::$keyVault
-            echo "::set-output name=hostName::$hostName
-            echo "::set-output name=domainName::$domainName
-            echo "::set-output name=applicationIngressFqdn::$ingressFqdn
-            echo "::set-output name=healthCheckPath::$healthCheckPath
-            echo "::set-output name=aksIngress::$aksIngress
-          azPSVersion: "latest"
-
-      - name: Update Azure API Management
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
             #Start-Sleep -Seconds 60 #Wait a minute before starting in case the service is new and we need to wait for cert requests to complete.
-            $serviceFqdn = "${{ steps.getappinfo.outputs.applicationIngressFqdn }}"
+            $serviceFqdn = $appInfo.IngressFqdn
             Write-Host $serviceFqdn
             $APISpecPath = "${{ inputs.apiSpecificationPath }}"
             $SwaggerURL = "https://$serviceFqdn$APISpecPath"
