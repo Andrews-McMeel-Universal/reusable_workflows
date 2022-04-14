@@ -1,29 +1,28 @@
 on:
   workflow_call:
     inputs:
-      hostName:
+      environment:
         required: true
         type: string
-        description: "DNS Hostname."
-      domainName:
+        description: "Deploy environment. Can be development, staging, or production."
+      repositoryName:
         required: true
         type: string
-        description: "DNS Domain Name."
-      fqdn:
+        description: "GitHub Repository Name."
+      storageAccountName:
         required: true
         type: string
-        description: "FQDN of DNS Record."
-      aks_ingress_fqdn:
+        description: "Storage Account for application information table."
+      appInfoTableName:
         required: true
         type: string
-        description: "FQDN for Azure Kubernetes Ingress."
+        description: "Application information storage table."
     secrets:
-      azure_credentials:
-        required: true
-        description: "Credentials for your azure subscription."
       domain_controller:
         required: true
         description: "Domain Controller Server Name."
+      storageAccountKey:
+        required: true
           
 jobs:
   Update-AD-DNS:
@@ -32,22 +31,78 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Login via Az module
-        uses: azure/login@v1
-        with:
-          creds: '${{ secrets.azure_credentials }}'
-          enable-AzPSSession: true
+      # - name: Login via Az module
+      #   uses: azure/login@v1
+      #   with:
+      #     creds: '${{ secrets.azure_credentials }}'
+      #     enable-AzPSSession: true
+      - name: Retrieve Application information
+        id: getappinfo
+        uses: azure/powershell@v1
+        with: 
+          inlineScript: |
+            Install-Module -Name AzTable -Force
+            Import-Module AzTable
+
+            $storageAccountName = "${{ inputs.storageAccountName }}"
+            $storageAccountKey = ${{ secrets.storageAccountKey }}
+            $appInfoTableName = "${{ inputs.appInfoTableName }}"
+
+            $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+
+            #Get Storage table
+            try {
+                $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
+                }
+            catch {
+                Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+                return
+                }
+
+            $repoName = "${{ inputs.repositoryName }}"
+            $appEnvironment = "${{ inputs.environment }}"
+
+            $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey $repoName -RowKey $appEnvironment
+
+            $applicationName = $appInfo.ApplicationName
+            $version = $appInfo.Version
+            $keyVault = $appInfo.KeyVault
+            $hostName = $appInfo.HostName
+            $domainName = $appInfo.DomainName
+            $ingressFqdn = $appInfo.IngressFqdn
+            $healthCheckPath = $appInfo.HealthCheckPath
+            $aksIngress = $appInfo.AksIngress
+
+            Write-Host $applicationName
+            Write-Host $version
+            Write-Host $keyVault
+            Write-Host $hostName
+            Write-Host $domainName
+            Write-Host $ingressFqdn
+            Write-Host $healthCheckPath
+            Write-Host $aksIngress
+
+
+            echo "::set-output name=applicationName::$applicationName"
+            echo "::set-output name=version::$version"
+            echo "::set-output name=keyVault::$keyVault"
+            echo "::set-output name=hostName::$hostName"
+            echo "::set-output name=domainName::$domainName"
+            echo "::set-output name=applicationIngressFqdn::$ingressFqdn"
+            echo "::set-output name=healthCheckPath::$healthCheckPath"
+            echo "::set-output name=aksIngress::$aksIngress"
+          azPSVersion: "latest"
 
       - name: Update Internal DNS
         run:
           | 
-          try {Add-DnsServerResourceRecordCName -Name "${{ inputs.hostName }}" -HostNameAlias "${{ inputs.aks_ingress_fqdn }}" -ZoneName "${{ inputs.domainName }}" -ComputerName ${{ secrets.domain_controller }} } catch {Write-Host "Record Already Exists"}
-          Get-DnsServerResourceRecord -ZoneName "${{ inputs.domainName }}" -ComputerName ${{ secrets.domain_controller }} | Where-Object HostName -eq "${{ inputs.fqdn }}" | Format-List
-          try {Sync-DnsServerZone -Name "${{ inputs.domainName }}" -ComputerName ${{ secrets.domain_controller }}} catch {Write-Host "Skipping zone sync. Zone is currently being synced."}
+          try {Add-DnsServerResourceRecordCName -Name ""${{ steps.getappinfo.outputs.hostName }}"" -HostNameAlias "${{ steps.getappinfo.outputs.applicationIngressFqdn }}" -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domain_controller }} } catch {Write-Host "Record Already Exists"}
+          Get-DnsServerResourceRecord -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domain_controller }} | Where-Object HostName -eq "${{ steps.getappinfo.outputs.applicationIngressFqdn }}" | Format-List
+          try {Sync-DnsServerZone -Name "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domain_controller }}} catch {Write-Host "Skipping zone sync. Zone is currently being synced."}
       
-      - name: Azure CLI script #needed because this is a self hosted runner so its not emphemeral
-        uses: azure/CLI@v1
-        with:
-          azcliversion: 2.0.72
-          inlineScript: |
-            az logout
+      # - name: Azure CLI script #needed because this is a self hosted runner so its not emphemeral
+      #   uses: azure/CLI@v1
+      #   with:
+      #     azcliversion: 2.0.72
+      #     inlineScript: |
+      #       az logout
