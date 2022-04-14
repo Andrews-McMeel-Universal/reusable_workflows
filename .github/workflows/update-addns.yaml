@@ -96,9 +96,9 @@ jobs:
       - name: Update Internal DNS
         run:
           | 
-          try {Add-DnsServerResourceRecordCName -Name ""${{ steps.getappinfo.outputs.hostName }}"" -HostNameAlias "${{ steps.getappinfo.outputs.applicationIngressFqdn }}" -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domain_controller }} } catch {Write-Host "Record Already Exists"}
-          Get-DnsServerResourceRecord -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domain_controller }} | Where-Object HostName -eq "${{ steps.getappinfo.outputs.applicationIngressFqdn }}" | Format-List
-          try {Sync-DnsServerZone -Name "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domain_controller }}} catch {Write-Host "Skipping zone sync. Zone is currently being synced."}
+          try {Add-DnsServerResourceRecordCName -Name "${{ steps.getappinfo.outputs.hostName }}" -HostNameAlias "${{ steps.getappinfo.outputs.applicationIngressFqdn }}" -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }} } catch {Write-Host "Record Already Exists"}
+          Get-DnsServerResourceRecord -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ steps.getappinfo.outputs.applicationIngressFqdn }}" | Format-List
+          try {Sync-DnsServerZone -Name "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }}} catch {Write-Host "Skipping zone sync. Zone is currently being synced."}
       
       # - name: Azure CLI script #needed because this is a self hosted runner so its not emphemeral
       #   uses: azure/CLI@v1
