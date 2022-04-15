@@ -110,7 +110,6 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            #Start-Sleep -Seconds 60 #Wait a minute before starting in case the service is new and we need to wait for cert requests to complete.
             $serviceFqdn = "${{ steps.getappinfo.outputs.applicationIngressFqdn }}"
             Write-Host $serviceFqdn
             $APISpecPath = "${{ inputs.apiSpecificationPath }}"

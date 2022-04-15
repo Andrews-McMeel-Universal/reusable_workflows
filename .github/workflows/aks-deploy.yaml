@@ -322,7 +322,7 @@ jobs:
           imagePullSecrets: |
             ${{ steps.setenvs.outputs.imagePullSecret }}
 
-      - name: Log Deployment information
+      - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
         uses: azure/powershell@v1
         with: 
           inlineScript: |
