@@ -140,12 +140,14 @@ jobs:
               switch ($AppEnv) {
                 'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
                 'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
+                }
               }
           else {
               switch ($AppEnv) {
                 'development' {$hostName = "development"; $ingress = "development.$ingress"}
                 'staging' {$hostName = "staging"; $ingress = "staging.$ingress"}
-          }
+                }
+              }
           $imagePullSecret = "$appName-pull-secret"
           echo "::set-output name=appName::$appName"
           echo "::set-output name=appVersion::$appVersion"
