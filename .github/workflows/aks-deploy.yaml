@@ -80,7 +80,7 @@ jobs:
         uses: thebritican/fetch-latest-release@v1.0.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Checkout if Staging or Development deployment.
         if: ${{ inputs.environment != 'production'}}
         uses: actions/checkout@master
@@ -135,10 +135,16 @@ jobs:
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $hostName = $ingress -replace $domainName, ''
-          if ($hostName.Length -gt 0) {$hostName = $hostName.Substring(0,$hostName.Length-1)} 
-          switch ($AppEnv) {
-            'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
-            'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
+          if ($hostName.Length -gt 0) 
+              {$hostName = $hostName.Substring(0,$hostName.Length-1) 
+              switch ($AppEnv) {
+                'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
+                'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
+              }
+          else {
+              switch ($AppEnv) {
+                'development' {$hostName = "development"; $ingress = "development.$ingress"}
+                'staging' {$hostName = "staging"; $ingress = "staging.$ingress"}
           }
           $imagePullSecret = "$appName-pull-secret"
           echo "::set-output name=appName::$appName"
