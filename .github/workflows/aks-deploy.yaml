@@ -185,8 +185,6 @@ jobs:
                     $envFileContent = $envName + "=" + $envSecret
                     Add-Content -Path ".env" -Value $envFileContent
                 }
-
-                #$kubernetesSecret = $secretTable | ConvertTo-Json
                 return $kubernetesSecret
               }
             Function Get-BuildArgSecrets {
@@ -208,16 +206,13 @@ jobs:
                 }
                 return $buildArgs
             }
-            $k8sSecret = Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
+            Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
             Write-Host $k8sSecret
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
-            #echo "::set-output name=kubernetesSecret::$k8sSecret"
+
             echo "::set-output name=buildArguments::$buildArguments"
           azPSVersion: "latest"
 
-      - name: Check the Json
-        run: |
-            echo "${{ steps.getsecrets.outputs.kubernetesSecret }}"
      
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
