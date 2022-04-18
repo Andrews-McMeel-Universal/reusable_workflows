@@ -235,7 +235,7 @@ jobs:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
       - name: Add GitHub secrets to k8s
-        uses: Azure/k8s-create-secret@v1
+        uses: Azure/k8s-create-secret@v2.1
         with:
           namespace: ${{ inputs.environment }}
           secret-type: 'generic'
