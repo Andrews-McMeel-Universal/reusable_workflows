@@ -176,13 +176,14 @@ jobs:
               param (
                   $KeyVaultName
               )
+                #$secretTable = @{}
                 $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
-                $secretPredicate = "--from-literal="
                 $envSecrets | ForEach-Object {
                     $envName = $_.ToUpper() 
                     $envName = $envName.Replace("-","_")
                     $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                    $kubernetesSecret= $kubernetesSecret + $secretPredicate + $envName + "=" + $envSecret + " "
+                    $envFileContent = $envName + "=" + $envSecret
+                    Add-Content -Path ".env" -Value $envFileContent
                 }
                 return $kubernetesSecret
               }
@@ -205,11 +206,13 @@ jobs:
                 }
                 return $buildArgs
             }
-            $k8sSecret = Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
+            Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
+            Write-Host $k8sSecret
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
-            echo "::set-output name=kubernetesSecret::$k8sSecret"
+
             echo "::set-output name=buildArguments::$buildArguments"
           azPSVersion: "latest"
+
      
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -235,13 +238,11 @@ jobs:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
       - name: Add GitHub secrets to k8s
-        uses: Azure/k8s-create-secret@v1
-        with:
-          namespace: ${{ inputs.environment }}
-          secret-type: 'generic'
-          arguments: ${{ steps.getsecrets.outputs.kubernetesSecret }}
-          secret-name: ${{ steps.setenvs.outputs.configSecret }}
-
+        shell: pwsh
+        run: |
+          kubectl delete secret ${{ steps.setenvs.outputs.configSecret }}
+          kubectl create secret generic ${{ steps.setenvs.outputs.configSecret }} --from-env-file .env
+          
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
         with:
