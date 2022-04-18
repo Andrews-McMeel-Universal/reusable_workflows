@@ -81,8 +81,8 @@ jobs:
       - name: Update Internal DNS
         run:
           | 
-          try {Add-DnsServerResourceRecordCName -Name "${{ steps.getappinfo.outputs.hostName }}" -HostNameAlias "${{ steps.getappinfo.outputs.applicationIngressFqdn }}" -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }} } catch {Write-Host "Record Already Exists"}
-          Get-DnsServerResourceRecord -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ steps.getappinfo.outputs.applicationIngressFqdn }}" | Format-List
+          try {Add-DnsServerResourceRecordCName -Name "${{ steps.getappinfo.outputs.hostName }}" -HostNameAlias "${{ steps.getappinfo.outputs.aksIngress}}" -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }} } catch {Write-Host "Record Already Exists"}
+          Get-DnsServerResourceRecord -ZoneName "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ steps.getappinfo.outputs.aksIngress }}" | Format-List
           try {Sync-DnsServerZone -Name "${{ steps.getappinfo.outputs.domainName }}" -ComputerName ${{ secrets.domainController }}} catch {Write-Host "Skipping zone sync. Zone is currently being synced."}
       
    
