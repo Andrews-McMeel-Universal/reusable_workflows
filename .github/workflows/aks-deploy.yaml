@@ -210,7 +210,7 @@ jobs:
                 return $buildArgs
             }
             $k8sSecret = Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
-            $k8sSecret = "$k8sSecret"
+            Write-Host $k8sSecret
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
             echo "::set-output name=kubernetesSecret::$k8sSecret"
             echo "::set-output name=buildArguments::$buildArguments"
