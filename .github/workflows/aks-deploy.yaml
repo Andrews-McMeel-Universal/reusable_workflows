@@ -182,7 +182,7 @@ jobs:
                     $envName = $_.ToUpper() 
                     $envName = $envName.Replace("-","_")
                     $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                    $kubernetesSecret= $kubernetesSecret + $secretPredicate + $envName + "=" + """ + $envSecret + """ + " " 
+                    $kubernetesSecret= $kubernetesSecret + $secretPredicate + $envName + "=" + "$envSecret" + " " 
                 }
                 return $kubernetesSecret
               }
