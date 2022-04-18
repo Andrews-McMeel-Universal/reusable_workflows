@@ -218,7 +218,7 @@ jobs:
 
       - name: Check the Json
         run: |
-            echo ${{ steps.getsecrets.outputs.kubernetesSecret }}
+            echo "${{ steps.getsecrets.outputs.kubernetesSecret }}"
      
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -249,7 +249,7 @@ jobs:
           namespace: ${{ inputs.environment }}
           secret-type: 'generic'
           secret-name: ${{ steps.setenvs.outputs.configSecret }}
-          string-data: ${{ steps.getsecrets.outputs.kubernetesSecret }}
+          string-data: "${{ steps.getsecrets.outputs.kubernetesSecret }}"
         
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
