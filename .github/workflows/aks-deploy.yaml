@@ -243,16 +243,11 @@ jobs:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
       - name: Add GitHub secrets to k8s
-        # uses: Azure/k8s-create-secret@v2.1
-        # with:
-        #   namespace: ${{ inputs.environment }}
-        #   secret-type: 'generic'
-        #   secret-name: ${{ steps.setenvs.outputs.configSecret }}
-        #   string-data: "${{ steps.getsecrets.outputs.kubernetesSecret }}"
+        shell: pwsh
         run: |
           kubectl delete secret ${{ steps.setenvs.outputs.configSecret }}
           kubectl create secret generic ${{ steps.setenvs.outputs.configSecret }} --from-env-file .env
-        
+          
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
         with:
