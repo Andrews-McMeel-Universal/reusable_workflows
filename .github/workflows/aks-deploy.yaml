@@ -239,8 +239,8 @@ jobs:
         with:
           namespace: ${{ inputs.environment }}
           secret-type: 'generic'
-          arguments: ${{ steps.getsecrets.outputs.kubernetesSecret }}
           secret-name: ${{ steps.setenvs.outputs.configSecret }}
+          string-data: ${{ steps.getsecrets.outputs.kubernetesSecret }}
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
