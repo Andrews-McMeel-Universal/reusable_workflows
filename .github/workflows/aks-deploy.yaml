@@ -206,6 +206,7 @@ jobs:
                 return $buildArgs
             }
             $k8sSecret = Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
+            $k8sSecret = "$k8sSecret"
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
             echo "::set-output name=kubernetesSecret::$k8sSecret"
             echo "::set-output name=buildArguments::$buildArguments"
@@ -235,12 +236,8 @@ jobs:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
       - name: Add GitHub secrets to k8s
-        uses: Azure/k8s-create-secret@v2.1
-        with:
-          namespace: ${{ inputs.environment }}
-          secret-type: 'generic'
-          secret-name: ${{ steps.setenvs.outputs.configSecret }}
-          string-data: ${{ steps.getsecrets.outputs.kubernetesSecret }}
+        run: |
+          kubectl create secret generic ${{ steps.setenvs.outputs.configSecret }} ${{ steps.getsecrets.outputs.kubernetesSecret }}
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
