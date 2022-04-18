@@ -176,14 +176,18 @@ jobs:
               param (
                   $KeyVaultName
               )
+                $secretTable = @{}
                 $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
-                $secretPredicate = "--from-literal="
                 $envSecrets | ForEach-Object {
                     $envName = $_.ToUpper() 
                     $envName = $envName.Replace("-","_")
                     $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                    $kubernetesSecret= $kubernetesSecret + $secretPredicate + $envName + "=" + "$envSecret" + " " 
+                    $key = $envName
+                    $value = $envSecret
+                    $secretTable.Add($key,$value)
                 }
+
+                $kubernetesSecret = $secretTable | ConvertTo-Json
                 return $kubernetesSecret
               }
             Function Get-BuildArgSecrets {
@@ -236,9 +240,13 @@ jobs:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
       - name: Add GitHub secrets to k8s
-        run: |
-          kubectl create secret generic ${{ steps.setenvs.outputs.configSecret }} ${{ steps.getsecrets.outputs.kubernetesSecret }}
-
+        uses: Azure/k8s-create-secret@v2.1
+        with:
+          namespace: ${{ inputs.environment }}
+          secret-type: 'generic'
+          secret-name: ${{ steps.setenvs.outputs.configSecret }}
+          string-data: ${{ steps.getsecrets.outputs.kubernetesSecret }}
+        
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
         with:
