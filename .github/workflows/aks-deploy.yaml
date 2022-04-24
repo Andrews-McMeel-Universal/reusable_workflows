@@ -4,7 +4,7 @@ on:
       ENVIRONMENT:
         required: true
         type: string
-        description: 'Deploy environment. Can be development, staging, or production.'
+        description: 'Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production.'
       environmentKeyVault:
         required: true
         type: string
