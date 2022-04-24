@@ -1,63 +1,66 @@
 on:
   workflow_call:
     inputs:
+      ENVIRONMENT:
+        required: true
+        type: string
       environment:
         required: true
         type: string
-        description: "Deploy environment. Can be development, staging, or production."
-      environmentKeyVault: 
+        description: 'Deploy environment. Can be development, staging, or production.'
+      environmentKeyVault:
         required: true
         type: string
-        description: "AKS Key vault."
+        description: 'AKS Key vault.'
       repositoryName:
         required: true
         type: string
-        description: "GitHub Repository Name."
-      clusterName: 
+        description: 'GitHub Repository Name.'
+      clusterName:
         required: true
         type: string
-        description: "AKS Cluster name."
+        description: 'AKS Cluster name.'
       clusterResourceGroup:
         required: true
         type: string
-        description: "AKS Cluster Resource Group."
+        description: 'AKS Cluster Resource Group.'
       aksIngressFqdn:
         required: true
         type: string
-        description: "FQDN for AKS cluster ingress."
+        description: 'FQDN for AKS cluster ingress.'
       dnsResourceGroup:
         required: true
         type: string
-        description: "DNS Resource Group."
+        description: 'DNS Resource Group.'
       chartsPath:
         required: true
         type: string
-        description: "Relative path to Helm charts."
+        description: 'Relative path to Helm charts.'
       dockerFilePath:
         required: true
         type: string
-        description: "Relative path to Dockerfile."
+        description: 'Relative path to Dockerfile.'
       dockerImageName:
         required: true
         type: string
-        description: "Docker image name."
+        description: 'Docker image name.'
       dockerImageTag:
         required: true
         type: string
-        description: "Docker image tag."
+        description: 'Docker image tag.'
       maximumReplicas:
         required: false
         type: string
-        description: "Maximum number of replicas for the application HPA."
+        description: 'Maximum number of replicas for the application HPA.'
         default: 4
       storageAccountName:
         required: true
         type: string
-        description: "Storage Account for application information table."
+        description: 'Storage Account for application information table.'
       appInfoTableName:
         required: true
         type: string
-        description: "Application information storage table."
+        description: 'Application information storage table.'
     secrets:
       azureCredentials:
         required: true
@@ -68,12 +71,13 @@ on:
       storageAccountKey:
         required: true
 
-      
 jobs:
   AKS_Deploy:
+    name: 'AKS Deployment'
     runs-on: ubuntu-latest
     continue-on-error: false
-    timeout-minutes: 20     
+    timeout-minutes: 20
+    environment: ${{ inputs.ENVIRONMENT }}
     steps:
       - id: getlatestrelease
         if: ${{ inputs.environment == 'production'}}
@@ -88,7 +92,7 @@ jobs:
       - name: Checkout Latest release if Production deployment.
         if: ${{ inputs.environment == 'production'}}
         uses: actions/checkout@v2
-        with: 
+        with:
           ref: ${{ steps.getlatestrelease.outputs.tag_name }}
 
       - name: Set env
@@ -101,9 +105,9 @@ jobs:
                 [string]$PathToYaml
             )
 
-              #Check to see if powershell-yaml is installed 
+              #Check to see if powershell-yaml is installed
               if (Get-Module -Name powershell-yaml) {
-                #It's installed, this would be if you are running locally. 
+                #It's installed, this would be if you are running locally.
               }
               else {
                   Write-Host "Installing Powershell-Yaml."
@@ -135,8 +139,8 @@ jobs:
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $hostName = $ingress -replace $domainName, ''
-          if ($hostName.Length -gt 0) 
-              {$hostName = $hostName.Substring(0,$hostName.Length-1) 
+          if ($hostName.Length -gt 0)
+              {$hostName = $hostName.Substring(0,$hostName.Length-1)
               switch ($AppEnv) {
                 'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
                 'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
@@ -159,8 +163,7 @@ jobs:
           echo "::set-output name=hostName::$hostName"
           echo "::set-output name=imagePullSecret::$imagePullSecret"
           echo "::set-output name=containerRegistry::$containerRegistry"
- 
-                      
+
       - name: Login via Az module
         uses: azure/login@v1
         with:
@@ -179,7 +182,7 @@ jobs:
                 #$secretTable = @{}
                 $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
                 $envSecrets | ForEach-Object {
-                    $envName = $_.ToUpper() 
+                    $envName = $_.ToUpper()
                     $envName = $envName.Replace("-","_")
                     $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
                     $envFileContent = $envName + "=" + $envSecret
@@ -199,7 +202,7 @@ jobs:
                     return
                 }
                 $buildSecrets | ForEach-Object {
-                    $argName = $_.ToUpper() 
+                    $argName = $_.ToUpper()
                     $argName = $argName.Replace("-","_")
                     $argSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
                     $buildArgs = $buildArgs + $buildArgPredicate + $argName + "=" + $argSecret
@@ -211,9 +214,8 @@ jobs:
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
 
             echo "::set-output name=buildArguments::$buildArguments"
-          azPSVersion: "latest"
+          azPSVersion: 'latest'
 
-     
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
@@ -227,7 +229,7 @@ jobs:
           creds: '${{ secrets.azureCredentials }}'
           cluster-name: ${{ inputs.clusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
-      
+
       - name: Switch to ${{ inputs.environment }} Namespace
         run: kubectl config set-context --current --namespace=${{ inputs.environment }}
 
@@ -242,7 +244,7 @@ jobs:
         run: |
           kubectl delete secret ${{ steps.setenvs.outputs.configSecret }}
           kubectl create secret generic ${{ steps.setenvs.outputs.configSecret }} --from-env-file .env
-          
+
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
         with:
@@ -325,7 +327,7 @@ jobs:
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
         uses: azure/powershell@v1
-        with: 
+        with:
           inlineScript: |
             Install-Module -Name AzTable -Force
             Import-Module AzTable
@@ -338,13 +340,13 @@ jobs:
 
             #Get Storage table
             try {
-                $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
+                $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
                 }
             catch {
                 Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
                 return
                 }
-            
+
             $repoName = "${{ inputs.repositoryName }}"
             $appName = "${{ steps.setenvs.outputs.appName }}"
             $appVersion = "${{ steps.setenvs.outputs.appVersion }}"
@@ -369,6 +371,4 @@ jobs:
                             "Cluster"="$appCluster";"ClusterResourceGroup"="$appClusterResouceGroup";"ConfigSecret"="$appConfigSecret";"ConfigMap"="$appConfigMap";"LastDeploy"="$appDeployDate"} `
                 -UpdateExisting | Out-Null
 
-          azPSVersion: "latest"
-
-
+          azPSVersion: 'latest'
