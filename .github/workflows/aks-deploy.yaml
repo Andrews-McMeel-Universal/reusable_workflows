@@ -4,9 +4,6 @@ on:
       ENVIRONMENT:
         required: true
         type: string
-      environment:
-        required: true
-        type: string
         description: 'Deploy environment. Can be development, staging, or production.'
       environmentKeyVault:
         required: true
