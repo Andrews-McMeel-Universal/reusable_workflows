@@ -82,14 +82,10 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Checkout if Staging or Development deployment.
-        if: ${{ inputs.environment != 'production'}}
-        uses: actions/checkout@master
-
-      - name: Checkout Latest release if Production deployment.
-        if: ${{ inputs.environment == 'production'}}
+      - name: Checkout Latest Code
         uses: actions/checkout@v2
         with:
+          if: ${{ inputs.environment == 'production'}}
           ref: ${{ steps.getlatestrelease.outputs.tag_name }}
 
       - name: Set env
