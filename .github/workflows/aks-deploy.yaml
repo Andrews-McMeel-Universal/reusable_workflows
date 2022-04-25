@@ -267,8 +267,7 @@ jobs:
           release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
           echo ::set-output name=result::$release
 
-      - name: Bake Helm templates for Staging and Development
-        if: ${{ inputs.environment != 'production'}}
+      - name: Bake Helm Templates
         uses: azure/k8s-bake@v1
         with:
           renderEngine: 'helm'
@@ -282,37 +281,12 @@ jobs:
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
         id: bake
 
-      - name: Bake Helm templates for Production
-        if: ${{ inputs.environment == 'production'}}
-        uses: azure/k8s-bake@v1
-        with:
-          renderEngine: 'helm'
-          helmChart: ${{ inputs.chartsPath }}
-          releaseName: ${{steps.generate-release-name.outputs.result}}
-          helm-version: 'latest'
-          overrides: |
-            image.repository:${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
-            image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.setenvs.outputs.ingress }}
-        id: bakeproduction
-
       - name: Deploy to Azure ${{ inputs.environment }}
         if: ${{ inputs.environment != 'production'}}
         uses: Azure/k8s-deploy@v1
         with:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
-          images: |
-            ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
-          imagePullSecrets: |
-            ${{ steps.setenvs.outputs.imagePullSecret }}
-
-      - name: Deploy to Azure production
-        if: ${{ inputs.environment == 'production'}}
-        uses: Azure/k8s-deploy@v1
-        with:
-          namespace: ${{ inputs.environment }}
-          manifests: ${{ steps.bakeproduction.outputs.manifestsBundle }}
           images: |
             ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
           imagePullSecrets: |
