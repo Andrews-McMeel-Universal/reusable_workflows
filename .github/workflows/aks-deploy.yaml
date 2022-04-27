@@ -77,7 +77,7 @@ jobs:
     environment: ${{ inputs.ENVIRONMENT }}
     steps:
       - id: getlatestrelease
-        if: ${{ inputs.environment == 'production'}}
+        if: ${{ inputs.ENVIRONMENT == 'production'}}
         uses: thebritican/fetch-latest-release@v1.0.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -85,8 +85,7 @@ jobs:
       - name: Checkout Latest Code
         uses: actions/checkout@v2
         with:
-          if: ${{ inputs.environment == 'production'}}
-          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
+          ref: ${{ steps.getlatestrelease.outputs.tag_name || github.head_ref }}
 
       - name: Set env
         id: setenvs
@@ -117,7 +116,7 @@ jobs:
           }
 
 
-          $appEnv= "${{ inputs.environment }}"
+          $appEnvironment= "${{ inputs.ENVIRONMENT }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Envs -PathToYaml $valuesYamlPath
@@ -132,19 +131,6 @@ jobs:
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $hostName = $ingress -replace $domainName, ''
-          if ($hostName.Length -gt 0)
-              {$hostName = $hostName.Substring(0,$hostName.Length-1)
-              switch ($AppEnv) {
-                'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
-                'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
-                }
-              }
-          else {
-              switch ($AppEnv) {
-                'development' {$hostName = "development"; $ingress = "development.$ingress"}
-                'staging' {$hostName = "staging"; $ingress = "staging.$ingress"}
-                }
-              }
           $imagePullSecret = "$appName-pull-secret"
           echo "::set-output name=appName::$appName"
           echo "::set-output name=appVersion::$appVersion"
@@ -223,14 +209,14 @@ jobs:
           cluster-name: ${{ inputs.clusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
-      - name: Switch to ${{ inputs.environment }} Namespace
-        run: kubectl config set-context --current --namespace=${{ inputs.environment }}
+      - name: Switch to ${{ inputs.ENVIRONMENT }} Namespace
+        run: kubectl config set-context --current --namespace=${{ inputs.ENVIRONMENT }}
 
       - name: Apply configMap
         if: ${{ steps.setenvs.outputs.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
-          k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
+          k8-config-file-paths: deployments/k8s/config-${{ inputs.ENVIRONMENT }}.yaml
 
       - name: Add GitHub secrets to k8s
         shell: pwsh
@@ -243,7 +229,7 @@ jobs:
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
-            New-AzDnsRecordSet -Name "${{ steps.setenvs.outputs.hostName }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            New-AzDnsRecordSet -Name "${{ inputs.ENVIRONMENT }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: '3.1.0'
 
       - name: Create k8s Image Pull Secret
@@ -282,10 +268,10 @@ jobs:
         id: bake
 
       - name: Deploy to Azure ${{ inputs.environment }}
-        if: ${{ inputs.environment != 'production'}}
+        # I do not know why a check for not being prod was here.
         uses: Azure/k8s-deploy@v1
         with:
-          namespace: ${{ inputs.environment }}
+          namespace: ${{ inputs.ENVIRONMENT }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
             ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
@@ -294,6 +280,11 @@ jobs:
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
         uses: azure/powershell@v1
+        # TODO: This could be its own composite workflow / reusable action or
+        # I would be curious if there is already an action to write to a storage
+        # The co-pilot auto-complete suggestion mentioned using the azure
+        # storage table to write these values.  Or maybe just iterate the values
+        # within our steps.setenvs.outputs.
         with:
           inlineScript: |
             Install-Module -Name AzTable -Force
@@ -317,7 +308,7 @@ jobs:
             $repoName = "${{ inputs.repositoryName }}"
             $appName = "${{ steps.setenvs.outputs.appName }}"
             $appVersion = "${{ steps.setenvs.outputs.appVersion }}"
-            $appEnvironment = "${{ inputs.environment }}"
+            $appEnvironment = "${{ inputs.ENVIRONMENT }}"
             $appKeyVault = "${{ inputs.environmentKeyVault }}"
             $appHostName = "${{ steps.setenvs.outputs.hostName }}"
             $appDomainName = "${{ steps.setenvs.outputs.domainName }}"
