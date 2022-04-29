@@ -84,6 +84,11 @@ jobs:
 
       - name: Checkout Latest Code
         uses: actions/checkout@v2
+        # TODO: Can we simply use environments for that hostname/ingress info?
+        # I'm guessing the check on line 135 is for production not having an
+        # environment in the hostname.  Can we simply use
+        # production.XXXX.domain.com and let red door handle the rest?  It is
+        # already going to have to take out the region, right?
         with:
           ref: ${{ steps.getlatestrelease.outputs.tag_name || github.head_ref }}
 
@@ -115,7 +120,6 @@ jobs:
               return $Values
           }
 
-
           $appEnvironment= "${{ inputs.ENVIRONMENT }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
@@ -131,6 +135,9 @@ jobs:
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $hostName = $ingress -replace $domainName, ''
+          if ($hostName.Length -gt 0) {$hostName = $hostName.Substring(0,$hostName.Length-1)}
+          $hostName = "$appEnvironment.$hostName";
+          $ingress = "$appEnvironment.$ingress";
           $imagePullSecret = "$appName-pull-secret"
           echo "::set-output name=appName::$appName"
           echo "::set-output name=appVersion::$appVersion"
@@ -226,6 +233,14 @@ jobs:
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
+        # TODO: @forrestkc, on production, the AzDnsRecordSet is currently
+        # hardcoded in TPS like this:
+        # development = 'development'
+        # staging = 'staging'
+        # production = 'www'
+        # To prevent a potential mess with the current GC and also to streamline
+        # our workflow a bit, can we use the record set: "production" and just
+        # use microsoft red door to map it next year?
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
@@ -268,7 +283,8 @@ jobs:
         id: bake
 
       - name: Deploy to Azure ${{ inputs.environment }}
-        # I do not know why a check for not being prod was here.
+        # This previously had a check to not run if the environment is in
+        # production.  I'm assuming that was just a typo.  Thoughts?
         uses: Azure/k8s-deploy@v1
         with:
           namespace: ${{ inputs.ENVIRONMENT }}
