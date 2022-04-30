@@ -282,13 +282,27 @@ jobs:
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
         id: bake
 
+      - name: Bake Helm templates for Production
+        if: ${{ inputs.environment == 'production'}}
+        uses: azure/k8s-bake@v1
+        with:
+          renderEngine: 'helm'
+          helmChart: ${{ inputs.chartsPath }}
+          releaseName: ${{steps.generate-release-name.outputs.result}}
+          helm-version: 'latest'
+          overrides: |
+            image.repository:${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.tag:${{ inputs.dockerImageTag }}
+            ingress.host:${{ steps.setenvs.outputs.ingress }}
+        id: bake-production
+
       - name: Deploy to Azure ${{ inputs.environment }}
         # This previously had a check to not run if the environment is in
         # production.  I'm assuming that was just a typo.  Thoughts?
         uses: Azure/k8s-deploy@v1
         with:
           namespace: ${{ inputs.ENVIRONMENT }}
-          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+          manifests: ${{ steps.bake-production.outputs.manifestsBundle || steps.bake.outputs.manifestsBundle }}
           images: |
             ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
           imagePullSecrets: |
