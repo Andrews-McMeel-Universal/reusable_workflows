@@ -82,15 +82,15 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Checkout Latest Code
+      - name: Checkout if Staging or Development deployment.
+        if: ${{ inputs.ENVIRONMENT != 'production'}}
+        uses: actions/checkout@master
+
+      - name: Checkout Latest release if Production deployment.
+        if: ${{ inputs.ENVIRONMENT == 'production'}}
         uses: actions/checkout@v2
-        # TODO: Can we simply use environments for that hostname/ingress info?
-        # I'm guessing the check on line 135 is for production not having an
-        # environment in the hostname.  Can we simply use
-        # production.XXXX.domain.com and let red door handle the rest?  It is
-        # already going to have to take out the region, right?
         with:
-          ref: ${{ steps.getlatestrelease.outputs.tag_name || github.head_ref }}
+          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
 
       - name: Set env
         id: setenvs
