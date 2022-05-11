@@ -244,7 +244,7 @@ jobs:
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
-            New-AzDnsRecordSet -Name "${{ inputs.ENVIRONMENT }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            New-AzDnsRecordSet -Name "${{ steps.setenvs.outputs.hostName }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: '3.1.0'
 
       - name: Create k8s Image Pull Secret
