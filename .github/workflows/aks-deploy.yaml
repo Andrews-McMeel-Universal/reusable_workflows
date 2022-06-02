@@ -76,23 +76,9 @@ jobs:
     timeout-minutes: 20
     environment: ${{ inputs.ENVIRONMENT }}
     steps:
-      - id: getlatestrelease
-        if: ${{ inputs.ENVIRONMENT == 'production'}}
-        uses: thebritican/fetch-latest-release@v1.0.3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
 
-      - name: Checkout if Staging or Development deployment.
-        if: ${{ inputs.ENVIRONMENT != 'production'}}
-        uses: actions/checkout@master
-
-      - name: Checkout Latest release if Production deployment.
-        if: ${{ inputs.ENVIRONMENT == 'production'}}
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
-
-      - name: Set env
+      - name: 'Checkout Code and Variables for ${{ inputs.ENVIRONMENT }}'
         id: setenvs
         shell: pwsh
         run: |
