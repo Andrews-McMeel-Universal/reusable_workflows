@@ -1,0 +1,33 @@
+on:
+  workflow_call:
+    inputs:
+      cdnResourceGroup:
+        required: true
+        type: string
+        description: "CDN Resource Group."
+      cdnProfile:
+        required: true
+        type: string
+        description: "CDN Profile."
+      cdnEndpoint:
+        required: true
+        type: string
+        description: "CDN Endpoint."
+    secrets:
+      azureCredentials:
+        required: true
+
+jobs:
+  AKS_Deploy:
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    timeout-minutes: 20     
+    steps:
+      - name: Login via Az module
+        uses: azure/login@v1
+        with:
+          creds: '${{ secrets.azureCredentials }}'
+          enable-AzPSSession: false
+      - name: Purge CDN
+        run: |
+            az cdn endpoint purge --resource-group ${{ inputs.cdnResourceGroup }} --profile-name ${{ inputs.cdnProfile }} --name ${{ inputs.cdnEndpoint }} --content-paths '/*'
