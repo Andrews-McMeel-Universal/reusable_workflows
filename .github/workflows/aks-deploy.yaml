@@ -73,7 +73,7 @@ jobs:
   AKS_Deploy:
     runs-on: ubuntu-latest
     continue-on-error: false
-    timeout-minutes: 25   
+    timeout-minutes: 360   
     steps:
       - id: getlatestrelease
         if: ${{ inputs.environment == 'production'}}
