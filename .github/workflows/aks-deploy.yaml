@@ -60,8 +60,9 @@ on:
         description: "Application information storage table."
       deploymentTimeout:
         required: false
-        type: string
+        type: number
         description: "Timeout for GitHub deployments"
+        default: 20
     secrets:
       azureCredentials:
         required: true
@@ -309,7 +310,7 @@ jobs:
         id: bakeproduction
 
       - name: Deploy to Azure ${{ inputs.environment }}
-        timeout-minutes: ${{ matrix.deploymentTimeout }}
+        timeout-minutes: ${{ inputs.deploymentTimeout }}
         if: ${{ inputs.environment != 'production'}}
         uses: Azure/k8s-deploy@v1
         with:
