@@ -62,7 +62,7 @@ on:
         required: false
         type: number
         description: "Timeout for GitHub deployments"
-        default: 20
+        default: 1
     secrets:
       azureCredentials:
         required: true
