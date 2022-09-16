@@ -141,7 +141,7 @@ jobs:
           echo "::set-output name=hostName::$hostName"
           echo "::set-output name=imagePullSecret::$imagePullSecret"
           echo "::set-output name=containerRegistry::$containerRegistry"
-          echo "::set-output name=date::$(date +'%m/%d/%Y %H:%M:%S')"
+          echo "::set-output name=date::$(date +'%m/%d/%Y\ %H:%M:%S')"
 
       - name: Login via Az module
         uses: azure/login@v1
@@ -291,7 +291,7 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ steps.setenvs.outputs.appName }} Version=${{ steps.setenvs.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ steps.setenvs.outputs.hostName }} DomainName=${{ steps.setenvs.outputs.domainName }} IngressFqdn=${{ steps.setenvs.outputs.ingress }} HealthCheckPath=${{ steps.setenvs.outputs.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{ steps.setenvs.outputs.configSecret }} ConfigMap=${{ steps.setenvs.outputs.configMap }} LastDeploy='${{ steps.setenvs.outputs.date }}'"
+          data: "ApplicationName=${{ steps.setenvs.outputs.appName }} Version=${{ steps.setenvs.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ steps.setenvs.outputs.hostName }} DomainName=${{ steps.setenvs.outputs.domainName }} IngressFqdn=${{ steps.setenvs.outputs.ingress }} HealthCheckPath=${{ steps.setenvs.outputs.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{ steps.setenvs.outputs.configSecret }} ConfigMap=${{ steps.setenvs.outputs.configMap }} LastDeploy=${{ steps.setenvs.outputs.date }}"
           if_exists: 'replace'
           extra_args: ''
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
