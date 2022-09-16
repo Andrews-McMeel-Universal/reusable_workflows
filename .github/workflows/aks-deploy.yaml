@@ -58,6 +58,11 @@ on:
         required: true
         type: string
         description: 'Application information storage table.'
+      deploymentTimeout:
+        required: false
+        type: number
+        description: "Timeout for GitHub deployments"
+        default: 20
     secrets:
       azureCredentials:
         required: true
@@ -73,7 +78,7 @@ jobs:
     name: 'AKS Deployment'
     runs-on: ubuntu-latest
     continue-on-error: false
-    timeout-minutes: 20
+    timeout-minutes: ${{ inputs.deploymentTimeout }}
     environment: ${{ inputs.ENVIRONMENT }}
     steps:
       - uses: actions/checkout@v3
