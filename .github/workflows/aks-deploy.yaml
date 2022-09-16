@@ -1,7 +1,7 @@
 on:
   workflow_call:
     inputs:
-      ENVIRONMENT:
+      environment:
         required: true
         type: string
         description: 'Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production.'
@@ -79,11 +79,11 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: false
     timeout-minutes: ${{ inputs.deploymentTimeout }}
-    environment: ${{ inputs.ENVIRONMENT }}
+    environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: 'Checkout Code and Variables for ${{ inputs.ENVIRONMENT }}'
+      - name: 'Checkout Code and Variables for ${{ inputs.environment }}'
         id: setenvs
         shell: pwsh
         run: |
@@ -111,7 +111,7 @@ jobs:
               return $Values
           }
 
-          $appEnvironment= "${{ inputs.ENVIRONMENT }}"
+          $appEnvironment= "${{ inputs.environment }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Envs -PathToYaml $valuesYamlPath
@@ -207,14 +207,14 @@ jobs:
           cluster-name: ${{ inputs.clusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
-      - name: Switch to ${{ inputs.ENVIRONMENT }} Namespace
-        run: kubectl config set-context --current --namespace=${{ inputs.ENVIRONMENT }}
+      - name: Switch to ${{ inputs.environment }} Namespace
+        run: kubectl config set-context --current --namespace=${{ inputs.environment }}
 
       - name: Apply configMap
         if: ${{ steps.setenvs.outputs.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
-          k8-config-file-paths: deployments/k8s/config-${{ inputs.ENVIRONMENT }}.yaml
+          k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
       - name: Add GitHub secrets to k8s
         shell: pwsh
@@ -292,7 +292,7 @@ jobs:
         # production.  I'm assuming that was just a typo.  Thoughts?
         uses: Azure/k8s-deploy@v1
         with:
-          namespace: ${{ inputs.ENVIRONMENT }}
+          namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake-production.outputs.manifestsBundle || steps.bake.outputs.manifestsBundle }}
           images: |
             ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
@@ -329,7 +329,7 @@ jobs:
             $repoName = "${{ inputs.repositoryName }}"
             $appName = "${{ steps.setenvs.outputs.appName }}"
             $appVersion = "${{ steps.setenvs.outputs.appVersion }}"
-            $appEnvironment = "${{ inputs.ENVIRONMENT }}"
+            $appEnvironment = "${{ inputs.environment }}"
             $appKeyVault = "${{ inputs.environmentKeyVault }}"
             $appHostName = "${{ steps.setenvs.outputs.hostName }}"
             $appDomainName = "${{ steps.setenvs.outputs.domainName }}"
