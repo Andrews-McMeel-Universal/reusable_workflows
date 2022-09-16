@@ -273,81 +273,23 @@ jobs:
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
         id: bake
 
-      - name: Bake Helm templates for Production
-        if: ${{ inputs.environment == 'production'}}
-        uses: azure/k8s-bake@v1
-        with:
-          renderEngine: 'helm'
-          helmChart: ${{ inputs.chartsPath }}
-          releaseName: ${{steps.generate-release-name.outputs.result}}
-          helm-version: 'latest'
-          overrides: |
-            image.repository:${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
-            image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.setenvs.outputs.ingress }}
-        id: bake-production
-
       - name: Deploy to Azure ${{ inputs.environment }}
-        # This previously had a check to not run if the environment is in
-        # production.  I'm assuming that was just a typo.  Thoughts?
         uses: Azure/k8s-deploy@v1
         with:
           namespace: ${{ inputs.environment }}
-          manifests: ${{ steps.bake-production.outputs.manifestsBundle || steps.bake.outputs.manifestsBundle }}
+          manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
             ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
           imagePullSecrets: |
             ${{ steps.setenvs.outputs.imagePullSecret }}
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
-        uses: azure/powershell@v1
-        # TODO: This could be its own composite workflow / reusable action or
-        # I would be curious if there is already an action to write to a storage
-        # The co-pilot auto-complete suggestion mentioned using the azure
-        # storage table to write these values.  Or maybe just iterate the values
-        # within our steps.setenvs.outputs.
+        uses: LadyCailin/azure-table-storage-upload@v1.0.0
         with:
-          inlineScript: |
-            Install-Module -Name AzTable -Force
-            Import-Module AzTable
-
-            $storageAccountName = "${{ inputs.storageAccountName }}"
-            $storageAccountKey = ${{ secrets.storageAccountKey }}
-            $appInfoTableName = "${{ inputs.appInfoTableName }}"
-
-            $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
-
-            #Get Storage table
-            try {
-                $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
-                }
-            catch {
-                Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
-                return
-                }
-
-            $repoName = "${{ inputs.repositoryName }}"
-            $appName = "${{ steps.setenvs.outputs.appName }}"
-            $appVersion = "${{ steps.setenvs.outputs.appVersion }}"
-            $appEnvironment = "${{ inputs.environment }}"
-            $appKeyVault = "${{ inputs.environmentKeyVault }}"
-            $appHostName = "${{ steps.setenvs.outputs.hostName }}"
-            $appDomainName = "${{ steps.setenvs.outputs.domainName }}"
-            $appIngressFqdn = "${{ steps.setenvs.outputs.ingress }}"
-            $appHealthCheck = "${{ steps.setenvs.outputs.appHealthCheck }}"
-            $appAksIngress = "${{ inputs.aksIngressFqdn }}"
-            $appCluster = "${{ inputs.clusterName }}"
-            $appClusterResouceGroup = "${{ inputs.clusterResourceGroup }}"
-            $appConfigSecret = "${{ steps.setenvs.outputs.configSecret }}"
-            $appConfigMap = "${{ steps.setenvs.outputs.configMap }}"
-            $appDeployDate = Get-Date
-
-            Add-AzTableRow `
-                -Table $appInfoTable `
-                -partitionKey $repoName `
-                -RowKey $appEnvironment `
-                -property @{"ApplicationName"="$appName";"Version"="$appVersion";"KeyVault"="$appKeyVault";"HostName"="$appHostName";"DomainName"="$appDomainName";"IngressFqdn"="$appIngressFqdn";"HealthCheckPath"="$appHealthCheck";"AksIngress"="$appAksIngress"; `
-                            "Cluster"="$appCluster";"ClusterResourceGroup"="$appClusterResouceGroup";"ConfigSecret"="$appConfigSecret";"ConfigMap"="$appConfigMap";"LastDeploy"="$appDeployDate"} `
-                -UpdateExisting | Out-Null
-
-          azPSVersion: 'latest'
+          table_name: "${{ inputs.appInfoTableName }}"
+          partition_key: "${{ inputs.repositoryName }}"
+          row_key: "${{ inputs.environment }}"
+          data: "ApplicationName=$appName Version=$appVersion KeyVault=$appKeyVault HostName=$appHostName DomainName=$appDomainName IngressFqdn=$appIngressFqdn HealthCheckPath=$appHealthCheck AksIngress=$appAksIngress Cluster=$appCluster ClusterResourceGroup=$appClusterResouceGroup ConfigSecret=$appConfigSecret ConfigMap=$appConfigMap LastDeploy=$appDeployDate"
+          if_exists: 'replace'
+          extra_args: ''
+          connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
