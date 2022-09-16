@@ -130,6 +130,7 @@ jobs:
           $hostName = "$appEnvironment.$hostName";
           $ingress = "$appEnvironment.$ingress";
           $imagePullSecret = "$appName-pull-secret"
+          $appDeployDate = Get-Date
           echo "::set-output name=appName::$appName"
           echo "::set-output name=appVersion::$appVersion"
           echo "::set-output name=appHealthCheck::$appHealthCheck"
@@ -289,7 +290,7 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=$appName Version=$appVersion KeyVault=$appKeyVault HostName=$appHostName DomainName=$appDomainName IngressFqdn=$appIngressFqdn HealthCheckPath=$appHealthCheck AksIngress=$appAksIngress Cluster=$appCluster ClusterResourceGroup=$appClusterResouceGroup ConfigSecret=$appConfigSecret ConfigMap=$appConfigMap LastDeploy=$appDeployDate"
+          data: "ApplicationName=${{ steps.setenvs.outputs.appName }} Version=${{ steps.setenvs.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ steps.setenvs.outputs.hostName }} DomainName=${{ steps.setenvs.outputs.domainName }} IngressFqdn=${{ steps.setenvs.outputs.ingress }} HealthCheckPath=${{ steps.setenvs.outputs.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }}ConfigSecret=${{ steps.setenvs.outputs.configSecret }} ConfigMap=${{ steps.setenvs.outputs.configMap }} LastDeploy=$appDeployDate"
           if_exists: 'replace'
           extra_args: ''
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
