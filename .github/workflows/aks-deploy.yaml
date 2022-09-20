@@ -58,6 +58,11 @@ on:
         required: true
         type: string
         description: "Application information storage table."
+      deploymentTimeout:
+        required: false
+        type: number
+        description: "Timeout for GitHub deployments"
+        default: 20
     secrets:
       azureCredentials:
         required: true
@@ -73,7 +78,6 @@ jobs:
   AKS_Deploy:
     runs-on: ubuntu-latest
     continue-on-error: false
-    timeout-minutes: 20     
     steps:
       - id: getlatestrelease
         if: ${{ inputs.environment == 'production'}}
@@ -302,6 +306,7 @@ jobs:
         id: bakeproduction
 
       - name: Deploy to Azure ${{ inputs.environment }}
+        timeout-minutes: ${{ inputs.deploymentTimeout }}
         if: ${{ inputs.environment != 'production'}}
         uses: Azure/k8s-deploy@v1
         with:
