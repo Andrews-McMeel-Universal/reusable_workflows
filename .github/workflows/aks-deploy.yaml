@@ -78,7 +78,6 @@ jobs:
     name: 'AKS Deployment'
     runs-on: ubuntu-latest
     continue-on-error: false
-    timeout-minutes: ${{ inputs.deploymentTimeout }}
     environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v3
@@ -276,6 +275,7 @@ jobs:
         id: bake
 
       - name: Deploy to Azure ${{ inputs.environment }}
+        timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v1
         with:
           namespace: ${{ inputs.environment }}
