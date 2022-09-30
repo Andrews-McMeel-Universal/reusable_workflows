@@ -225,14 +225,6 @@ jobs:
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
-        # TODO: @forrestkc, on production, the AzDnsRecordSet is currently
-        # hardcoded in TPS like this:
-        # development = 'development'
-        # staging = 'staging'
-        # production = 'www'
-        # To prevent a potential mess with the current GC and also to streamline
-        # our workflow a bit, can we use the record set: "production" and just
-        # use microsoft red door to map it next year?
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
