@@ -274,7 +274,7 @@ jobs:
           release=${{ steps.setenvs.outputs.appName }}-${{ github.sha }}
           release=${release::53}
           release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
-          echo result=$release >> $GITHUB_OUTPUT
+          echo "result=$release" >> $GITHUB_OUTPUT
 
       - name: Bake Helm Templates
         uses: azure/k8s-bake@v1
