@@ -80,23 +80,23 @@ jobs:
     continue-on-error: false
     environment: ${{ inputs.environment }}
     steps:
-      - id: getlatestrelease
+      - name: Checkout if Staging or Development deployment
+        if: ${{ inputs.environment != 'production'}}
+        uses: actions/checkout@master
+
+      - name: Get latest release if production deployment
         if: ${{ inputs.environment == 'production'}}
         uses: thebritican/fetch-latest-release@v1.0.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Checkout if Staging or Development deployment.
-        if: ${{ inputs.environment != 'production'}}
-        uses: actions/checkout@master
-
-      - name: Checkout Latest release if Production deployment.
+      - name: Checkout Latest release if Production deployment
         if: ${{ inputs.environment == 'production'}}
         uses: actions/checkout@v3
         with: 
           ref: ${{ steps.getlatestrelease.outputs.tag_name }}
 
-      - name: Checkout Code and Variables for ${{ inputs.environment }}
+      - name: Checkout Code and Variables for the environment
         id: setenvs
         shell: pwsh
         run: |
@@ -172,7 +172,7 @@ jobs:
           creds: '${{ secrets.azureCredentials }}'
           enable-AzPSSession: true
 
-      - name: Get Secrets
+      - name: Get Secrets from Key Vaults
         id: getsecrets
         uses: azure/powershell@v1
         with:
