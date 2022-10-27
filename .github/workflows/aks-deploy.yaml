@@ -80,9 +80,23 @@ jobs:
     continue-on-error: false
     environment: ${{ inputs.environment }}
     steps:
-      - uses: actions/checkout@v3
+      - id: getlatestrelease
+        if: ${{ inputs.environment == 'production'}}
+        uses: thebritican/fetch-latest-release@v1.0.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 'Checkout Code and Variables for ${{ inputs.environment }}'
+      - name: Checkout if Staging or Development deployment.
+        if: ${{ inputs.environment != 'production'}}
+        uses: actions/checkout@master
+
+      - name: Checkout Latest release if Production deployment.
+        if: ${{ inputs.environment == 'production'}}
+        uses: actions/checkout@v3
+        with: 
+          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
+
+      - name: Checkout Code and Variables for ${{ inputs.environment }}
         id: setenvs
         shell: pwsh
         run: |
@@ -125,9 +139,19 @@ jobs:
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $hostName = $ingress -replace $domainName, ''
-          if ($hostName.Length -gt 0) {$hostName = $hostName.Substring(0,$hostName.Length-1)}
-          $hostName = "$appEnvironment.$hostName";
-          $ingress = "$appEnvironment.$ingress";
+          if ($hostName.Length -gt 0) 
+              {$hostName = $hostName.Substring(0,$hostName.Length-1) 
+              switch ($AppEnv) {
+                'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
+                'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
+                }
+              }
+          else {
+              switch ($AppEnv) {
+                'development' {$hostName = "development"; $ingress = "development.$ingress"}
+                'staging' {$hostName = "staging"; $ingress = "staging.$ingress"}
+                }
+              }
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
           echo "::set-output name=appName::$appName"
