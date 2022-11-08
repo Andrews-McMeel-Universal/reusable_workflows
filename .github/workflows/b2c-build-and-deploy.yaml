@@ -38,7 +38,7 @@ jobs:
       - name: Login via Az module
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.azureCredentials }}
           enable-AzPSSession: true
 
       - name: Get Secrets from Key Vaults
