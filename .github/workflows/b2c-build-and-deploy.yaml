@@ -9,14 +9,6 @@ on:
         required: true
         type: string
         description: 'Azure Key vault Name.'
-      repositoryName:
-        required: true
-        type: string
-        description: 'GitHub Repository Name.'
-      productCode:
-        required: true
-        type: string
-        description: 'Product Code.'
     secrets:
       azureCredentials:
         required: true
