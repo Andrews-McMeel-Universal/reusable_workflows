@@ -1,0 +1,104 @@
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production.'
+      environmentKeyVault:
+        required: true
+        type: string
+        description: 'Azure Key vault Name.'
+      repositoryName:
+        required: true
+        type: string
+        description: 'GitHub Repository Name.'
+      productCode:
+        required: true
+        type: string
+        description: 'Product Code.'
+    secrets:
+      azureCredentials:
+        required: true
+      registryUserName:
+        required: true
+      registryPassword:
+        required: true
+      storageAccountKey:
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login via Az module
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          enable-AzPSSession: true
+
+      - name: Get Secrets from Key Vaults
+        id: getsecrets
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            Function Get-EnvSecrets {
+              param (
+                  $KeyVaultName
+              )
+                #$secretTable = @{}
+                $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+                $envSecrets | ForEach-Object {
+                    $envName = $_.ToUpper()
+                    $envName = $envName.Replace("-","_")
+                    $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
+                    $envFileContent = $envName + "=" + $envSecret
+                    Add-Content -Path ".env" -Value $envFileContent
+                }
+                return $Secret
+            }
+            Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
+            Write-Host $Secret
+
+            echo "buildArguments=$buildArguments" >> $GITHUB_OUTPUT
+          azPSVersion: 'latest'
+
+      - name: Get Fresh Packages
+        shell: pwsh
+        run: |
+          yarn install
+
+      - name: Build Policies
+        shell: pwsh
+        run: |
+          $Environment = "${{ inputs.environment }}"
+          $ProductName = "${{ secrets.AZURE_B2C_PRODUCT_NAME }}".Replace("-","").Replace("the","")
+          yarn config set product $ProductName
+          yarn config set environment $Environment
+          yarn build
+
+      - name: 'Upload TrustFrameworkBase Policy'
+        uses: azure-ad-b2c/deploy-trustframework-policy@v3
+        with:
+          folder: './dist/${{ secrets.AZURE_B2C_PRODUCT_NAME }}/custom-policies'
+          files: 'B2C_1A_TPS_SIGNINSIGNOUT_BASE.xml,B2C_1A_TPS_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_TPS_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_TPS_IMPERSONATION.xml'
+          tenant: ${{ secrets.AZURE_B2C_DOMAIN }}
+          clientId: ${{ secrets.AZURE_B2C_CLIENT_ID }}
+          clientSecret: ${{ secrets.AZURE_B2C_CLIENT_SECRET }}
+
+      - name: Upload Auth Assets
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            $BasePath = Get-Location
+            $DistPath = Join-Path $BasePath "dist"
+            ./deployments/scripts/Deploy-B2C_Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.STORAGE_ACCOUNT_KEY }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath -ProductPath "${{ secrets.AZURE_B2C_PRODUCT_NAME }}"
+          azPSVersion: 'latest'
+
+      - name: Purge CDN
+        run: |
+          az cdn endpoint purge --resource-group 'Site_Assets' --profile-name 'amuauthassets' --name 'amuauthassets' --content-paths '/*'
