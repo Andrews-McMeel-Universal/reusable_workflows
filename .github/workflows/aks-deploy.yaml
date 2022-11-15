@@ -155,17 +155,17 @@ jobs:
               }
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
-          echo "appName=$appName" >> $GITHUB_ENV
-          echo "appVersion=$appVersion" >> $GITHUB_ENV
-          echo "appHealthCheck=$appHealthCheck" >> $GITHUB_ENV
-          echo "configMap=$configMap" >> $GITHUB_ENV
-          echo "configSecret=$configSecret" >> $GITHUB_ENV
-          echo "ingress=$ingress" >> $GITHUB_ENV
-          echo "domainName=$domainName" >> $GITHUB_ENV
-          echo "hostName=$hostName" >> $GITHUB_ENV
-          echo "imagePullSecret=$imagePullSecret" >> $GITHUB_ENV
-          echo "containerRegistry=$containerRegistry" >> $GITHUB_ENV
-          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_ENV
+          echo "appName=$appName" >> $env:GITHUB_ENV
+          echo "appVersion=$appVersion" >> $env:GITHUB_ENV
+          echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
+          echo "configMap=$configMap" >> $env:GITHUB_ENV
+          echo "configSecret=$configSecret" >> $env:GITHUB_ENV
+          echo "ingress=$ingress" >> $env:GITHUB_ENV
+          echo "domainName=$domainName" >> $env:GITHUB_ENV
+          echo "hostName=$hostName" >> $env:GITHUB_ENV
+          echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
+          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
+          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
 
       - name: Login via Az module
         uses: azure/login@v1
