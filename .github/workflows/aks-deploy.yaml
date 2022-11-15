@@ -86,6 +86,7 @@ jobs:
 
       - name: Get latest release if production deployment
         if: ${{ inputs.environment == 'production'}}
+        id: getlatestrelease
         uses: thebritican/fetch-latest-release@v1.0.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -154,17 +155,17 @@ jobs:
               }
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
-          echo "appName=$appName" >> $GITHUB_OUTPUT
-          echo "appVersion=$appVersion" >> $GITHUB_OUTPUT
-          echo "appHealthCheck=$appHealthCheck" >> $GITHUB_OUTPUT
-          echo "configMap=$configMap" >> $GITHUB_OUTPUT
-          echo "configSecret=$configSecret" >> $GITHUB_OUTPUT
-          echo "ingress=$ingress" >> $GITHUB_OUTPUT
-          echo "domainName=$domainName" >> $GITHUB_OUTPUT
-          echo "hostName=$hostName" >> $GITHUB_OUTPUT
-          echo "imagePullSecret=$imagePullSecret" >> $GITHUB_OUTPUT
-          echo "containerRegistry=$containerRegistry" >> $GITHUB_OUTPUT
-          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "appName=$appName" >> $GITHUB_ENV
+          echo "appVersion=$appVersion" >> $GITHUB_ENV
+          echo "appHealthCheck=$appHealthCheck" >> $GITHUB_ENV
+          echo "configMap=$configMap" >> $GITHUB_ENV
+          echo "configSecret=$configSecret" >> $GITHUB_ENV
+          echo "ingress=$ingress" >> $GITHUB_ENV
+          echo "domainName=$domainName" >> $GITHUB_ENV
+          echo "hostName=$hostName" >> $GITHUB_ENV
+          echo "imagePullSecret=$imagePullSecret" >> $GITHUB_ENV
+          echo "containerRegistry=$containerRegistry" >> $GITHUB_ENV
+          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_ENV
 
       - name: Login via Az module
         uses: azure/login@v1
@@ -221,7 +222,7 @@ jobs:
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
-          login-server: ${{ steps.setenvs.outputs.containerRegistry }}
+          login-server: ${{ env.containerRegistry }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
@@ -236,7 +237,7 @@ jobs:
         run: kubectl config set-context --current --namespace=${{ inputs.environment }}
 
       - name: Apply configMap
-        if: ${{ steps.setenvs.outputs.configMap != null }}
+        if: ${{ env.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
@@ -244,34 +245,34 @@ jobs:
       - name: Add GitHub secrets to k8s
         shell: pwsh
         run: |
-          kubectl delete secret ${{ steps.setenvs.outputs.configSecret }}
-          kubectl create secret generic ${{ steps.setenvs.outputs.configSecret }} --from-env-file .env
+          kubectl delete secret ${{ env.configSecret }}
+          kubectl create secret generic ${{ env.configSecret }} --from-env-file .env
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
-            New-AzDnsRecordSet -Name "${{ steps.setenvs.outputs.hostName }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName ${{ env.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: '3.1.0'
 
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v1
         with:
-          container-registry-url: ${{ steps.setenvs.outputs.containerRegistry }}
+          container-registry-url: ${{ env.containerRegistry }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: ${{ steps.setenvs.outputs.imagePullSecret }}
+          secret-name: ${{ env.imagePullSecret }}
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t ${{ steps.setenvs.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
-          docker push ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t ${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          docker push ${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
 
       - name: Create valid release-name
         id: generate-release-name
         run: |
-          release=${{ steps.setenvs.outputs.appName }}-${{ github.sha }}
+          release=${{ env.appName }}-${{ github.sha }}
           release=${release::53}
           release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
           echo "result=$release" >> $GITHUB_OUTPUT
@@ -284,9 +285,9 @@ jobs:
           releaseName: ${{steps.generate-release-name.outputs.result}}
           helm-version: 'latest'
           overrides: |
-            image.repository:${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.setenvs.outputs.ingress }}
+            ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
         id: bake
 
@@ -297,9 +298,9 @@ jobs:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+            ${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
           imagePullSecrets: |
-            ${{ steps.setenvs.outputs.imagePullSecret }}
+            ${{ env.imagePullSecret }}
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
         uses: LadyCailin/azure-table-storage-upload@v1.0.0
@@ -307,7 +308,7 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ steps.setenvs.outputs.appName }} Version=${{ steps.setenvs.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ steps.setenvs.outputs.hostName }} DomainName=${{ steps.setenvs.outputs.domainName }} IngressFqdn=${{ steps.setenvs.outputs.ingress }} HealthCheckPath=${{ steps.setenvs.outputs.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{ steps.setenvs.outputs.configSecret }} ConfigMap=${{ steps.setenvs.outputs.configMap }} LastDeploy=${{ steps.setenvs.outputs.date }}"
+          data: "ApplicationName=${{ env.appName }} Version=${{ env.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ env.hostName }} DomainName=${{ env.domainName }} IngressFqdn=${{ env.ingress }} HealthCheckPath=${{ env.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{ env.configSecret }} ConfigMap=${{ env.configMap }} LastDeploy=${{ env.date }}"
           if_exists: 'replace'
           extra_args: ''
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
