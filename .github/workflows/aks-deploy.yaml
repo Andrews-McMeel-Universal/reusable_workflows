@@ -250,14 +250,6 @@ jobs:
           kubectl delete secret ${{ env.configSecret }}
           kubectl create secret generic ${{ env.configSecret }} --from-env-file .env
 
-      - name: Create or Update Public DNS Record
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
-            $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
-            New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName ${{ env.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
-          azPSVersion: '3.1.0'
-
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v1
         with:
@@ -303,6 +295,14 @@ jobs:
             ${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
           imagePullSecrets: |
             ${{ env.imagePullSecret }}
+
+      - name: Create or Update Public DNS Record
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
+            New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName ${{ env.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+          azPSVersion: '3.1.0'
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
         uses: LadyCailin/azure-table-storage-upload@v1.0.0
