@@ -66,6 +66,8 @@ on:
     secrets:
       azureCredentials:
         required: true
+      registryHostName:
+        required: true
       registryUserName:
         required: true
       registryPassword:
@@ -222,7 +224,7 @@ jobs:
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
-          login-server: ${{ env.containerRegistry }}
+          login-server: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
