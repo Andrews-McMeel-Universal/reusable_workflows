@@ -155,6 +155,11 @@ jobs:
               }
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
+
+          $release = "${{ env.appName }}-${{ github.sha }}".Substring(0,53)
+          $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
+
+          echo "release=$release" >> $env:GITHUB_ENV
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
           echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
@@ -261,27 +266,19 @@ jobs:
           docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
-      - name: Create valid release-name
-        id: generate-release-name
-        run: |
-          release="${{ env.appName }}-${{ github.sha }}"
-          release=${release::53}
-          release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
-          echo "result=$release" >> $GITHUB_OUTPUT
-
       - name: Bake Helm Templates
-        uses: azure/k8s-bake@v1
+        id: bake
+        uses: azure/k8s-bake@v2.2
         with:
           renderEngine: 'helm'
           helmChart: ${{ inputs.chartsPath }}
-          releaseName: ${{steps.generate-release-name.outputs.result}}
+          releaseName: ${{ env.release }}
           helm-version: 'latest'
           overrides: |
             image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
-        id: bake
 
       - name: Deploy to Azure ${{ inputs.environment }}
         timeout-minutes: ${{ inputs.deploymentTimeout }}
