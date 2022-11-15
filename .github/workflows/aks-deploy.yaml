@@ -277,9 +277,9 @@ jobs:
           releaseName: ${{steps.generate-release-name.outputs.result}}
           helm-version: 'latest'
           overrides: |
-            image.repository:"${{ env.containerRegistry }}/${{ inputs.dockerImageName }}"
+            image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:"${{ env.ingress }}"
+            ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
         id: bake
 
