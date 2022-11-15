@@ -80,9 +80,23 @@ jobs:
     continue-on-error: false
     environment: ${{ inputs.environment }}
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout if Staging or Development deployment
+        if: ${{ inputs.environment != 'production'}}
+        uses: actions/checkout@master
 
-      - name: 'Checkout Code and Variables for ${{ inputs.environment }}'
+      - name: Get latest release if production deployment
+        if: ${{ inputs.environment == 'production'}}
+        uses: thebritican/fetch-latest-release@v1.0.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Latest release if Production deployment
+        if: ${{ inputs.environment == 'production'}}
+        uses: actions/checkout@v3
+        with: 
+          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
+
+      - name: Checkout Code and Variables for the environment
         id: setenvs
         shell: pwsh
         run: |
@@ -125,22 +139,32 @@ jobs:
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $hostName = $ingress -replace $domainName, ''
-          if ($hostName.Length -gt 0) {$hostName = $hostName.Substring(0,$hostName.Length-1)}
-          $hostName = "$appEnvironment.$hostName";
-          $ingress = "$appEnvironment.$ingress";
+          if ($hostName.Length -gt 0) 
+              {$hostName = $hostName.Substring(0,$hostName.Length-1) 
+              switch ($AppEnv) {
+                'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
+                'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
+                }
+              }
+          else {
+              switch ($AppEnv) {
+                'development' {$hostName = "development"; $ingress = "development.$ingress"}
+                'staging' {$hostName = "staging"; $ingress = "staging.$ingress"}
+                }
+              }
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
-          echo "::set-output name=appName::$appName"
-          echo "::set-output name=appVersion::$appVersion"
-          echo "::set-output name=appHealthCheck::$appHealthCheck"
-          echo "::set-output name=configMap::$configMap"
-          echo "::set-output name=configSecret::$configSecret"
-          echo "::set-output name=ingress::$ingress"
-          echo "::set-output name=domainName::$domainName"
-          echo "::set-output name=hostName::$hostName"
-          echo "::set-output name=imagePullSecret::$imagePullSecret"
-          echo "::set-output name=containerRegistry::$containerRegistry"
-          echo "::set-output name=date::$(date +'%m/%d/%YT%H:%M:%S')"
+          echo "appName=appName" >> $GITHUB_OUTPUT
+          echo "appVersion=appVersion" >> $GITHUB_OUTPUT
+          echo "appHealthCheck=appHealthCheck" >> $GITHUB_OUTPUT
+          echo "configMap=configMap" >> $GITHUB_OUTPUT
+          echo "configSecret=configSecret" >> $GITHUB_OUTPUT
+          echo "ingress=ingress" >> $GITHUB_OUTPUT
+          echo "domainName=domainName" >> $GITHUB_OUTPUT
+          echo "hostName=hostName" >> $GITHUB_OUTPUT
+          echo "imagePullSecret=imagePullSecret" >> $GITHUB_OUTPUT
+          echo "containerRegistry=containerRegistry" >> $GITHUB_OUTPUT
+          echo "date=(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
       - name: Login via Az module
         uses: azure/login@v1
@@ -148,7 +172,7 @@ jobs:
           creds: '${{ secrets.azureCredentials }}'
           enable-AzPSSession: true
 
-      - name: Get Secrets
+      - name: Get Secrets from Key Vaults
         id: getsecrets
         uses: azure/powershell@v1
         with:
@@ -191,7 +215,7 @@ jobs:
             Write-Host $k8sSecret
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
 
-            echo "::set-output name=buildArguments::$buildArguments"
+            echo "buildArguments=$buildArguments" >> $GITHUB_OUTPUT
           azPSVersion: 'latest'
 
       - name: Login to Azure Container Registry
@@ -250,7 +274,7 @@ jobs:
           release=${{ steps.setenvs.outputs.appName }}-${{ github.sha }}
           release=${release::53}
           release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
-          echo ::set-output name=result::$release
+          echo "result=$release" >> $GITHUB_OUTPUT
 
       - name: Bake Helm Templates
         uses: azure/k8s-bake@v1
