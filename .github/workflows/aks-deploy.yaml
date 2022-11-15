@@ -66,8 +66,6 @@ on:
     secrets:
       azureCredentials:
         required: true
-      registryHostName:
-        required: true
       registryUserName:
         required: true
       registryPassword:
@@ -224,7 +222,7 @@ jobs:
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
-          login-server: ${{ secrets.registryHostName }}
+          login-server: "${{ env.containerRegistry }}"
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
@@ -239,7 +237,7 @@ jobs:
         run: kubectl config set-context --current --namespace=${{ inputs.environment }}
 
       - name: Apply configMap
-        if: ${{ env.configMap != null }}
+        if: "${{ env.configMap != null }}"
         uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
@@ -247,26 +245,26 @@ jobs:
       - name: Add GitHub secrets to k8s
         shell: pwsh
         run: |
-          kubectl delete secret ${{ env.configSecret }}
-          kubectl create secret generic ${{ env.configSecret }} --from-env-file .env
+          kubectl delete secret "${{ env.configSecret }}"
+          kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
 
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v1
         with:
-          container-registry-url: ${{ env.containerRegistry }}
+          container-registry-url: "${{ env.containerRegistry }}"
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: ${{ env.imagePullSecret }}
+          secret-name: "${{ env.imagePullSecret }}"
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t ${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
-          docker push ${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
       - name: Create valid release-name
         id: generate-release-name
         run: |
-          release=${{ env.appName }}-${{ github.sha }}
+          release="${{ env.appName }}-${{ github.sha }}"
           release=${release::53}
           release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
           echo "result=$release" >> $GITHUB_OUTPUT
@@ -279,9 +277,9 @@ jobs:
           releaseName: ${{steps.generate-release-name.outputs.result}}
           helm-version: 'latest'
           overrides: |
-            image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.repository:"${{ env.containerRegistry }}/${{ inputs.dockerImageName }}"
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ env.ingress }}
+            ingress.host:"${{ env.ingress }}"
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
         id: bake
 
@@ -292,16 +290,16 @@ jobs:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            ${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+            "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
-            ${{ env.imagePullSecret }}
+            "${{ env.imagePullSecret }}"
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
-            New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName ${{ env.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName "${{ env.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: '3.1.0'
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
