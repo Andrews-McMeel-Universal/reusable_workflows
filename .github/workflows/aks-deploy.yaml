@@ -154,17 +154,17 @@ jobs:
               }
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
-          echo "appName=appName" >> $GITHUB_OUTPUT
-          echo "appVersion=appVersion" >> $GITHUB_OUTPUT
-          echo "appHealthCheck=appHealthCheck" >> $GITHUB_OUTPUT
-          echo "configMap=configMap" >> $GITHUB_OUTPUT
-          echo "configSecret=configSecret" >> $GITHUB_OUTPUT
-          echo "ingress=ingress" >> $GITHUB_OUTPUT
-          echo "domainName=domainName" >> $GITHUB_OUTPUT
-          echo "hostName=hostName" >> $GITHUB_OUTPUT
-          echo "imagePullSecret=imagePullSecret" >> $GITHUB_OUTPUT
-          echo "containerRegistry=containerRegistry" >> $GITHUB_OUTPUT
-          echo "date=(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "appName=$appName" >> $GITHUB_OUTPUT
+          echo "appVersion=$appVersion" >> $GITHUB_OUTPUT
+          echo "appHealthCheck=$appHealthCheck" >> $GITHUB_OUTPUT
+          echo "configMap=$configMap" >> $GITHUB_OUTPUT
+          echo "configSecret=$configSecret" >> $GITHUB_OUTPUT
+          echo "ingress=$ingress" >> $GITHUB_OUTPUT
+          echo "domainName=$domainName" >> $GITHUB_OUTPUT
+          echo "hostName=$hostName" >> $GITHUB_OUTPUT
+          echo "imagePullSecret=$imagePullSecret" >> $GITHUB_OUTPUT
+          echo "containerRegistry=$containerRegistry" >> $GITHUB_OUTPUT
+          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
       - name: Login via Az module
         uses: azure/login@v1
