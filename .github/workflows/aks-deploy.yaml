@@ -142,13 +142,13 @@ jobs:
           $hostName = $ingress -replace $domainName, ''
           if ($hostName.Length -gt 0) 
               {$hostName = $hostName.Substring(0,$hostName.Length-1) 
-              switch ($AppEnv) {
+              switch ($appEnvironment) {
                 'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
                 'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
                 }
               }
           else {
-              switch ($AppEnv) {
+              switch ($appEnvironment) {
                 'development' {$hostName = "development"; $ingress = "development.$ingress"}
                 'staging' {$hostName = "staging"; $ingress = "staging.$ingress"}
                 }
