@@ -155,11 +155,7 @@ jobs:
               }
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
-          $githubSha = "${{ github.sha }}"
 
-          $release = ("$appName-$githubSha".Substring(0,53)" -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
-
-          echo "release=$release" >> $env:GITHUB_ENV
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
           echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
@@ -265,6 +261,14 @@ jobs:
         run: |
           docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+
+      - name: Create valid release-name
+        id: generate-release-name
+        run: |
+          release=${{ env.appName }}-${{ github.sha }}
+          release=${release::53}
+          release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
+          echo "release=$release" >> $GITHUB_ENV
 
       - name: Bake Helm Templates
         id: bake

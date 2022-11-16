@@ -126,7 +126,7 @@ jobs:
           }
 
 
-          $appEnv= "${{ inputs.environment }}"
+          $appEnvironment= "${{ inputs.environment }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Envs -PathToYaml $valuesYamlPath
@@ -143,28 +143,28 @@ jobs:
           $hostName = $ingress -replace $domainName, ''
           if ($hostName.Length -gt 0)
               {$hostName = $hostName.Substring(0,$hostName.Length-1)
-              switch ($AppEnv) {
+              switch ($appEnvironment) {
                 'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
                 'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
                 }
               }
           else {
-              switch ($AppEnv) {
+              switch ($appEnvironment) {
                 'development' {$hostName = "development"; $ingress = "development.$ingress"}
                 'staging' {$hostName = "staging"; $ingress = "staging.$ingress"}
                 }
               }
           $imagePullSecret = "$appName-pull-secret"
-          echo "::set-output name=appName::$appName"
-          echo "::set-output name=appVersion::$appVersion"
-          echo "::set-output name=appHealthCheck::$appHealthCheck"
-          echo "::set-output name=configMap::$configMap"
-          echo "::set-output name=configSecret::$configSecret"
-          echo "::set-output name=ingress::$ingress"
-          echo "::set-output name=domainName::$domainName"
-          echo "::set-output name=hostName::$hostName"
-          echo "::set-output name=imagePullSecret::$imagePullSecret"
-          echo "::set-output name=containerRegistry::$containerRegistry"
+          echo "appName=$appName"
+          echo "appVersion=$appVersion"
+          echo "appHealthCheck=$appHealthCheck"
+          echo "configMap=$configMap"
+          echo "configSecret=$configSecret"
+          echo "ingress=$ingress"
+          echo "domainName=$domainName"
+          echo "hostName=$hostName"
+          echo "imagePullSecret=$imagePullSecret"
+          echo "containerRegistry=$containerRegistry"
 
       - name: Login via Az module
         uses: azure/login@v1
@@ -215,13 +215,13 @@ jobs:
             Write-Host $k8sSecret
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
 
-            echo "::set-output name=buildArguments::$buildArguments"
+            echo "buildArguments=$buildArguments" >> $env:GITHUB_OUTPUT
           azPSVersion: "latest"
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
-          login-server: ${{ steps.setenvs.outputs.containerRegistry }}
+          login-server: ${{ env.containerRegistry }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
@@ -236,7 +236,7 @@ jobs:
         run: kubectl config set-context --current --namespace=${{ inputs.environment }}
 
       - name: Apply configMap
-        if: ${{ steps.setenvs.outputs.configMap != null }}
+        if: ${{ env.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
@@ -244,133 +244,70 @@ jobs:
       - name: Add GitHub secrets to k8s
         shell: pwsh
         run: |
-          kubectl delete secret ${{ steps.setenvs.outputs.configSecret }}
-          kubectl create secret generic ${{ steps.setenvs.outputs.configSecret }} --from-env-file .env
+          kubectl delete secret ${{ env.configSecret }}
+          kubectl create secret generic ${{ env.configSecret }} --from-env-file .env
+
+      - name: Create k8s Image Pull Secret
+        uses: Azure/k8s-create-secret@v1
+        with:
+          container-registry-url: ${{ env.containerRegistry }}
+          container-registry-username: ${{ secrets.registryUserName  }}
+          container-registry-password: ${{ secrets.registryPassword  }}
+          secret-name: ${{ env.imagePullSecret }}
+
+      - name: Build & Push Docker Image
+        run: |
+          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t ${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          docker push ${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+
+      - name: Create valid release-name
+        id: generate-release-name
+        run: |
+          release=${{ env.appName }}-${{ github.sha }}
+          release=${release::53}
+          release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
+          echo "release=$release" >> $GITHUB_ENV
+
+      - name: Bake Helm Templates
+        id: bake
+        uses: azure/k8s-bake@v2.2
+        with:
+          renderEngine: 'helm'
+          helmChart: ${{ inputs.chartsPath }}
+          releaseName: ${{ env.release }}
+          helm-version: 'latest'
+          overrides: |
+            image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.tag:${{ inputs.dockerImageTag }}
+            ingress.host:${{ env.ingress }}
+            autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
+
+      - name: Deploy to Azure ${{ inputs.environment }}
+        timeout-minutes: ${{ inputs.deploymentTimeout }}
+        uses: Azure/k8s-deploy@v1
+        with:
+          namespace: ${{ inputs.environment }}
+          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+          images: |
+            "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          imagePullSecrets: |
+            "${{ env.imagePullSecret }}"
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
-            New-AzDnsRecordSet -Name "${{ steps.setenvs.outputs.hostName }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName ${{ env.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "3.1.0"
 
-      - name: Create k8s Image Pull Secret
-        uses: Azure/k8s-create-secret@v1
-        with:
-          container-registry-url: ${{ steps.setenvs.outputs.containerRegistry }}
-          container-registry-username: ${{ secrets.registryUserName  }}
-          container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: ${{ steps.setenvs.outputs.imagePullSecret }}
-
-      - name: Build & Push Docker Image
-        run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t ${{ steps.setenvs.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
-          docker push ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
-
-      - name: Create valid release-name
-        id: generate-release-name
-        run: |
-          release=${{ steps.setenvs.outputs.appName }}-${{ github.sha }}
-          release=${release::53}
-          release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
-          echo ::set-output name=result::$release
-
-      - name: Bake Helm templates for Staging and Development
-        if: ${{ inputs.environment != 'production'}}
-        uses: azure/k8s-bake@v1
-        with:
-          renderEngine: "helm"
-          helmChart: ${{ inputs.chartsPath }}
-          releaseName: ${{steps.generate-release-name.outputs.result}}
-          helm-version: "latest"
-          overrides: |
-            image.repository:${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
-            image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.setenvs.outputs.ingress }}
-            autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
-        id: bake
-
-      - name: Bake Helm templates for Production
-        if: ${{ inputs.environment == 'production'}}
-        uses: azure/k8s-bake@v1
-        with:
-          renderEngine: "helm"
-          helmChart: ${{ inputs.chartsPath }}
-          releaseName: ${{steps.generate-release-name.outputs.result}}
-          helm-version: "latest"
-          overrides: |
-            image.repository:${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
-            image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ steps.setenvs.outputs.ingress }}
-        id: bakeproduction
-
-      - name: Deploy to Azure ${{ inputs.environment }}
-        if: ${{ inputs.environment != 'production'}}
-        uses: Azure/k8s-deploy@v1
-        with:
-          namespace: ${{ inputs.environment }}
-          manifests: ${{ steps.bake.outputs.manifestsBundle }}
-          images: |
-            ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
-          imagePullSecrets: |
-            ${{ steps.setenvs.outputs.imagePullSecret }}
-
-      - name: Deploy to Azure production
-        if: ${{ inputs.environment == 'production'}}
-        uses: Azure/k8s-deploy@v1
-        with:
-          namespace: ${{ inputs.environment }}
-          manifests: ${{ steps.bakeproduction.outputs.manifestsBundle }}
-          images: |
-            ${{ steps.setenvs.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
-          imagePullSecrets: |
-            ${{ steps.setenvs.outputs.imagePullSecret }}
-
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
-        uses: azure/powershell@v1
+        uses: LadyCailin/azure-table-storage-upload@v1.0.0
         with:
-          inlineScript: |
-            Install-Module -Name AzTable -Force
-            Import-Module AzTable
-
-            $storageAccountName = "${{ inputs.storageAccountName }}"
-            $storageAccountKey = ${{ secrets.storageAccountKey }}
-            $appInfoTableName = "${{ inputs.appInfoTableName }}"
-
-            $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
-
-            #Get Storage table
-            try {
-                $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
-                }
-            catch {
-                Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
-                return
-                }
-
-            $repoName = "${{ inputs.repositoryName }}"
-            $appName = "${{ steps.setenvs.outputs.appName }}"
-            $appVersion = "${{ steps.setenvs.outputs.appVersion }}"
-            $appEnvironment = "${{ inputs.environment }}"
-            $appKeyVault = "${{ inputs.environmentKeyVault }}"
-            $appHostName = "${{ steps.setenvs.outputs.hostName }}"
-            $appDomainName = "${{ steps.setenvs.outputs.domainName }}"
-            $appIngressFqdn = "${{ steps.setenvs.outputs.ingress }}"
-            $appHealthCheck = "${{ steps.setenvs.outputs.appHealthCheck }}"
-            $appAksIngress = "${{ inputs.aksIngressFqdn }}"
-            $appCluster = "${{ inputs.clusterName }}"
-            $appClusterResouceGroup = "${{ inputs.clusterResourceGroup }}"
-            $appConfigSecret = "${{ steps.setenvs.outputs.configSecret }}"
-            $appConfigMap = "${{ steps.setenvs.outputs.configMap }}"
-            $appDeployDate = Get-Date
-
-            Add-AzTableRow `
-                -Table $appInfoTable `
-                -partitionKey $repoName `
-                -RowKey $appEnvironment `
-                -property @{"ApplicationName"="$appName";"Version"="$appVersion";"KeyVault"="$appKeyVault";"HostName"="$appHostName";"DomainName"="$appDomainName";"IngressFqdn"="$appIngressFqdn";"HealthCheckPath"="$appHealthCheck";"AksIngress"="$appAksIngress"; `
-                            "Cluster"="$appCluster";"ClusterResourceGroup"="$appClusterResouceGroup";"ConfigSecret"="$appConfigSecret";"ConfigMap"="$appConfigMap";"LastDeploy"="$appDeployDate"} `
-                -UpdateExisting | Out-Null
-
-          azPSVersion: "latest"
+          table_name: "${{ inputs.appInfoTableName }}"
+          partition_key: "${{ inputs.repositoryName }}"
+          row_key: "${{ inputs.environment }}"
+          data: "ApplicationName=${{ env.appName }} Version=${{ env.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ env.hostName }} DomainName=${{ env.domainName }} IngressFqdn=${{ env.ingress }} HealthCheckPath=${{ env.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{ env.configSecret }} ConfigMap=${{ env.configMap }} LastDeploy=${{ env.date }}"
+          if_exists: 'replace'
+          extra_args: ''
+          connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
