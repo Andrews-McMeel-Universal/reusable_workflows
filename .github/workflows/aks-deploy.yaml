@@ -328,8 +328,7 @@ jobs:
             adminingress.annotations.cert-manager.io/cluster-issuer: letsencrypt-prod
             adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
 
-      - name: Get Secrets from Key Vaults
-        id: getsecrets
+      - name: Get Manifests Bundle value
         uses: azure/powershell@v1
         with:
           inlineScript: |
