@@ -262,7 +262,7 @@ jobs:
           }
           kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
 
-          if ( "${{ inputs.webAuthentication }}" == true) {
+          if ( "${{ inputs.webAuthentication }}" -eq "true") {
             if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
               kubectl delete secret "${{ env.appName }}-basic-auth"
             }
