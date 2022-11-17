@@ -257,15 +257,18 @@ jobs:
       - name: Add GitHub secrets to k8s
         shell: pwsh
         run: |
-          kubectl delete secret "${{ env.configSecret }}"
+          if (kubectl get secret | Select-String "${{ env.configSecret }}") {
+            kubectl delete secret "${{ env.configSecret }}"
+          }
           kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
 
-      - name: Create web basic authentication secret
-        if: "${{ inputs.webAuthentication == true }}"
-        run: |
-          htpasswd -cb auth "${{ env.appName }}-auth" "${{ secrets.webAuthenticationPassword }}"
-          kubectl delete secret "${{ env.appName }}-basic-auth"
-          kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
+          if ( "${{ inputs.webAuthentication }}" == true) {
+            if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
+              kubectl delete secret "${{ env.appName }}-basic-auth"
+            }
+            htpasswd -cb auth "${{ env.appName }}-auth" "${{ secrets.webAuthenticationPassword }}"
+            kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
+          }
 
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v1
