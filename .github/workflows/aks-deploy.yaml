@@ -290,7 +290,7 @@ jobs:
 
       - name: Bake Helm Templates without web authentication
         if: "${{ inputs.webAuthentication == false }}"
-        id: bake
+        id: bake-default
         uses: azure/k8s-bake@v2.2
         with:
           renderEngine: 'helm'
@@ -306,7 +306,7 @@ jobs:
 
       - name: Bake Helm Templates with web authentication
         if: "${{ inputs.webAuthentication == true }}"
-        id: bake
+        id: bake-web-auth
         uses: azure/k8s-bake@v2.2
         with:
           renderEngine: 'helm'
@@ -328,12 +328,23 @@ jobs:
             adminingress.annotations.cert-manager.io/cluster-issuer: letsencrypt-prod
             adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
 
+      - name: Get Secrets from Key Vaults
+        id: getsecrets
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            if ($steps.bake-web-auth.outputs.manifestsBundle) {
+              $manifestsBundle = ${{ steps.bake-web-auth.outputs.manifestsBundle }}
+            elseif ($steps.bake-default.outputs.manifestsBundle) {
+              $manifestsBundle = ${{ steps.bake-default.outputs.manifestsBundle }}
+            }
+            echo "manifestsBundle=$manifestsBundle" >> $env:GITHUB_ENV
+
       - name: Deploy to Azure ${{ inputs.environment }}
-        timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v1
         with:
           namespace: ${{ inputs.environment }}
-          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+          manifests: ${{ env.manifestsBundle }}
           images: |
             "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
