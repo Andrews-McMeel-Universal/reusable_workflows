@@ -305,7 +305,7 @@ jobs:
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
-            ingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
+            ingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range:"${{ inputs.limitWhitelist }}"
 
       - name: Bake Helm Templates with web authentication
         if: "${{ inputs.webAuthentication == true }}"
@@ -322,14 +322,14 @@ jobs:
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
             ingress.annotations.nginx.ingress.kubernetes.io/limit-whitelist: "${{ inputs.limitWhitelist }}"
-            ingress.annotations.nginx.ingress.kubernetes.io/auth-type: basic
-            ingress.annotations.nginx.ingress.kubernetes.io/auth-secret: ${{ env.appName }}-basic-auth
-            ingress.annotations.nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
-            adminingress.host: ${{ inputs.environment }}.${{ env.ingress }}
-            adminingress.tlssecret: ${{ env.appName }}-tls-secret
-            adminingress.annotations.kubernetes.io/ingress.class: nginx
-            adminingress.annotations.cert-manager.io/cluster-issuer: letsencrypt-prod
-            adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
+            ingress.annotations.nginx.ingress.kubernetes.io/auth-type:basic
+            ingress.annotations.nginx.ingress.kubernetes.io/auth-secret:${{ env.appName }}-basic-auth
+            ingress.annotations.nginx.ingress.kubernetes.io/auth-realm:'Authentication Required'
+            adminingress.host:${{ inputs.environment }}.${{ env.ingress }}
+            adminingress.tlssecret:${{ env.appName }}-tls-secret
+            adminingress.annotations.kubernetes.io/ingress.class:nginx
+            adminingress.annotations.cert-manager.io/cluster-issuer:letsencrypt-prod
+            adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range:"${{ inputs.limitWhitelist }}"
 
       - name: Get Manifests Bundle value
         uses: azure/powershell@v1
