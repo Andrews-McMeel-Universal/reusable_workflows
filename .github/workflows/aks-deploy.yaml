@@ -61,8 +61,23 @@ on:
       deploymentTimeout:
         required: false
         type: number
-        description: "Timeout for GitHub deployments"
+        description: 'Timeout for GitHub deployments'
         default: 20
+      webAuthentication:
+        required: false
+        type: boolean
+        description: 'Enable web authentication'
+        default: false
+      limitWhitelist:
+        required: false
+        type: string
+        description: 'IPs to include in the application whitelist'
+        default: "0.0.0.0"
+      useDomainDns:
+        required: false
+        type: boolean
+        description: 'Enable using the domain DNS record for the application'
+        default: false
     secrets:
       azureCredentials:
         required: true
@@ -140,24 +155,14 @@ jobs:
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $hostName = $ingress -replace $domainName, ''
-          if ($hostName.Length -gt 0) 
-              {$hostName = $hostName.Substring(0,$hostName.Length-1) 
-              switch ($appEnvironment) {
-                'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
-                'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
-                }
-              }
-          else {
-              switch ($appEnvironment) {
-                'development' {$hostName = "development"; $ingress = "development.$ingress"}
-                'staging' {$hostName = "staging"; $ingress = "staging.$ingress"}
-                }
-              }
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
-
-          $release = "$appName-${{ github.sha }}".Substring(0,53)
-          $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
+          $useDomainDns = "${{ inputs.useDomainDns }}"
+          if (!($useDomainDns)) {
+            $hostName = $hostName.Substring(0,$hostName.Length-1) 
+            $hostName = "$appEnvironment.$hostName"
+            $ingress = "$appEnvironment.$ingress"
+          }
 
           echo "release=$release" >> $env:GITHUB_ENV
           echo "appName=$appName" >> $env:GITHUB_ENV
@@ -266,7 +271,16 @@ jobs:
           docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
-      - name: Bake Helm Templates
+      - name: Create valid release-name
+        id: generate-release-name
+        run: |
+          release=${{ env.appName }}-${{ github.sha }}
+          release=${release::53}
+          release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
+          echo "release=$release" >> $GITHUB_ENV
+
+      - name: Bake Helm Templates without web authentication
+        if: "${{ inputs.webAuthentication == false }}"
         id: bake
         uses: azure/k8s-bake@v2.2
         with:
@@ -279,6 +293,31 @@ jobs:
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
+            ingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
+
+      - name: Bake Helm Templates with web authentication
+        if: "${{ inputs.webAuthentication == true }}"
+        id: bake
+        uses: azure/k8s-bake@v2.2
+        with:
+          renderEngine: 'helm'
+          helmChart: ${{ inputs.chartsPath }}
+          releaseName: ${{ env.release }}
+          helm-version: 'latest'
+          overrides: |
+            image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.tag:${{ inputs.dockerImageTag }}
+            ingress.host:${{ env.ingress }}
+            autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
+            ingress.annotations.nginx.ingress.kubernetes.io/limit-whitelist: "${{ inputs.limitWhitelist }}"
+            ingress.annotations.nginx.ingress.kubernetes.io/auth-type: basic
+            ingress.annotations.nginx.ingress.kubernetes.io/auth-secret: ${{ env.appName }}-basic-auth
+            ingress.annotations.nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
+            adminingress.host: ${{ inputs.environment }}.${{ env.ingress }}
+            adminingress.tlssecret: ${{ env.appName }}-tls-secret
+            adminingress.annotations.kubernetes.io/ingress.class: nginx
+            adminingress.annotations.cert-manager.io/cluster-issuer: letsencrypt-prod
+            adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
 
       - name: Deploy to Azure ${{ inputs.environment }}
         timeout-minutes: ${{ inputs.deploymentTimeout }}
