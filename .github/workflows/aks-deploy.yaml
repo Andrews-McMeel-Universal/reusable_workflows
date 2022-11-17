@@ -87,6 +87,8 @@ on:
         required: true
       storageAccountKey:
         required: true
+      webAuthenticationPassword:
+        required: false
 
 jobs:
   AKS_Deploy:
@@ -257,6 +259,13 @@ jobs:
         run: |
           kubectl delete secret "${{ env.configSecret }}"
           kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
+
+      - name: Create web basic authentication secret
+        if: "${{ inputs.webAuthentication == true }}"
+        run: |
+          htpasswd -cb auth "${{ env.appName }}-auth" "${{ secrets.webAuthenticationPassword }}"
+          kubectl delete secret "${{ env.appName }}-basic-auth"
+          kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
 
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v1
