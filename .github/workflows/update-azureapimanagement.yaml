@@ -96,21 +96,21 @@ jobs:
             $healthCheckPath = $appInfo.HealthCheckPath
             $aksIngress = $appInfo.AksIngress
 
-            echo "::set-output name=applicationName::$applicationName"
-            echo "::set-output name=version::$version"
-            echo "::set-output name=keyVault::$keyVault"
-            echo "::set-output name=hostName::$hostName"
-            echo "::set-output name=domainName::$domainName"
-            echo "::set-output name=applicationIngressFqdn::$ingressFqdn"
-            echo "::set-output name=healthCheckPath::$healthCheckPath"
-            echo "::set-output name=aksIngress::$aksIngress"
+            echo "applicationName=$applicationName" >> $env:GITHUB_ENV
+            echo "version=$version" >> $env:GITHUB_ENV
+            echo "keyVault=$keyVault" >> $env:GITHUB_ENV
+            echo "hostName=$hostName" >> $env:GITHUB_ENV
+            echo "domainName=$domainName" >> $env:GITHUB_ENV
+            echo "applicationIngressFqdn=$ingressFqdn" >> $env:GITHUB_ENV
+            echo "healthCheckPath=$healthCheckPath" >> $env:GITHUB_ENV
+            echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
           azPSVersion: "latest"
 
       - name: Update Azure API Management
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            $serviceFqdn = "${{ steps.getappinfo.outputs.applicationIngressFqdn }}"
+            $serviceFqdn = "${{ env.applicationIngressFqdn }}"
             Write-Host $serviceFqdn
             $APISpecPath = "${{ inputs.apiSpecificationPath }}"
             $SwaggerURL = "https://$serviceFqdn$APISpecPath"
