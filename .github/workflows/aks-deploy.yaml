@@ -142,6 +142,7 @@ jobs:
               return $Values
           }
 
+
           $appEnvironment= "${{ inputs.environment }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
@@ -154,19 +155,18 @@ jobs:
           $appHealthCheck = $appconfig.deployment.healthCheckPath
           $configMap = $appConfig.deployment.configMap
           $configSecret = $appConfig.deployment.secret
+          $imagePullSecret = "$appName-pull-secret"
+          $appDeployDate = Get-Date
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $hostName = $ingress -replace $domainName, ''
-          $imagePullSecret = "$appName-pull-secret"
-          $appDeployDate = Get-Date
+          $hostName = $hostName.Substring(0,$hostName.Length-1) 
           $useDomainDns = "${{ inputs.useDomainDns }}"
           if ($useDomainDns -eq "false") {
-            $hostName = $hostName.Substring(0,$hostName.Length-1) 
             $hostName = "$appEnvironment.$hostName"
             $ingress = "$appEnvironment.$ingress"
           }
-
-          echo "release=$release" >> $env:GITHUB_ENV
+          
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
           echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
@@ -182,7 +182,7 @@ jobs:
       - name: Login via Az module
         uses: azure/login@v1
         with:
-          creds: '${{ secrets.azureCredentials }}'
+          creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
       - name: Get Secrets from Key Vaults
@@ -228,20 +228,20 @@ jobs:
             Write-Host $k8sSecret
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
 
-            echo "buildArguments=$buildArguments" >> $GITHUB_OUTPUT
+            echo "buildArguments=$buildArguments" >> $env:GITHUB_OUTPUT
           azPSVersion: 'latest'
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
-          login-server: "${{ env.containerRegistry }}"
+          login-server: ${{ env.containerRegistry }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v1
         with:
-          creds: '${{ secrets.azureCredentials }}'
+          creds: ${{ secrets.azureCredentials }}
           cluster-name: ${{ inputs.clusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
@@ -249,7 +249,7 @@ jobs:
         run: kubectl config set-context --current --namespace=${{ inputs.environment }}
 
       - name: Apply configMap
-        if: "${{ env.configMap != null }}"
+        if: ${{ env.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
@@ -273,10 +273,10 @@ jobs:
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v1
         with:
-          container-registry-url: "${{ env.containerRegistry }}"
+          container-registry-url: ${{ env.containerRegistry }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: "${{ env.imagePullSecret }}"
+          secret-name: ${{ env.imagePullSecret }}
 
       - name: Build & Push Docker Image
         run: |
@@ -332,8 +332,9 @@ jobs:
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
-            
+
       - name: Deploy to Azure ${{ inputs.environment }}
+        timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v1
         with:
           namespace: ${{ inputs.environment }}
@@ -349,7 +350,7 @@ jobs:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
             New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName "${{ env.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
-          azPSVersion: '3.1.0'
+          azPSVersion: "3.1.0"
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
         uses: LadyCailin/azure-table-storage-upload@v1.0.0
