@@ -320,8 +320,7 @@ jobs:
           EOF
           fi
 
-      - name: Bake Helm Templates without web authentication
-        if: "${{ inputs.webAuthentication == false }}"
+      - name: Bake Helm Templates
         id: bake
         uses: azure/k8s-bake@v2.2
         with:
