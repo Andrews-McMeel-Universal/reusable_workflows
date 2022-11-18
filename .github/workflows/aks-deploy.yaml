@@ -295,7 +295,7 @@ jobs:
         run: |
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
           if [[ ${WEB_AUTHENTICATION} == "true" ]] ; then
-            cat << 'EOF' >> values-override.yaml
+            cat << EOF >> values-override.yaml
             ingress:
               annotations:
                 nginx.ingress.kubernetes.io/limit-whitelist:"${{ inputs.limitWhitelist }}"
@@ -304,20 +304,20 @@ jobs:
                 nginx.ingress.kubernetes.io/auth-secret:"${{ env.appName }}-basic-auth"
                 nginx.ingress.kubernetes.io/auth-realm:"Authentication Required"
             adminingress:
-              host: ${{ inputs.environment }}.${{ env.ingress }}
+              host: ${{ env.ingress }}
               tlssecret: ${{ env.appName }}-tls-secret
               annotations:
                 kubernetes.io/ingress.class: nginx
                 cert-manager.io/cluster-issuer: letsencrypt-prod
                 nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
-            EOF
+          EOF
           else
-            cat << 'EOF' >> values-override.yaml
+            cat << EOF >> values-override.yaml
             ingress:
               annotations:
                 nginx.ingress.kubernetes.io/limit-whitelist:"${{ inputs.limitWhitelist }}"
                 nginx.ingress.kubernetes.io/whitelist-source-range:"${{ inputs.limitWhitelist }}"
-            EOF
+          EOF
           fi
 
       - name: Bake Helm Templates without web authentication
