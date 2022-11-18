@@ -160,7 +160,7 @@ jobs:
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
           $useDomainDns = "${{ inputs.useDomainDns }}"
-          if (!($useDomainDns)) {
+          if ($useDomainDns -eq "false") {
             $hostName = $hostName.Substring(0,$hostName.Length-1) 
             $hostName = "$appEnvironment.$hostName"
             $ingress = "$appEnvironment.$ingress"
