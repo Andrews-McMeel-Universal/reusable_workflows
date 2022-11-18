@@ -298,12 +298,6 @@ jobs:
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
-              kubernetes.io/ingress.class: "nginx"
-              cert-manager.io/cluster-issuer: "letsencrypt-prod"
-              nginx.ingress.kubernetes.io/limit-connections: '75'
-              nginx.ingress.kubernetes.io/limit-rps: '10'
-              nginx.ingress.kubernetes.io/limit-rpm: '60'
-              nginx.ingress.kubernetes.io/limit-conn-status-code: '429'
               nginx.ingress.kubernetes.io/limit-whitelist: "${{ inputs.limitWhitelist }}"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
@@ -313,8 +307,6 @@ jobs:
             host: ${{ env.ingress }}
             tlssecret: ${{ env.appName }}-tls-secret
             annotations:
-              kubernetes.io/ingress.class: "nginx"
-              cert-manager.io/cluster-issuer: "letsencrypt-prod"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
           EOF
           else
