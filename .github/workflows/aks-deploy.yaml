@@ -253,7 +253,7 @@ jobs:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
             New-AzDnsRecordSet -Name "${{ steps.setenvs.outputs.hostName }}" -RecordType CNAME -ZoneName ${{ steps.setenvs.outputs.domainName }} -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
-          azPSVersion: '9.2.0'
+          azPSVersion: "latest"
 
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v1
