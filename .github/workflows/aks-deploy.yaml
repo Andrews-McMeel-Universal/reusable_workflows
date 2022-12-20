@@ -180,7 +180,7 @@ jobs:
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
 
       - name: Login via Az module
-        uses: azure/login@v1
+        uses: azure/login@v1.4.6
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
@@ -232,7 +232,7 @@ jobs:
           azPSVersion: 'latest'
 
       - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1
+        uses: Azure/docker-login@v1.4.6
         with:
           login-server: ${{ env.containerRegistry }}
           username: ${{ secrets.registryUserName }}
@@ -350,7 +350,7 @@ jobs:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
             New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName "${{ env.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
-          azPSVersion: "3.1.0"
+          azPSVersion: "latest"
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
         uses: LadyCailin/azure-table-storage-upload@v1.0.0
