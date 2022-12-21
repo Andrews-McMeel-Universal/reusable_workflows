@@ -167,16 +167,16 @@ jobs:
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $ingressOverride = "${{ inputs.ingressOverride }}"
-          $hostName = $ingress.Replace($domainName,'')
+          $hostName = $ingress -replace $domainName, ''
 
           if ($hostName.Length -gt 0) {
-            $hostName = $hostName.Substring(0,$hostName.Length-1)
+            $hostName = $hostName -replace "\.$", ""
+            $hostName = "$appEnvironment.$hostName"
+            if ($ingressOverride -eq "true") {
+              $ingress = "$appEnvironment.$ingress"
+            }
           }
 
-          if ($ingressOverride -eq "true") {
-            $hostName = "$appEnvironment.$hostName"
-            $ingress = "$appEnvironment.$ingress"
-          }
           
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
