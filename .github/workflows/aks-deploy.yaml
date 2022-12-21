@@ -78,10 +78,10 @@ on:
         type: string
         description: 'IPs to include in the Admin application whitelist'
         default: "207.67.20.252"
-      ingressOverride:
+      environmentIngress:
         required: false
         type: boolean
-        description: 'Enable using the ingress value in the values.yml for the application'
+        description: 'Add the environment name to the front of the hostname (for DNS)'
         default: true
     secrets:
       azureCredentials:
@@ -166,17 +166,23 @@ jobs:
           $appDeployDate = Get-Date
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
-          $ingressOverride = "${{ inputs.ingressOverride }}"
+          $environmentIngress = "${{ inputs.environmentIngress }}"
           $hostName = $ingress -replace $domainName, ''
+          $hostName = $hostName -replace "\.$", ""
 
-          if ($hostName.Length -gt 0) {
-            $hostName = $hostName -replace "\.$", ""
-            $hostName = "$appEnvironment.$hostName"
-            if ($ingressOverride -eq "true") {
-              $ingress = "$appEnvironment.$ingress"
+          if ($environmentIngress -eq "true") {
+            $ingress = "$appEnvironment.$ingress"
+            if ($hostName.Length -gt 0) {
+              $hostName = "$appEnvironment.$hostName"
+            }
+            else {
+              $hostName = "$appEnvironment"
+            }
+          else {
+            if ($hostName.Length -eq 0) {
+              $hostName = "www"
             }
           }
-
           
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
@@ -317,8 +323,6 @@ jobs:
               nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           adminingress:
-            host: ${{ env.ingress }}
-            tlssecret: ${{ env.appName }}-tls-secret
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
           EOF
@@ -329,8 +333,6 @@ jobs:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
           adminingress:
-            host: ${{ env.ingress }}
-            tlssecret: ${{ env.appName }}-tls-secret
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
           EOF
