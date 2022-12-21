@@ -68,11 +68,16 @@ on:
         type: boolean
         description: 'Enable web authentication'
         default: false
-      limitWhitelist:
+      ingressWhitelist:
         required: false
         type: string
         description: 'IPs to include in the application whitelist'
         default: "0.0.0.0"
+      adminIngressWhitelist:
+        required: false
+        type: string
+        description: 'IPs to include in the Admin application whitelist'
+        default: "207.67.20.252"
       useDomainDns:
         required: false
         type: boolean
@@ -300,8 +305,8 @@ jobs:
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "${{ inputs.limitWhitelist }}"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
+              nginx.ingress.kubernetes.io/limit-whitelist: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
               nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
@@ -309,14 +314,14 @@ jobs:
             host: ${{ env.ingress }}
             tlssecret: ${{ env.appName }}-tls-secret
             annotations:
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
           EOF
           else
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "${{ inputs.limitWhitelist }}"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.limitWhitelist }}"
+              nginx.ingress.kubernetes.io/limit-whitelist: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
           EOF
           fi
 
