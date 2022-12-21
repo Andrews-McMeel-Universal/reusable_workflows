@@ -257,7 +257,7 @@ jobs:
           password: ${{ secrets.registryPassword }}
 
       - name: Set target AKS cluster
-        uses: Azure/aks-set-context@v1
+        uses: Azure/aks-set-context@v3.2
         with:
           creds: ${{ secrets.azureCredentials }}
           cluster-name: ${{ inputs.clusterName }}
@@ -289,7 +289,7 @@ jobs:
           }
 
       - name: Create k8s Image Pull Secret
-        uses: Azure/k8s-create-secret@v1
+        uses: Azure/k8s-create-secret@v4.0
         with:
           container-registry-url: ${{ env.containerRegistry }}
           container-registry-username: ${{ secrets.registryUserName  }}
@@ -348,7 +348,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v2.2
+        uses: azure/k8s-bake@v2.3
         with:
           renderEngine: 'helm'
           helmChart: ${{ inputs.chartsPath }}
@@ -363,7 +363,7 @@ jobs:
 
       - name: Deploy to Azure ${{ inputs.environment }}
         timeout-minutes: ${{ inputs.deploymentTimeout }}
-        uses: Azure/k8s-deploy@v1
+        uses: Azure/k8s-deploy@v4.9
         with:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
