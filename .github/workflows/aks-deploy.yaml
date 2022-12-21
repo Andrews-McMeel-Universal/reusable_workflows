@@ -239,7 +239,7 @@ jobs:
           azPSVersion: 'latest'
 
       - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1.4.6
+        uses: Azure/docker-login@v1
         with:
           login-server: ${{ env.containerRegistry }}
           username: ${{ secrets.registryUserName }}
