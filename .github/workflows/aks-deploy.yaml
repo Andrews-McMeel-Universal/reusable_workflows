@@ -322,7 +322,7 @@ jobs:
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
           EOF
-          elseif [[ ${ADMIN_INGRESS_WHITELIST} != "207.67.20.252" ]] || [[ ${INGRESS_WHITELIST} != "0.0.0.0/0" ]]; then
+          elif [[ ${ADMIN_INGRESS_WHITELIST} != "207.67.20.252" ]] || [[ ${INGRESS_WHITELIST} != "0.0.0.0/0" ]]; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
