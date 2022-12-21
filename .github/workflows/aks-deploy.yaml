@@ -72,7 +72,7 @@ on:
         required: false
         type: string
         description: 'IPs to include in the application whitelist'
-        default: "0.0.0.0"
+        default: "0.0.0.0/0"
       adminIngressWhitelist:
         required: false
         type: string
@@ -305,7 +305,7 @@ jobs:
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
               nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
@@ -320,7 +320,7 @@ jobs:
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
           EOF
           fi
