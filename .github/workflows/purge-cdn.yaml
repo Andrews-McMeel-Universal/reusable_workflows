@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 20     
     steps:
       - name: Login via Az module
-        uses: azure/login@v1.4.6
+        uses: azure/login@latest
         with:
           creds: '${{ secrets.azureCredentials }}'
           enable-AzPSSession: false

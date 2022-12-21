@@ -25,17 +25,17 @@ jobs:
     environment: ${{ inputs.environment }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@latest
 
       - name: Login via Az module
-        uses: azure/login@v1.4.6
+        uses: azure/login@latest
         with:
           creds: ${{ secrets.azureCredentials }}
           enable-AzPSSession: true
 
       - name: Get Secrets from Key Vaults
         id: getsecrets
-        uses: azure/powershell@v1
+        uses: azure/powershell@latest
         with:
           inlineScript: |
             Function Get-EnvSecrets {
@@ -74,7 +74,7 @@ jobs:
           yarn build
 
       - name: 'Upload TrustFrameworkBase Policy'
-        uses: azure-ad-b2c/deploy-trustframework-policy@v3
+        uses: azure-ad-b2c/deploy-trustframework-policy@latest
         with:
           folder: './dist/${{ secrets.AZURE_B2C_PRODUCT_NAME }}/custom-policies'
           files: 'B2C_1A_TPS_SIGNINSIGNOUT_BASE.xml,B2C_1A_TPS_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_TPS_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_TPS_IMPERSONATION.xml'
@@ -83,7 +83,7 @@ jobs:
           clientSecret: ${{ secrets.AZURE_B2C_CLIENT_SECRET }}
 
       - name: Upload Auth Assets
-        uses: azure/powershell@v1
+        uses: azure/powershell@latest
         with:
           inlineScript: |
             $BasePath = Get-Location

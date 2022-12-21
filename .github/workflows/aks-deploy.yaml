@@ -111,13 +111,13 @@ jobs:
       - name: Get latest release if production deployment
         if: ${{ inputs.environment == 'production'}}
         id: getlatestrelease
-        uses: thebritican/fetch-latest-release@v1.0.3
+        uses: thebritican/fetch-latest-release@latest
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout Latest release if Production deployment
         if: ${{ inputs.environment == 'production'}}
-        uses: actions/checkout@v3
+        uses: actions/checkout@latest
         with: 
           ref: ${{ steps.getlatestrelease.outputs.tag_name }}
 
@@ -198,14 +198,14 @@ jobs:
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
 
       - name: Login via Az module
-        uses: azure/login@v1.4.6
+        uses: azure/login@latest
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
       - name: Get Secrets from Key Vaults
         id: getsecrets
-        uses: azure/powershell@v1
+        uses: azure/powershell@latest
         with:
           inlineScript: |
             Function Get-EnvSecrets {
@@ -250,14 +250,14 @@ jobs:
           azPSVersion: 'latest'
 
       - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1
+        uses: Azure/docker-login@latest
         with:
           login-server: ${{ env.containerRegistry }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
       - name: Set target AKS cluster
-        uses: Azure/aks-set-context@v3.2
+        uses: Azure/aks-set-context@latest
         with:
           creds: ${{ secrets.azureCredentials }}
           cluster-name: ${{ inputs.clusterName }}
@@ -268,7 +268,7 @@ jobs:
 
       - name: Apply configMap
         if: ${{ env.configMap != null }}
-        uses: swdotcom/update-and-apply-kubernetes-configs@v1
+        uses: swdotcom/update-and-apply-kubernetes-configs@latest
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
@@ -289,7 +289,7 @@ jobs:
           }
 
       - name: Create k8s Image Pull Secret
-        uses: Azure/k8s-create-secret@v4.0
+        uses: Azure/k8s-create-secret@latest
         with:
           container-registry-url: ${{ env.containerRegistry }}
           container-registry-username: ${{ secrets.registryUserName  }}
@@ -348,7 +348,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v2.3
+        uses: azure/k8s-bake@latest
         with:
           renderEngine: 'helm'
           helmChart: ${{ inputs.chartsPath }}
@@ -363,7 +363,7 @@ jobs:
 
       - name: Deploy to Azure ${{ inputs.environment }}
         timeout-minutes: ${{ inputs.deploymentTimeout }}
-        uses: Azure/k8s-deploy@v4.9
+        uses: Azure/k8s-deploy@latest
         with:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
@@ -373,7 +373,7 @@ jobs:
             "${{ env.imagePullSecret }}"
 
       - name: Create or Update Public DNS Record
-        uses: azure/powershell@v1
+        uses: azure/powershell@latest
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
@@ -381,7 +381,7 @@ jobs:
           azPSVersion: "latest"
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
-        uses: LadyCailin/azure-table-storage-upload@v1.0.0
+        uses: LadyCailin/azure-table-storage-upload@latest
         with:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
