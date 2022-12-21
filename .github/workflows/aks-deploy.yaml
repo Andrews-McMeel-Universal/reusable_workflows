@@ -178,6 +178,7 @@ jobs:
             else {
               $hostName = "$appEnvironment"
             }
+          }
           else {
             if ($hostName.Length -eq 0) {
               $hostName = "www"
