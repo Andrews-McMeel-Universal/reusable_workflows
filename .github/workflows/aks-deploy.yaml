@@ -78,11 +78,11 @@ on:
         type: string
         description: 'IPs to include in the Admin application whitelist'
         default: "207.67.20.252"
-      useDomainDns:
+      ingressOverride:
         required: false
         type: boolean
-        description: 'Enable using the domain DNS record for the application'
-        default: false
+        description: 'Enable using the ingress value in the values.yml for the application'
+        default: true
     secrets:
       azureCredentials:
         required: true
@@ -168,8 +168,8 @@ jobs:
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $hostName = $ingress -replace $domainName, ''
           $hostName = $hostName.Substring(0,$hostName.Length-1) 
-          $useDomainDns = "${{ inputs.useDomainDns }}"
-          if ($useDomainDns -eq "false") {
+          $ingressOverride = "${{ inputs.ingressOverride }}"
+          if ($ingressOverride -eq "true") {
             $hostName = "$appEnvironment.$hostName"
             $ingress = "$appEnvironment.$ingress"
           }
