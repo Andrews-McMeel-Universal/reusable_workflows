@@ -166,9 +166,13 @@ jobs:
           $appDeployDate = Get-Date
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
-          $hostName = $ingress -replace $domainName, ''
-          $hostName = $hostName.Substring(0,$hostName.Length-1) 
           $ingressOverride = "${{ inputs.ingressOverride }}"
+          $hostName = $ingress.Replace($domainName,'')
+
+          if ($hostName.Length -gt 0) {
+            $hostName = $hostName.Substring(0,$hostName.Length-1)
+          }
+
           if ($ingressOverride -eq "true") {
             $hostName = "$appEnvironment.$hostName"
             $ingress = "$appEnvironment.$ingress"
