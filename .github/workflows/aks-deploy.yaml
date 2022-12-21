@@ -305,6 +305,8 @@ jobs:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
+          ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
+          INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
           if [[ ${WEB_AUTHENTICATION} == "true" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
@@ -314,6 +316,18 @@ jobs:
               nginx.ingress.kubernetes.io/auth-type: "basic"
               nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+          adminingress:
+            host: ${{ env.ingress }}
+            tlssecret: ${{ env.appName }}-tls-secret
+            annotations:
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
+          EOF
+          elseif [[ ${ADMIN_INGRESS_WHITELIST} != "207.67.20.252" ]] || [[ ${INGRESS_WHITELIST} != "0.0.0.0/0" ]]; then
+          cat << EOF >> values-override.yaml
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
           adminingress:
             host: ${{ env.ingress }}
             tlssecret: ${{ env.appName }}-tls-secret
