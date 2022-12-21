@@ -89,6 +89,8 @@ on:
         required: true
       webAuthenticationPassword:
         required: false
+      webAuthenticationUsername:
+        required: false
 
 jobs:
   AKS_Deploy:
@@ -266,7 +268,7 @@ jobs:
             if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
               kubectl delete secret "${{ env.appName }}-basic-auth"
             }
-            htpasswd -cb auth "${{ env.appName }}-auth" "${{ secrets.webAuthenticationPassword }}"
+            htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
             kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
           }
 
