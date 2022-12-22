@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Retrieve Application information
         id: getappinfo
-        uses: azure/powershell@latest
+        uses: azure/powershell@v1.2.0
         with: 
           inlineScript: |
             Install-Module -Name AzTable -Force
