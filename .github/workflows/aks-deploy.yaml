@@ -198,7 +198,7 @@ jobs:
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
 
       - name: Login via Az module
-        uses: azure/login@v1
+        uses: azure/login@v1.4.7
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
@@ -259,7 +259,6 @@ jobs:
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
         with:
-          creds: ${{ secrets.azureCredentials }}
           cluster-name: ${{ inputs.clusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
