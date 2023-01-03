@@ -198,7 +198,7 @@ jobs:
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
 
       - name: Login via Az module
-        uses: azure/login@v1.4.7
+        uses: azure/login@v1
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
@@ -348,7 +348,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v2.3
+        uses: azure/k8s-bake@v2.2
         with:
           renderEngine: 'helm'
           helmChart: ${{ inputs.chartsPath }}
