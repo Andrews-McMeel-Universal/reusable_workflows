@@ -37,6 +37,7 @@ on:
         required: true
         type: string
         description: 'Relative path to Dockerfile.'
+        default: "."
       dockerImageName:
         required: true
         type: string
