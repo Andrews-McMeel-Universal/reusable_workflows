@@ -66,7 +66,7 @@ on:
         default: 20
       webAuthentication:
         required: false
-        type: boolean
+        type: string
         description: 'Enable web authentication'
         default: false
       ingressWhitelist:
@@ -81,7 +81,7 @@ on:
         default: "207.67.20.252"
       environmentIngress:
         required: false
-        type: boolean
+        type: string
         description: 'Add the environment name to the front of the hostname (for DNS)'
         default: true
     secrets:
