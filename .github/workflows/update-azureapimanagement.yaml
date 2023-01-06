@@ -61,7 +61,7 @@ jobs:
     steps:
       - name: Retrieve Application information
         id: getappinfo
-        uses: azure/powershell@v1
+        uses: azure/powershell@v1.2.0
         with: 
           inlineScript: |
             Install-Module -Name AzTable -Force
@@ -107,7 +107,7 @@ jobs:
           azPSVersion: "latest"
 
       - name: Update Azure API Management
-        uses: azure/powershell@v1
+        uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
             $serviceFqdn = "${{ env.applicationIngressFqdn }}"

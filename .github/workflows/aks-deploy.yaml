@@ -37,6 +37,7 @@ on:
         required: true
         type: string
         description: 'Relative path to Dockerfile.'
+        default: "."
       dockerImageName:
         required: true
         type: string
@@ -61,8 +62,28 @@ on:
       deploymentTimeout:
         required: false
         type: number
-        description: "Timeout for GitHub deployments"
+        description: 'Timeout for GitHub deployments'
         default: 20
+      webAuthentication:
+        required: false
+        type: string
+        description: 'Enable web authentication'
+        default: false
+      ingressWhitelist:
+        required: false
+        type: string
+        description: 'IPs to include in the application whitelist'
+        default: "0.0.0.0/0"
+      adminIngressWhitelist:
+        required: false
+        type: string
+        description: 'IPs to include in the Admin application whitelist'
+        default: "207.67.20.252"
+      environmentIngress:
+        required: false
+        type: string
+        description: 'Add the environment name to the front of the hostname (for DNS)'
+        default: true
     secrets:
       azureCredentials:
         required: true
@@ -72,6 +93,10 @@ on:
         required: true
       storageAccountKey:
         required: true
+      webAuthenticationPassword:
+        required: false
+      webAuthenticationUsername:
+        required: false
 
 jobs:
   AKS_Deploy:
@@ -82,18 +107,18 @@ jobs:
     steps:
       - name: Checkout if Staging or Development deployment
         if: ${{ inputs.environment != 'production'}}
-        uses: actions/checkout@master
+        uses: actions/checkout@v3.2.0
 
       - name: Get latest release if production deployment
         if: ${{ inputs.environment == 'production'}}
         id: getlatestrelease
-        uses: thebritican/fetch-latest-release@v1.0.3
+        uses: thebritican/fetch-latest-release@v2.0.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout Latest release if Production deployment
         if: ${{ inputs.environment == 'production'}}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.2.0
         with: 
           ref: ${{ steps.getlatestrelease.outputs.tag_name }}
 
@@ -125,6 +150,7 @@ jobs:
               return $Values
           }
 
+
           $appEnvironment= "${{ inputs.environment }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
@@ -137,25 +163,29 @@ jobs:
           $appHealthCheck = $appconfig.deployment.healthCheckPath
           $configMap = $appConfig.deployment.configMap
           $configSecret = $appConfig.deployment.secret
-          $ingress = $appConfig.ingress.host
-          $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
-          $hostName = $ingress -replace $domainName, ''
-          if ($hostName.Length -gt 0) 
-              {$hostName = $hostName.Substring(0,$hostName.Length-1) 
-              switch ($appEnvironment) {
-                'development' {$hostName = "development.$hostName"; $ingress = "development.$ingress"}
-                'staging' {$hostName = "staging.$hostName"; $ingress = "staging.$ingress"}
-                }
-              }
-          else {
-              switch ($appEnvironment) {
-                'development' {$hostName = "development"; $ingress = "development.$ingress"}
-                'staging' {$hostName = "staging"; $ingress = "staging.$ingress"}
-                }
-              }
           $imagePullSecret = "$appName-pull-secret"
           $appDeployDate = Get-Date
+          $ingress = $appConfig.ingress.host
+          $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
+          $environmentIngress = "${{ inputs.environmentIngress }}"
+          $hostName = $ingress -replace $domainName, ''
+          $hostName = $hostName -replace "\.$", ""
 
+          if ($environmentIngress -eq "true") {
+            $ingress = "$appEnvironment.$ingress"
+            if ($hostName.Length -gt 0) {
+              $hostName = "$appEnvironment.$hostName"
+            }
+            else {
+              $hostName = "$appEnvironment"
+            }
+          }
+          else {
+            if ($hostName.Length -eq 0) {
+              $hostName = "www"
+            }
+          }
+          
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
           echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
@@ -169,14 +199,14 @@ jobs:
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
 
       - name: Login via Az module
-        uses: azure/login@v1
+        uses: azure/login@v1.4.7
         with:
-          creds: '${{ secrets.azureCredentials }}'
+          creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
       - name: Get Secrets from Key Vaults
         id: getsecrets
-        uses: azure/powershell@v1
+        uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
             Function Get-EnvSecrets {
@@ -217,20 +247,19 @@ jobs:
             Write-Host $k8sSecret
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
 
-            echo "buildArguments=$buildArguments" >> $GITHUB_OUTPUT
+            echo "buildArguments=$buildArguments" >> $env:GITHUB_OUTPUT
           azPSVersion: 'latest'
 
       - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1
+        uses: Azure/docker-login@v1.0.1
         with:
-          login-server: "${{ env.containerRegistry }}"
+          login-server: ${{ env.containerRegistry }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
       - name: Set target AKS cluster
-        uses: Azure/aks-set-context@v1
+        uses: Azure/aks-set-context@v3.2
         with:
-          creds: '${{ secrets.azureCredentials }}'
           cluster-name: ${{ inputs.clusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
@@ -238,24 +267,34 @@ jobs:
         run: kubectl config set-context --current --namespace=${{ inputs.environment }}
 
       - name: Apply configMap
-        if: "${{ env.configMap != null }}"
-        uses: swdotcom/update-and-apply-kubernetes-configs@v1
+        if: ${{ env.configMap != null }}
+        uses: swdotcom/update-and-apply-kubernetes-configs@v1.2.0
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
       - name: Add GitHub secrets to k8s
         shell: pwsh
         run: |
-          kubectl delete secret "${{ env.configSecret }}"
+          if (kubectl get secret | Select-String "${{ env.configSecret }}") {
+            kubectl delete secret "${{ env.configSecret }}"
+          }
           kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
 
+          if ( "${{ inputs.webAuthentication }}" -eq "true") {
+            if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
+              kubectl delete secret "${{ env.appName }}-basic-auth"
+            }
+            htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
+            kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
+          }
+
       - name: Create k8s Image Pull Secret
-        uses: Azure/k8s-create-secret@v1
+        uses: Azure/k8s-create-secret@v4.0
         with:
-          container-registry-url: "${{ env.containerRegistry }}"
+          container-registry-url: ${{ env.containerRegistry }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: "${{ env.imagePullSecret }}"
+          secret-name: ${{ env.imagePullSecret }}
 
       - name: Build & Push Docker Image
         run: |
@@ -270,6 +309,43 @@ jobs:
           release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
           echo "release=$release" >> $GITHUB_ENV
 
+      - name: Create values override file
+        run: |
+          WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
+          ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
+          INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
+          if [[ ${WEB_AUTHENTICATION} == "true" ]] ; then
+          cat << EOF >> values-override.yaml
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/auth-type: "basic"
+              nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
+              nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+          adminingress:
+            annotations:
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
+          EOF
+          elif [[ ${ADMIN_INGRESS_WHITELIST} != "207.67.20.252" ]] || [[ ${INGRESS_WHITELIST} != "0.0.0.0/0" ]]; then
+          cat << EOF >> values-override.yaml
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
+          adminingress:
+            annotations:
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
+          EOF
+          else
+          cat << EOF >> values-override.yaml
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
+          EOF
+          fi
+
       - name: Bake Helm Templates
         id: bake
         uses: azure/k8s-bake@v2.2
@@ -278,6 +354,7 @@ jobs:
           helmChart: ${{ inputs.chartsPath }}
           releaseName: ${{ env.release }}
           helm-version: 'latest'
+          overrideFiles: ./values-override.yaml
           overrides: |
             image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
@@ -286,7 +363,7 @@ jobs:
 
       - name: Deploy to Azure ${{ inputs.environment }}
         timeout-minutes: ${{ inputs.deploymentTimeout }}
-        uses: Azure/k8s-deploy@v1
+        uses: Azure/k8s-deploy@v4.9
         with:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
@@ -296,15 +373,15 @@ jobs:
             "${{ env.imagePullSecret }}"
 
       - name: Create or Update Public DNS Record
-        uses: azure/powershell@v1
+        uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
             New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName "${{ env.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
-          azPSVersion: '3.1.0'
+          azPSVersion: "latest"
 
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
-        uses: LadyCailin/azure-table-storage-upload@v1.0.0
+        uses: LadyCailin/azure-table-storage-upload@v1.0.1
         with:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
