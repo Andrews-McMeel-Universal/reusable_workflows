@@ -362,7 +362,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@ebronson68/fix-set-output-deprecation-warning
+        uses: azure/k8s-bake@v2.2
         with:
           renderEngine: 'helm'
           helmChart: ${{ inputs.chartsPath }}
