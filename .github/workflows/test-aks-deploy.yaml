@@ -1,0 +1,36 @@
+name: 'Test AKS Deploy'
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    uses: "Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@${{release}}"
+    with:
+      repositoryName: ${{ github.event.repository.name }}
+      environment: development
+      environmentKeyVault: test-workflow
+      clusterName: amuaks201
+      clusterResourceGroup: AMU_AKS_201
+      aksIngressFqdn: amuaks201-production-ingress.centralus.cloudapp.azure.com.
+      dnsResourceGroup: AMU_DNS_RG
+      chartsPath: ./deployments/charts
+      dockerFilePath: .
+      dockerImageName: ${{ github.event.repository.name }}
+      dockerImageTag: ${{ github.sha }}
+      storageAccountName: amucloudapps
+      appInfoTableName: DeployedApplications
+      webAuthentication: false
+      ingressWhitelist: '0.0.0.0/0'
+      adminIngressWhitelist: '207.67.20.252,45.62.179.183,149.20.202.205,216.194.104.74,45.62.182.239'
+      environmentIngress: false
+
+    secrets:
+      azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+      registryUserName: ${{ secrets.AMUAPPIMAGES201_USERNAME }}
+      registryPassword: ${{ secrets.AMUAPPIMAGES201_PASSWORD }}
+      storageAccountKey: ${{ secrets.AMUCLOUDAPPS_KEY }}
+      webAuthenticationPassword: ${{ secrets.WEB_AUTHENTICATION_PASSWORD }}
+      webAuthenticationUsername: ${{ secrets.WEB_AUTHENTICATION_USERNAME }}
