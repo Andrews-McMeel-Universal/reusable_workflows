@@ -327,7 +327,7 @@ jobs:
           else
             ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
           fi
-          
+
           if [[ ${WEB_AUTHENTICATION} == "true" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
@@ -362,7 +362,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v2.2
+        uses: azure/k8s-bake@ebronson68/fix-set-output-deprecation-warning
         with:
           renderEngine: 'helm'
           helmChart: ${{ inputs.chartsPath }}
