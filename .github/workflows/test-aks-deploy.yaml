@@ -20,13 +20,13 @@ jobs:
     uses: "Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@default-to-helm-whitelist-values"
     with:
       repositoryName: ${{ github.event.repository.name }}
-      environment: production
-      environmentKeyVault: tps-ui-production
+      environment: development
+      environmentKeyVault: test-workflow
       clusterName: amuaks201
       clusterResourceGroup: AMU_AKS_201
       aksIngressFqdn: amuaks201-production-ingress.centralus.cloudapp.azure.com.
       dnsResourceGroup: AMU_DNS_RG
-      chartsPath: ./deployments/charts/production-charts
+      chartsPath: ./deployments/charts
       dockerFilePath: .
       dockerImageName: ${{ github.event.repository.name }}
       dockerImageTag: ${{ github.sha }}
