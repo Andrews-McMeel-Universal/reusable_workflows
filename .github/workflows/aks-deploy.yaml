@@ -170,8 +170,8 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}"
           $hostName = $ingress -replace $domainName, ''
           $hostName = $hostName -replace "\.$", ""
-          $ingressWhitelist = $appConfig.ingress.annotations.nginx.ingress.kubernetes.io//whitelist-source-range
-          $adminIngressWhitelist = $appConfig.adminingress.annotations.nginx.ingress.kubernetes.io//whitelist-source-range
+          $ingressWhitelist = '$appConfig.ingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range'
+          $adminIngressWhitelist = '$appConfig.adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range'
 
           if ($environmentIngress -eq "true") {
             $ingress = "$appEnvironment.$ingress"
