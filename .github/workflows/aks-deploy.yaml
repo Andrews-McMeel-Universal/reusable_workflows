@@ -170,6 +170,8 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}"
           $hostName = $ingress -replace $domainName, ''
           $hostName = $hostName -replace "\.$", ""
+          $ingressWhitelist = $appConfig.ingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range
+          $adminIngressWhitelist = $appConfig.adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range
 
           if ($environmentIngress -eq "true") {
             $ingress = "$appEnvironment.$ingress"
@@ -197,6 +199,8 @@ jobs:
           echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
           echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
+          echo "ingressWhitelist=$ingressWhielist" >> $env:GITHUB_ENV
+          echo "adminIngressWhitelist=$adminIngressWhielist" >> $env:GITHUB_ENV
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
@@ -312,8 +316,18 @@ jobs:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
-          ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
-          INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
+          if [[ ! -z "${{ env.ingressWhitelist }}" ]] ; then
+            INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
+          else
+            INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
+          fi
+
+          if [[ ! -z "${{ env.adminIngressWhitelist }}" ]] ; then
+            ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
+          else
+            ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
+          fi
+          
           if [[ ${WEB_AUTHENTICATION} == "true" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
