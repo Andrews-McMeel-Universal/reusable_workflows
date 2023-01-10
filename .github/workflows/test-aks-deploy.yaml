@@ -17,7 +17,7 @@ on:
 
 jobs:
   deploy:
-    uses: "Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@default-to-helm-whitelist-values"
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@default-to-helm-whitelist-values
     with:
       repositoryName: ${{ github.event.repository.name }}
       environment: development
