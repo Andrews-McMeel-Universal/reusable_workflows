@@ -18,7 +18,7 @@ on:
 
 jobs:
   deploy:
-    uses: "Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@${{ release }}"
+    uses: "Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@${{release}}"
     with:
       repositoryName: ${{ github.event.repository.name }}
       environment: production
