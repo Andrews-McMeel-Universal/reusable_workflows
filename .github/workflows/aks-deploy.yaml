@@ -316,6 +316,8 @@ jobs:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
+          echo "ENV=${{ env.ingressWhitelist }}"
+          echo "INPUT=${{ inputs.ingressWhitelist }}"
           if [[ ! -z "${{ env.ingressWhitelist }}" ]] ; then
             INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
           else
