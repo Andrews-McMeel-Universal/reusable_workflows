@@ -1,19 +1,16 @@
 name: 'Test AKS Deploy'
 
 on:
-  push:
-    branches:
-      - main
-      - default-to-helm-whitelist-values
-    paths:
-      - 'aks-deploy.yaml'
-  pull_request:
-    # Sequence of patterns matched against refs/heads
-    branches:    
-      - main
-      - default-to-helm-whitelist-values
-    paths:
-      - 'aks-deploy.yaml'
+  workflow_dispatch:
+    # Inputs the workflow accepts.
+    inputs:
+      name:
+        # Friendly description to be shown in the UI instead of 'name'
+        description: 'Release or branch to test'
+        # Default value if no value is explicitly provided
+        default: 'main'
+        # Input has to be provided for the workflow to run
+        required: true
 
 jobs:
   deploy:
