@@ -199,8 +199,8 @@ jobs:
           echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
           echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
-          echo "ingressWhitelist=$ingressWhielist" >> $env:GITHUB_ENV
-          echo "adminIngressWhitelist=$adminIngressWhielist" >> $env:GITHUB_ENV
+          echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
+          echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
