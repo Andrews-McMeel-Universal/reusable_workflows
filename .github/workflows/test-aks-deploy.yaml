@@ -17,20 +17,8 @@ on:
 
 
 jobs:
-  prepare-deployment:
-    name: 'Prepare deployment'
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: 'Retrieve release tag'
-        run: |
-          if [[ ${{ github.event_name == 'release' &&
-          github.event.release.prerelease }} == true ]]; then
-              echo "tag=${{ release }}" >> $GITHUB_ENV
-          fi
-
   deploy:
-    uses: "Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@${{ env.tag }}"
+    uses: "Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@${{ release }}"
     with:
       repositoryName: ${{ github.event.repository.name }}
       environment: production
