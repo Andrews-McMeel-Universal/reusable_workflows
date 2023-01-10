@@ -15,7 +15,6 @@ on:
     paths:
       - 'aks-deploy.yaml'
 
-
 jobs:
   deploy:
     uses: "Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@${{release}}"
