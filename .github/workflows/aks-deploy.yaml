@@ -316,15 +316,15 @@ jobs:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
-          echo "ENV=${{ env.ingressWhitelist }}"
-          echo "INPUT=${{ inputs.ingressWhitelist }}"
-          if [[ ! -z "${{ env.ingressWhitelist }}" ]] ; then
+          INGRESS_WHITELIST_ENV="${{ env.ingressWhitelist }}"
+          ADMIN_INGRESS_WHITELIST_ENV="${{ env.adminIngressWhitelist }}"
+          if [[ ! -z "${INGRESS_WHITELIST_ENV}" ]] ; then
             INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
           else
             INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
           fi
 
-          if [[ ! -z "${{ env.adminIngressWhitelist }}" ]] ; then
+          if [[ ! -z "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
             ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
           else
             ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
