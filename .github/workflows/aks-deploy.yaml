@@ -335,30 +335,30 @@ jobs:
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
               nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           adminingress:
             annotations:
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
           elif [[ ${ADMIN_INGRESS_WHITELIST} != "207.67.20.252" ]] || [[ ${INGRESS_WHITELIST} != "0.0.0.0/0" ]]; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
           adminingress:
             annotations:
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
           else
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
           EOF
           fi
 
