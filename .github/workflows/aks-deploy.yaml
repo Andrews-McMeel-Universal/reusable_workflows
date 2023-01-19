@@ -387,6 +387,7 @@ jobs:
             "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
             "${{ env.imagePullSecret }}"
+          pull-images: false
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1.2.0
