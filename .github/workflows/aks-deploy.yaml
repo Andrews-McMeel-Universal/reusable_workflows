@@ -37,7 +37,6 @@ on:
         required: true
         type: string
         description: 'Relative path to Dockerfile.'
-        default: "."
       dockerImageName:
         required: true
         type: string
@@ -308,7 +307,7 @@ jobs:
       - name: Create valid release-name
         id: generate-release-name
         run: |
-          release=${{ env.appName }}-${{ github.sha }}
+          release="${{ env.appName }}-${{ github.sha }}"
           release=${release::53}
           release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
           echo "release=$release" >> $GITHUB_ENV
@@ -318,13 +317,13 @@ jobs:
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
           INGRESS_WHITELIST_ENV="${{ env.ingressWhitelist }}"
           ADMIN_INGRESS_WHITELIST_ENV="${{ env.adminIngressWhitelist }}"
-          if [[ ! -z "${INGRESS_WHITELIST_ENV}" ]] ; then
+          if [[ -n "${INGRESS_WHITELIST_ENV}" ]] ; then
             INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
           else
             INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
           fi
 
-          if [[ ! -z "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
+          if [[ -n "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
             ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
           else
             ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
