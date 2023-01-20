@@ -190,6 +190,8 @@ jobs:
           $release = "${{ env.appName }}-${{ github.sha }}".Substring(0,53)
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
           
+          echo $release
+
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
           echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
