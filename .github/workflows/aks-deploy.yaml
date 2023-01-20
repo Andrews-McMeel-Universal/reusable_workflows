@@ -187,7 +187,7 @@ jobs:
             }
           }
           
-          $release = "${{ env.appName }}-${{ github.sha }}".Substring(0,53)
+          $release = "$appName-${{ github.sha }}".Substring(0,53)
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
           
           echo $release
