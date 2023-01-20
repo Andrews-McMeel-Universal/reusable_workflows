@@ -9,6 +9,14 @@ on:
         required: true
         type: string
         description: 'Azure Key vault Name.'
+      azureB2CProductName:
+        required: true
+        type: string
+        description: 'Name of the B2C product.'
+      azureB2CDomain:
+        required: true
+        type: string
+        description: 'Domain name of the B2C tenant.'
     secrets:
       azureCredentials:
         required: true
@@ -17,6 +25,10 @@ on:
       registryPassword:
         required: true
       storageAccountKey:
+        required: true
+      azureB2CClientId:
+        required: true
+      azureB2CClientSecret:
         required: true
 
 jobs:
@@ -68,7 +80,7 @@ jobs:
         shell: pwsh
         run: |
           $Environment = "${{ inputs.environment }}"
-          $ProductName = "${{ secrets.AZURE_B2C_PRODUCT_NAME }}".Replace("-","").Replace("the","")
+          $ProductName = "${{ inputs.azureB2CProductName }}".Replace("-","").Replace("the","")
           yarn config set product $ProductName
           yarn config set environment $Environment
           yarn build
@@ -76,11 +88,11 @@ jobs:
       - name: 'Upload TrustFrameworkBase Policy'
         uses: azure-ad-b2c/deploy-trustframework-policy@v5.3
         with:
-          folder: './dist/${{ secrets.AZURE_B2C_PRODUCT_NAME }}/custom-policies'
+          folder: './dist/${{ inputs.azureB2CProductName }}/custom-policies'
           files: 'B2C_1A_TPS_SIGNINSIGNOUT_BASE.xml,B2C_1A_TPS_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_TPS_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_TPS_IMPERSONATION.xml'
-          tenant: ${{ secrets.AZURE_B2C_DOMAIN }}
-          clientId: ${{ secrets.AZURE_B2C_CLIENT_ID }}
-          clientSecret: ${{ secrets.AZURE_B2C_CLIENT_SECRET }}
+          tenant: ${{ inputs.azureB2CDomain }}
+          clientId: ${{ secrets.azureB2CClientId }}
+          clientSecret: ${{ secrets.azureB2CClientSecret }}
 
       - name: Upload Auth Assets
         uses: azure/powershell@v1.2.0
@@ -88,7 +100,7 @@ jobs:
           inlineScript: |
             $BasePath = Get-Location
             $DistPath = Join-Path $BasePath "dist"
-            ./deployments/scripts/Deploy-B2C_Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.STORAGE_ACCOUNT_KEY }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath -ProductPath "${{ secrets.AZURE_B2C_PRODUCT_NAME }}"
+            ./deployments/scripts/Deploy-B2C_Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath -ProductPath "${{ inputs.azureB2CProductName }}"
           azPSVersion: 'latest'
 
       - name: Purge CDN

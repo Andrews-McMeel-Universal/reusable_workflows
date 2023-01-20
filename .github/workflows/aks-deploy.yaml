@@ -37,7 +37,6 @@ on:
         required: true
         type: string
         description: 'Relative path to Dockerfile.'
-        default: "."
       dockerImageName:
         required: true
         type: string
@@ -170,6 +169,8 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}"
           $hostName = $ingress -replace $domainName, ''
           $hostName = $hostName -replace "\.$", ""
+          $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
+          $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
 
           if ($environmentIngress -eq "true") {
             $ingress = "$appEnvironment.$ingress"
@@ -186,6 +187,9 @@ jobs:
             }
           }
           
+          $release = "$appName-${{ github.sha }}".Substring(0,53)
+          $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
+
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
           echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
@@ -197,6 +201,8 @@ jobs:
           echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
           echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
+          echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
+          echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
@@ -264,7 +270,7 @@ jobs:
           resource-group: ${{ inputs.clusterResourceGroup }}
 
       - name: Switch to ${{ inputs.environment }} Namespace
-        run: kubectl config set-context --current --namespace=${{ inputs.environment }}
+        run: kubectl config set-context --current --namespace="${{ inputs.environment }}"
 
       - name: Apply configMap
         if: ${{ env.configMap != null }}
@@ -301,48 +307,52 @@ jobs:
           docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
-      - name: Create valid release-name
-        id: generate-release-name
-        run: |
-          release=${{ env.appName }}-${{ github.sha }}
-          release=${release::53}
-          release=$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
-          echo "release=$release" >> $GITHUB_ENV
-
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
-          ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
-          INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
-          if [[ ${WEB_AUTHENTICATION} == "true" ]] ; then
+          INGRESS_WHITELIST_ENV="${{ env.ingressWhitelist }}"
+          ADMIN_INGRESS_WHITELIST_ENV="${{ env.adminIngressWhitelist }}"
+          if [[ -n "${INGRESS_WHITELIST_ENV}" ]] ; then
+            INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
+          else
+            INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
+          fi
+
+          if [[ -n "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
+            ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
+          else
+            ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
+          fi
+
+          if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
               nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           adminingress:
             annotations:
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
-          elif [[ ${ADMIN_INGRESS_WHITELIST} != "207.67.20.252" ]] || [[ ${INGRESS_WHITELIST} != "0.0.0.0/0" ]]; then
+          elif [[ "${ADMIN_INGRESS_WHITELIST}" != "207.67.20.252" ]] || [[ "${INGRESS_WHITELIST}" != "0.0.0.0/0" ]]; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
           adminingress:
             annotations:
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.adminIngressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
           else
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${{ inputs.ingressWhitelist }}"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
           EOF
           fi
 
@@ -371,6 +381,7 @@ jobs:
             "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
             "${{ env.imagePullSecret }}"
+          pull-images: false
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1.2.0
