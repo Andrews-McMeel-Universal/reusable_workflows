@@ -301,13 +301,13 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build "${{ inputs.dockerFilePath }}" "${{ steps.getsecrets.outputs.buildArguments }}" -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build "${{ inputs.dockerFilePath }}" "${{ steps.getsecrets.outputs.buildArguments }}" -t "${{ env.containerRegistry  }}"/"${{ inputs.dockerImageName }}":"${{ inputs.dockerImageTag }}"
+          docker push "${{ env.containerRegistry }}"/"${{ inputs.dockerImageName }}":"${{ inputs.dockerImageTag }}"
 
       - name: Create valid release-name
         id: generate-release-name
         run: |
-          release="${{ env.appName }}-${{ github.sha }}"
+          release="${{ env.appName }}"-"${{ github.sha }}"
           release="${release::53}"
           release=$(echo "${release//[!0-9a-zA-Z]/-}" | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
           echo "release=$release" >> $GITHUB_ENV
