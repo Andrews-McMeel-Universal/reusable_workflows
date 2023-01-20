@@ -309,7 +309,7 @@ jobs:
         run: |
           release="${{ env.appName }}-${{ github.sha }}"
           release="${release::53}"
-          release="$(echo ${release//[!0-9a-zA-Z]/-} | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')"
+          release=$(echo "${release//[!0-9a-zA-Z]/-}" | tr '[:upper:]' '[:lower:]' | sed -e 's/^-/z/' -e 's/-$/z/')
           echo "release=$release" >> $GITHUB_ENV
 
       - name: Create values override file
