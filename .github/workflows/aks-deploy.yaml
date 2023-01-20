@@ -306,7 +306,7 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build "${{ inputs.dockerFilePath }}" "${{ steps.getsecrets.outputs.buildArguments }}" -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
       - name: Create values override file
