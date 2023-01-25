@@ -211,6 +211,7 @@ jobs:
                 $envFileContent = $envName + "=" + $envSecret
                 Add-Content -Path ".env" -Value $envFileContent
             }
+          azPSVersion: 'latest'
 
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
@@ -309,6 +310,7 @@ jobs:
                 $envFileContent = $envName + "=" + $envSecret
                 Add-Content -Path ".env" -Value $envFileContent
             }
+          azPSVersion: 'latest'
 
       - name: Generate build args from Azure Key Vaults
         uses: azure/powershell@v1.2.0
