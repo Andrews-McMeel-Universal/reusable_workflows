@@ -192,6 +192,7 @@ jobs:
           echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           echo "release=$release" >> $env:GITHUB_ENV
+          
     outputs:
       appName: ${{ env.appName }}
       appVersion: ${{ env.appVersion }}
@@ -322,9 +323,26 @@ jobs:
     continue-on-error: false
     environment: ${{ inputs.environment }}
     steps:
+      - name: Checkout if Staging or Development deployment
+        if: ${{ inputs.environment != 'production'}}
+        uses: actions/checkout@v3.2.0
+
+      - name: Get latest release if production deployment
+        if: ${{ inputs.environment == 'production'}}
+        id: getlatestrelease
+        uses: thebritican/fetch-latest-release@v2.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Latest release if Production deployment
+        if: ${{ inputs.environment == 'production'}}
+        uses: actions/checkout@v3.2.0
+        with: 
+          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
+
       - name: Build & Push Docker Image
         run: |
-          docker build ../${{ inputs.dockerFilePath }} ${{ needs.prepare-build.outputs.buildArguments }} -t "${{ needs.setup-environment.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ needs.prepare-build.outputs.buildArguments }} -t "${{ needs.setup-environment.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ needs.setup-environment.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
   deploy:
