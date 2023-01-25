@@ -1,5 +1,3 @@
-name: 'AKS Deployment'
-
 on:
   workflow_call:
     inputs:
@@ -314,6 +312,8 @@ jobs:
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ needs.setup-environment.outputs.imagePullSecret }}"
+    outputs:
+      buildArguments: ${{ env.buildArguments }}
 
   build:
     name: 'Build Docker Image'
@@ -324,7 +324,7 @@ jobs:
     steps:
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ needs.setup-environment.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ../${{ inputs.dockerFilePath }} ${{ needs.prepare-build.outputs.buildArguments }} -t "${{ needs.setup-environment.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ needs.setup-environment.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
   deploy:
@@ -411,7 +411,7 @@ jobs:
           pull-images: false
 
   update-dns:
-    name: 'Update DNS record'
+    name: Update DNS record
     needs: [setup-environment,prepare-build,build,deploy]
     runs-on: ubuntu-latest
     continue-on-error: false
@@ -426,7 +426,7 @@ jobs:
           azPSVersion: "latest"
 
   deployment-summary:
-    name: 'Record deployment information'
+    name: Record deployment information
     needs: [setup-environment,prepare-build,build,deploy,update-dns]
     runs-on: ubuntu-latest
     continue-on-error: false
