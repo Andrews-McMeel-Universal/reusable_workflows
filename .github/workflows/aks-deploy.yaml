@@ -425,19 +425,19 @@ jobs:
 
       - name: Output summary
         run: |
-          ApplicationName=${{ env.appName }}
-          Environment=${{ inputs.environment }}
-          Version=${{ env.appVersion }}
-          KeyVault=${{ inputs.environmentKeyVault }}
-          HostName=${{ env.hostName }}
-          DomainName=${{ env.domainName }}
-          IngressFqdn=${{ env.ingress }}
-          HealthCheckPath=${{ env.appHealthCheck }}
-          AksIngress=${{ inputs.aksIngressFqdn }}
-          Cluster=${{ inputs.clusterName }}
-          ClusterResourceGroup=${{ inputs.clusterResourceGroup }}
-          ConfigSecret=${{ env.configSecret }}
-          ConfigMap=${{ env.configMap }}
+          appName=${{ env.appName }}
+          environment=${{ inputs.environment }}
+          appVersion=${{ env.appVersion }}
+          environmentKeyVault=${{ inputs.environmentKeyVault }}
+          hostName=${{ env.hostName }}
+          domainName=${{ env.domainName }}
+          ingress=${{ env.ingress }}
+          appHealthCheck=${{ env.appHealthCheck }}
+          aksIngressFqdn=${{ inputs.aksIngressFqdn }}
+          clusterName=${{ inputs.clusterName }}
+          clusterResourceGroup=${{ inputs.clusterResourceGroup }}
+          configSecret=${{ env.configSecret }}
+          configMap=${{ env.configMap }}
 
           echo "### $appName Deployment Details" >> $GITHUB_STEP_SUMMARY
           echo "- ApplicationName: $appName" >> $GITHUB_STEP_SUMMARY
