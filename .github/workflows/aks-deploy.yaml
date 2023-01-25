@@ -424,7 +424,6 @@ jobs:
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
 
       - name: Output summary
-        # shellcheck disable=SC2086
         run: |
           echo "### ${{ env.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
           echo "- ApplicationName:${{ env.appName }}" >> $GITHUB_STEP_SUMMARY
