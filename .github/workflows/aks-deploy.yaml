@@ -426,7 +426,7 @@ jobs:
       - name: Output summary
         # shellcheck disable=SC2059
         run: |
-          echo "### ${{ env.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY"
+          echo "### ${{ env.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
           echo "- ApplicationName:${{ env.appName }}" >> $GITHUB_STEP_SUMMARY
           echo "- Environment=${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "- Version=${{ env.appVersion }}" >> $GITHUB_STEP_SUMMARY
