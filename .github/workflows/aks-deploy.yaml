@@ -428,7 +428,7 @@ jobs:
           echo "### "${{ env.appName }}" Deployment Details" >> $GITHUB_STEP_SUMMARY
           echo "- ApplicationName: "${{ env.appName }}"" >> $GITHUB_STEP_SUMMARY
           echo "- Environment: "${{ inputs.environment }}"" >> $GITHUB_STEP_SUMMARY
-          echo "- Version: "${{ env.appVersion }}"' >> $GITHUB_STEP_SUMMARY
+          echo "- Version: "${{ env.appVersion }}"" >> $GITHUB_STEP_SUMMARY
           echo "- KeyVault: "${{ inputs.environmentKeyVault }}"" >> $GITHUB_STEP_SUMMARY
           echo "- HostName: "${{ env.hostName }}"" >> $GITHUB_STEP_SUMMARY
           echo "- DomainName: "${{ env.domainName }}"" >> $GITHUB_STEP_SUMMARY
