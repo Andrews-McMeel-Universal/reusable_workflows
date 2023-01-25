@@ -98,8 +98,8 @@ on:
         required: false
 
 jobs:
-  AKS_Deploy:
-    name: 'AKS Deployment'
+  setup-environment:
+    name: 'Prepare environment'
     runs-on: ubuntu-latest
     continue-on-error: false
     environment: ${{ inputs.environment }}
@@ -131,14 +131,7 @@ jobs:
                 [string]$PathToYaml
             )
 
-              #Check to see if powershell-yaml is installed
-              if (Get-Module -Name powershell-yaml) {
-                #It's installed, this would be if you are running locally.
-              }
-              else {
-                  Write-Host "Installing Powershell-Yaml."
-                  Install-Module -Name powershell-yaml -Confirm:$false -Force
-              }
+              Install-Module -Name powershell-yaml -Confirm:$false -Force
 
               Import-Module powershell-yaml
 
@@ -204,6 +197,13 @@ jobs:
           echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
 
+  build:
+    name: 'Build Docker Image'
+    runs-on: ubuntu-latest
+    needs: [setup-environment]
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
       - name: Login via Az module
         uses: azure/login@v1.4.7
         with:
@@ -253,7 +253,7 @@ jobs:
             Write-Host $k8sSecret
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
 
-            echo "buildArguments=$buildArguments" >> $env:GITHUB_OUTPUT
+            echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
           azPSVersion: 'latest'
 
       - name: Login to Azure Container Registry
@@ -304,9 +304,16 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
+  deploy:
+    name: 'Deploy to AKS cluster'
+    needs: [setup-environment,build]
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
@@ -383,6 +390,13 @@ jobs:
             "${{ env.imagePullSecret }}"
           pull-images: false
 
+  update-dns:
+    name: 'Update DNS record'
+    needs: [setup-environment,build,deploy]
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1.2.0
         with:
@@ -391,6 +405,13 @@ jobs:
             New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName "${{ env.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "latest"
 
+  deployment-summary:
+    name: 'Record deployment information'
+    needs: [setup-environment,build,deploy,update-dns]
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
       - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
         uses: LadyCailin/azure-table-storage-upload@v1.0.1
         with:
@@ -401,3 +422,20 @@ jobs:
           if_exists: 'replace'
           extra_args: ''
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
+
+      - name: Output summary
+        run: |
+          echo "### ${{ env.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY"
+          echo "- ApplicationName=${{ env.appName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment=${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Version=${{ env.appVersion }}" >> $GITHUB_STEP_SUMMARY
+          echo "- KeyVault=${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
+          echo "- HostName=${{ env.hostName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DomainName=${{ env.domainName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- IngressFqdn=${{ env.ingress }}" >> $GITHUB_STEP_SUMMARY
+          echo "- HealthCheckPath=${{ env.appHealthCheck }}" >> $GITHUB_STEP_SUMMARY
+          echo "- AksIngress=${{ inputs.aksIngressFqdn }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Cluster=${{ inputs.clusterName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ClusterResourceGroup=${{ inputs.clusterResourceGroup }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ConfigSecret=${{ env.configSecret }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ConfigMap=${{ env.configMap }}" >> $GITHUB_STEP_SUMMARY
