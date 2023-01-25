@@ -1,3 +1,5 @@
+name: 'AKS Deployment'
+
 on:
   workflow_call:
     inputs:
@@ -125,25 +127,20 @@ jobs:
         id: setenvs
         shell: pwsh
         run: |
+          Install-Module -Name powershell-yaml -Confirm:$false -Force
           Function Get-Envs {
             param (
                 [parameter(Mandatory = $true, ValueFromPipeline = $true)]
                 [string]$PathToYaml
             )
-
-              Install-Module -Name powershell-yaml -Confirm:$false -Force
-
               Import-Module powershell-yaml
-
               Write-Host "Getting configuration from: $PathToYaml."
-
               $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
-
               return $Values
           }
 
 
-          $appEnvironment= "${{ inputs.environment }}"
+          $appEnvironment = "${{ inputs.environment }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Envs -PathToYaml $valuesYamlPath
@@ -183,19 +180,20 @@ jobs:
           $release = "$appName-${{ github.sha }}".Substring(0,53)
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
 
-          echo "appName=$appName" >> $env:GITHUB_ENV
-          echo "appVersion=$appVersion" >> $env:GITHUB_ENV
-          echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
-          echo "configMap=$configMap" >> $env:GITHUB_ENV
-          echo "configSecret=$configSecret" >> $env:GITHUB_ENV
-          echo "ingress=$ingress" >> $env:GITHUB_ENV
-          echo "domainName=$domainName" >> $env:GITHUB_ENV
-          echo "hostName=$hostName" >> $env:GITHUB_ENV
-          echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
-          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
-          echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
-          echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
+          echo "appName=$appName" >> $GITHUB_OUTPUT
+          echo "appVersion=$appVersion" >> $GITHUB_OUTPUT
+          echo "appHealthCheck=$appHealthCheck" >> $GITHUB_OUTPUT
+          echo "configMap=$configMap" >> $GITHUB_OUTPUT
+          echo "configSecret=$configSecret" >> $GITHUB_OUTPUT
+          echo "ingress=$ingress" >> $GITHUB_OUTPUT
+          echo "domainName=$domainName" >> $GITHUB_OUTPUT
+          echo "hostName=$hostName" >> $GITHUB_OUTPUT
+          echo "imagePullSecret=$imagePullSecret" >> $GITHUB_OUTPUT
+          echo "containerRegistry=$containerRegistry" >> $GITHUB_OUTPUT
+          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "ingressWhitelist=$ingressWhitelist" >> $GITHUB_OUTPUT
+          echo "adminIngressWhitelist=$adminIngressWhitelist" >> $GITHUB_OUTPUT
+          echo "release=$release" >> $GITHUB_OUTPUT
 
   build:
     name: 'Build Docker Image'
@@ -259,7 +257,7 @@ jobs:
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1.0.1
         with:
-          login-server: ${{ env.containerRegistry }}
+          login-server: "${{ needs.setup-environment.outputs.containerRegistry }}"
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
@@ -273,7 +271,7 @@ jobs:
         run: kubectl config set-context --current --namespace="${{ inputs.environment }}"
 
       - name: Apply configMap
-        if: ${{ env.configMap != null }}
+        if: ${{ needs.setup-environment.outputs.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1.2.0
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
@@ -281,31 +279,31 @@ jobs:
       - name: Add GitHub secrets to k8s
         shell: pwsh
         run: |
-          if (kubectl get secret | Select-String "${{ env.configSecret }}") {
-            kubectl delete secret "${{ env.configSecret }}"
+          if (kubectl get secret | Select-String "${{ needs.setup-environment.outputs.configSecret }}") {
+            kubectl delete secret "${{ needs.setup-environment.outputs.configSecret }}"
           }
-          kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
+          kubectl create secret generic "${{ needs.setup-environment.outputs.configSecret }}" --from-env-file .env
 
           if ( "${{ inputs.webAuthentication }}" -eq "true") {
-            if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
-              kubectl delete secret "${{ env.appName }}-basic-auth"
+            if (kubectl get secret | Select-String "${{ needs.setup-environment.outputs.appName }}-basic-auth") {
+              kubectl delete secret "${{ needs.setup-environment.outputs.appName }}-basic-auth"
             }
             htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
-            kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
+            kubectl create secret generic "${{ needs.setup-environment.outputs.appName }}-basic-auth" --from-file=auth
           }
 
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4.0
         with:
-          container-registry-url: "${{ env.containerRegistry }}"
+          container-registry-url: "${{ needs.setup-environment.outputs.containerRegistry }}"
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: "${{ env.imagePullSecret }}"
+          secret-name: "${{ needs.setup-environment.outputs.imagePullSecret }}"
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ needs.setup-environment.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker push "${{ needs.setup-environment.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
   deploy:
     name: 'Deploy to AKS cluster'
@@ -317,16 +315,16 @@ jobs:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
-          INGRESS_WHITELIST_ENV="${{ env.ingressWhitelist }}"
-          ADMIN_INGRESS_WHITELIST_ENV="${{ env.adminIngressWhitelist }}"
+          INGRESS_WHITELIST_ENV="${{ needs.setup-environment.outputs.ingressWhitelist }}"
+          ADMIN_INGRESS_WHITELIST_ENV="${{ needs.setup-environment.outputs.adminIngressWhitelist }}"
           if [[ -n "${INGRESS_WHITELIST_ENV}" ]] ; then
-            INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
+            INGRESS_WHITELIST="${{ needs.setup-environment.outputs.ingressWhitelist }}"
           else
             INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
           fi
 
           if [[ -n "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
-            ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
+            ADMIN_INGRESS_WHITELIST="${{ needs.setup-environment.outputs.adminIngressWhitelist }}"
           else
             ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
           fi
@@ -338,7 +336,7 @@ jobs:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
-              nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
+              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.setup-environment.outputs.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           adminingress:
             annotations:
@@ -369,13 +367,13 @@ jobs:
         with:
           renderEngine: 'helm'
           helmChart: ${{ inputs.chartsPath }}
-          releaseName: ${{ env.release }}
+          releaseName: ${{ needs.setup-environment.outputs.release }}
           helm-version: 'latest'
           overrideFiles: ./values-override.yaml
           overrides: |
-            image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.repository:${{ needs.setup-environment.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ env.ingress }}
+            ingress.host:${{ needs.setup-environment.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
 
       - name: Deploy to Azure ${{ inputs.environment }}
@@ -385,9 +383,9 @@ jobs:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+            "${{ needs.setup-environment.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
-            "${{ env.imagePullSecret }}"
+            "${{ needs.setup-environment.outputs.imagePullSecret }}"
           pull-images: false
 
   update-dns:
@@ -402,7 +400,7 @@ jobs:
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
-            New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName "${{ env.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            New-AzDnsRecordSet -Name "${{ needs.setup-environment.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.setup-environment.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "latest"
 
   deployment-summary:
@@ -418,24 +416,24 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ env.appName }} Version=${{ env.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ env.hostName }} DomainName=${{ env.domainName }} IngressFqdn=${{ env.ingress }} HealthCheckPath=${{ env.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{ env.configSecret }} ConfigMap=${{ env.configMap }} LastDeploy=${{ env.date }}"
+          data: "ApplicationName=${{ needs.setup-environment.outputs.appName }} Version=${{ needs.setup-environment.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.setup-environment.outputs.hostName }} DomainName=${{ needs.setup-environment.outputs.domainName }} IngressFqdn=${{ needs.setup-environment.outputs.ingress }} HealthCheckPath=${{ needs.setup-environment.outputs.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.setup-environment.outputs.configSecret }} ConfigMap=${{ needs.setup-environment.outputs.configMap }} LastDeploy=${{ needs.setup-environment.outputs.date }}"
           if_exists: 'replace'
           extra_args: ''
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
 
       - name: Output summary
         run: |
-          echo "### ${{ env.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
-          echo "- ApplicationName:${{ env.appName }}" >> $GITHUB_STEP_SUMMARY
+          echo "### ${{ needs.setup-environment.outputs.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- ApplicationName:${{ needs.setup-environment.outputs.appName }}" >> $GITHUB_STEP_SUMMARY
           echo "- Environment=${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Version=${{ env.appVersion }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Version=${{ needs.setup-environment.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
           echo "- KeyVault=${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
-          echo "- HostName=${{ env.hostName }}" >> $GITHUB_STEP_SUMMARY
-          echo "- DomainName=${{ env.domainName }}" >> $GITHUB_STEP_SUMMARY
-          echo "- IngressFqdn=${{ env.ingress }}" >> $GITHUB_STEP_SUMMARY
-          echo "- HealthCheckPath=${{ env.appHealthCheck }}" >> $GITHUB_STEP_SUMMARY
+          echo "- HostName=${{ needs.setup-environment.outputs.hostName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- DomainName=${{ needs.setup-environment.outputs.domainName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- IngressFqdn=${{ needs.setup-environment.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
+          echo "- HealthCheckPath=${{ needs.setup-environment.outputs.appHealthCheck }}" >> $GITHUB_STEP_SUMMARY
           echo "- AksIngress=${{ inputs.aksIngressFqdn }}" >> $GITHUB_STEP_SUMMARY
           echo "- Cluster=${{ inputs.clusterName }}" >> $GITHUB_STEP_SUMMARY
           echo "- ClusterResourceGroup=${{ inputs.clusterResourceGroup }}" >> $GITHUB_STEP_SUMMARY
-          echo "- ConfigSecret=${{ env.configSecret }}" >> $GITHUB_STEP_SUMMARY
-          echo "- ConfigMap=${{ env.configMap }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ConfigSecret=${{ needs.setup-environment.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ConfigMap=${{ needs.setup-environment.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
