@@ -210,8 +210,8 @@ jobs:
       adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
       release: ${{ env.release }}
 
-  build:
-    name: 'Build Docker Image'
+  prepare-build:
+    name: 'Prepare for Docker Image Build'
     runs-on: ubuntu-latest
     needs: [setup-environment]
     continue-on-error: false
@@ -315,6 +315,13 @@ jobs:
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ needs.setup-environment.outputs.imagePullSecret }}"
 
+  build:
+    name: 'Build Docker Image'
+    runs-on: ubuntu-latest
+    needs: [setup-environment,prepare-build]
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
       - name: Build & Push Docker Image
         run: |
           docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ needs.setup-environment.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
@@ -322,7 +329,7 @@ jobs:
 
   deploy:
     name: 'Deploy to AKS cluster'
-    needs: [setup-environment,build]
+    needs: [setup-environment,prepare-build,build]
     runs-on: ubuntu-latest
     continue-on-error: false
     environment: ${{ inputs.environment }}
@@ -405,7 +412,7 @@ jobs:
 
   update-dns:
     name: 'Update DNS record'
-    needs: [setup-environment,build,deploy]
+    needs: [setup-environment,prepare-build,build,deploy]
     runs-on: ubuntu-latest
     continue-on-error: false
     environment: ${{ inputs.environment }}
@@ -420,7 +427,7 @@ jobs:
 
   deployment-summary:
     name: 'Record deployment information'
-    needs: [setup-environment,build,deploy,update-dns]
+    needs: [setup-environment,prepare-build,build,deploy,update-dns]
     runs-on: ubuntu-latest
     continue-on-error: false
     environment: ${{ inputs.environment }}
