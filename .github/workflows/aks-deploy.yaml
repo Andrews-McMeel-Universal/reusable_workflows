@@ -439,17 +439,16 @@ jobs:
           configSecret=${{ env.configSecret }}
           configMap=${{ env.configMap }}
 
-          echo "### $appName Deployment Details" >> $GITHUB_STEP_SUMMARY
-          echo "- ApplicationName: $appName" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment: $environment" >> $GITHUB_STEP_SUMMARY
-          echo "- Version: $appVersion" >> $GITHUB_STEP_SUMMARY
-          echo "- KeyVault: $environmentKeyVault" >> $GITHUB_STEP_SUMMARY
-          echo "- HostName: $hostName" >> $GITHUB_STEP_SUMMARY
-          echo "- DomainName: $domainName" >> $GITHUB_STEP_SUMMARY
-          echo "- IngressFqdn: $ingress" >> $GITHUB_STEP_SUMMARY
-          echo "- HealthCheckPath: $appHealthCheck" >> $GITHUB_STEP_SUMMARY
-          echo "- AksIngress: $aksIngressFqdn" >> $GITHUB_STEP_SUMMARY
-          echo "- Cluster: $clusterName" >> $GITHUB_STEP_SUMMARY
-          echo "- ClusterResourceGroup: $clusterResourceGroup" >> $GITHUB_STEP_SUMMARY
-          echo "- ConfigSecret: $configSecret" >> $GITHUB_STEP_SUMMARY
-          echo "- ConfigMap: $configMap" >> $GITHUB_STEP_SUMMARY
+          echo "### \"$appName\" Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: \"$environment\"" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: \"$appVersion\"" >> $GITHUB_STEP_SUMMARY
+          echo "- KeyVault: \"$environmentKeyVault\"" >> $GITHUB_STEP_SUMMARY
+          echo "- HostName: \"$hostName\"" >> $GITHUB_STEP_SUMMARY
+          echo "- DomainName: \"$domainName\"" >> $GITHUB_STEP_SUMMARY
+          echo "- IngressFqdn: \"$ingress\"" >> $GITHUB_STEP_SUMMARY
+          echo "- HealthCheckPath: \"$appHealthCheck\"" >> $GITHUB_STEP_SUMMARY
+          echo "- AksIngress: \"$aksIngressFqdn\"" >> $GITHUB_STEP_SUMMARY
+          echo "- Cluster: \"$clusterName\"" >> $GITHUB_STEP_SUMMARY
+          echo "- ClusterResourceGroup: \"$clusterResourceGroup\"" >> $GITHUB_STEP_SUMMARY
+          echo "- ConfigSecret: \"$configSecret\"" >> $GITHUB_STEP_SUMMARY
+          echo "- ConfigMap: \"$configMap\"" >> $GITHUB_STEP_SUMMARY
