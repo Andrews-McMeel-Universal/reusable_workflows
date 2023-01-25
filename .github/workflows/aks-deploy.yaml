@@ -425,17 +425,17 @@ jobs:
 
       - name: Output summary
         run: |
-          echo "### \""${{ env.appName }}"\" Deployment Details" >> $GITHUB_STEP_SUMMARY
-          echo "- ApplicationName: \""${{ env.appName }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment: \""${{ inputs.environment }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- Version: \""${{ env.appVersion }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- KeyVault: \""${{ inputs.environmentKeyVault }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- HostName: \""${{ env.hostName }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- DomainName: \""${{ env.domainName }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- IngressFqdn: \""${{ env.ingress }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- HealthCheckPath: \""${{ env.appHealthCheck }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- AksIngress: \""${{ inputs.aksIngressFqdn }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- Cluster: \""${{ inputs.clusterName }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- ClusterResourceGroup: \""${{ inputs.clusterResourceGroup }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- ConfigSecret: \""${{ env.configSecret }}"\"" >> $GITHUB_STEP_SUMMARY
-          echo "- ConfigMap: \""${{ env.configMap }}"\"" >> $GITHUB_STEP_SUMMARY
+          echo '### \""${{ env.appName }}"\" Deployment Details' >> $GITHUB_STEP_SUMMARY
+          echo '- ApplicationName: \""${{ env.appName }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- Environment: \""${{ inputs.environment }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- Version: \""${{ env.appVersion }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- KeyVault: \""${{ inputs.environmentKeyVault }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- HostName: \""${{ env.hostName }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- DomainName: \""${{ env.domainName }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- IngressFqdn: \""${{ env.ingress }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- HealthCheckPath: \""${{ env.appHealthCheck }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- AksIngress: \""${{ inputs.aksIngressFqdn }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- Cluster: \""${{ inputs.clusterName }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- ClusterResourceGroup: \""${{ inputs.clusterResourceGroup }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- ConfigSecret: \""${{ env.configSecret }}"\"' >> $GITHUB_STEP_SUMMARY
+          echo '- ConfigMap: \""${{ env.configMap }}"\"' >> $GITHUB_STEP_SUMMARY
