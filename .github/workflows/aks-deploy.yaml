@@ -424,9 +424,10 @@ jobs:
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
 
       - name: Output summary
-        env:
-          SHELLCHECK_OPTS: "-e SC2086"
         run: |
+          #!/bin/sh
+          # shellcheck disable=SC2086
+
           echo "### ${{ env.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
           echo "- ApplicationName:${{ env.appName }}" >> $GITHUB_STEP_SUMMARY
           echo "- Environment=${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
