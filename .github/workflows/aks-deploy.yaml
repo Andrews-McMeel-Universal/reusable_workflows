@@ -227,10 +227,11 @@ jobs:
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4.0
         with:
-          container-registry-url: "${{ needs.setup.outputs.containerRegistry }}"
+          container-registry-url: "${{ env.containerRegistry }}"
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: "${{ needs.setup.outputs.imagePullSecret }}"
+          secret-name: "${{ env.imagePullSecret }}"
+
     outputs:
       appName: ${{ env.appName }}
       appVersion: ${{ env.appVersion }}
