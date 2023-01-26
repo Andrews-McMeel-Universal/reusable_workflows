@@ -190,7 +190,7 @@ jobs:
           echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           echo "release=$release" >> $env:GITHUB_ENV
-          echo "containerRegistry=$containerRegistry" >> $env:$GITHUB_OUTPUT
+          echo "containerRegistry=$containerRegistry" >> $env:$GITHUB_ENV
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
@@ -247,14 +247,14 @@ jobs:
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4.0
         with:
-          container-registry-url: "${{ steps.setenvs.outputs.containerRegistry }}"
+          container-registry-url: "${{ env.containerRegistry }}"
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ env.imagePullSecret }}"
 
       - name: Encrypt Azure Container Registry value
         run: |
-          containerRegistry=$(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "${{ steps.setenvs.outputs.containerRegistry }}"))
+          containerRegistry=$(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "${{ env.containerRegistry }}"))
           echo "::add-mask::$containerRegistry"
           echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
 
