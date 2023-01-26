@@ -272,7 +272,7 @@ jobs:
       domainName: ${{ env.domainName }}
       hostName: ${{ env.hostName }}
       imagePullSecret: ${{ env.imagePullSecret }}
-      containerRegistryEncrypted: ${{ steps.encrypt.outputs.containerRegistryEncrypted }}
+      containerRegistryEncrypted: ${{ env.containerRegistryEncrypted }}
       date: ${{ env.date }}
       ingressWhitelist: ${{ env.ingressWhitelist }}
       adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
