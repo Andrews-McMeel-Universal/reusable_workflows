@@ -16,10 +16,6 @@ This workflow is used for deploying an application to the Azure Kubernetes Servi
 
 #### Example:
 ```
-name: 'Test AKS Deploy'
-
-...
-
 jobs:
   deploy:
     name: 'AKS Deployment'
