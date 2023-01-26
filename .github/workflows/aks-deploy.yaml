@@ -255,7 +255,6 @@ jobs:
       - name: Encrypt Azure Container Registry value
         run: |
           containerRegistry=$(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "${{ steps.setenvs.outputs.containerRegistry }}"))
-          echo "::add-mask::$containerRegistry"
           echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
 
     outputs:
