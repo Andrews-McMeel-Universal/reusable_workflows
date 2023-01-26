@@ -256,7 +256,7 @@ jobs:
         id: encrypt
         shell: bash
         run: |
-          containerRegistryEncrypted=$(gpg --symmetric --batch --passphrase "$PASSPHRASE" --output - <(echo "$VALUE)" | base64 -w0))
+          containerRegistryEncrypted=$(gpg --symmetric --batch --passphrase "$PASSPHRASE" --output - <(echo "$VALUE" | base64 -w0))
           echo "containerRegistryEncrypted=$containerRegistryEncrypted" >> $env:GITHUB_ENV
         env:
           VALUE: ${{ steps.setenvs.outputs.containerRegistry }}
@@ -272,7 +272,7 @@ jobs:
       domainName: ${{ env.domainName }}
       hostName: ${{ env.hostName }}
       imagePullSecret: ${{ env.imagePullSecret }}
-      containerRegistry: ${{ steps.encrypt.outputs.containerRegistryEncrypted }}
+      containerRegistryEncrypted: ${{ steps.encrypt.outputs.containerRegistryEncrypted }}
       date: ${{ env.date }}
       ingressWhitelist: ${{ env.ingressWhitelist }}
       adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
