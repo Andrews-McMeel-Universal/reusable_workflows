@@ -145,7 +145,6 @@ jobs:
           $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
           $chartConfig= Get-Envs -PathToYaml $chartYamlPath
           $containerRegistry = $appConfig.image.repository
-          $containerRegistry = $(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "$containerRegistry")
           $appName = $chartConfig.name
           $appVersion = $chartConfig.appVersion
           $appHealthCheck = $appconfig.deployment.healthCheckPath
@@ -187,11 +186,16 @@ jobs:
           echo "domainName=$domainName" >> $env:GITHUB_ENV
           echo "hostName=$hostName" >> $env:GITHUB_ENV
           echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
           echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           echo "release=$release" >> $env:GITHUB_ENV
+          echo "containerRegistry=$containerRegistry" >> $GITHUB_OUTPUTS
+
+      - name: Encrypt Azure Container Registry value
+        run: |
+          containerRegistry=$(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "${{ steps.setenvs.outputs.containerRegistry }}")
+          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
