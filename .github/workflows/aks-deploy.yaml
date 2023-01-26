@@ -415,6 +415,7 @@ jobs:
         with:
           name: bake-manifests-bundle
           path: ${{ steps.bake.outputs.manifestsBundle }}
+          retention-days: 1
 
     outputs:
       manifestsBundle: ${{ steps.bake.outputs.manifestsBundle }}
@@ -491,16 +492,11 @@ jobs:
       - name: Output summary
         run: |
           echo "### ${{ needs.setup.outputs.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
-          echo "- ApplicationName:${{ needs.setup.outputs.appName }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment=${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Version=${{ needs.setup.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
-          echo "- KeyVault=${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
-          echo "- HostName=${{ needs.setup.outputs.hostName }}" >> $GITHUB_STEP_SUMMARY
-          echo "- DomainName=${{ needs.setup.outputs.domainName }}" >> $GITHUB_STEP_SUMMARY
-          echo "- IngressFqdn=${{ needs.setup.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
-          echo "- HealthCheckPath=${{ needs.setup.outputs.appHealthCheck }}" >> $GITHUB_STEP_SUMMARY
-          echo "- AksIngress=${{ inputs.aksIngressFqdn }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Cluster=${{ inputs.clusterName }}" >> $GITHUB_STEP_SUMMARY
-          echo "- ClusterResourceGroup=${{ inputs.clusterResourceGroup }}" >> $GITHUB_STEP_SUMMARY
-          echo "- ConfigSecret=${{ needs.setup.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
-          echo "- ConfigMap=${{ needs.setup.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Application Name**: ${{ needs.setup.outputs.appName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.setup.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Key Vault Name**: ${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **FQDN**: ${{ needs.setup.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cluster**: ${{ inputs.clusterName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **ConfigSecret**: ${{ needs.setup.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **ConfigMap**: ${{ needs.setup.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
