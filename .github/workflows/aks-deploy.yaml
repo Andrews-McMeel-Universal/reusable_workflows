@@ -84,11 +84,7 @@ on:
         description: 'Add the environment name to the front of the hostname (for DNS)'
         default: true
     secrets:
-      azureTenantId:
-        required: true
-      azureClientId:
-        required: true
-      azureSubscriptionId:
+      azureCredentials:
         required: true
       registryUserName:
         required: true
@@ -199,9 +195,7 @@ jobs:
       - name: Login via Az module
         uses: azure/login@v1.4.7
         with:
-          client-id: ${{ secrets.azureClientId }}
-          tenant-id: ${{ secrets.azureTenantId }}
-          subscription-id: ${{ secrets.azureSubscriptionId }}
+          creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
       - name: Generate .env file from Azure Key Vaults
@@ -300,9 +294,7 @@ jobs:
       - name: Login via Az module
         uses: azure/login@v1.4.7
         with:
-          client-id: ${{ secrets.azureClientId }}
-          tenant-id: ${{ secrets.azureTenantId }}
-          subscription-id: ${{ secrets.azureSubscriptionId }}
+          creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
       - name: Generate .env file from Azure Key Vaults
@@ -443,9 +435,7 @@ jobs:
       - name: Login via Az module
         uses: azure/login@v1.4.7
         with:
-          client-id: ${{ secrets.azureClientId }}
-          tenant-id: ${{ secrets.azureTenantId }}
-          subscription-id: ${{ secrets.azureSubscriptionId }}
+          creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
       - name: Set target AKS cluster
@@ -473,15 +463,6 @@ jobs:
     continue-on-error: false
     environment: ${{ inputs.environment }}
     steps:
-
-      - name: Login via Az module
-        uses: azure/login@v1.4.7
-        with:
-          client-id: ${{ secrets.azureClientId }}
-          tenant-id: ${{ secrets.azureTenantId }}
-          subscription-id: ${{ secrets.azureSubscriptionId }}
-          enable-AzPSSession: true
-
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1.2.0
         with:
