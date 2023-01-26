@@ -190,7 +190,7 @@ jobs:
           echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           echo "release=$release" >> $env:GITHUB_ENV
-          echo "containerRegistry=$containerRegistry" >> $GITHUB_OUTPUT
+          echo "containerRegistry=$containerRegistry" >> $env:$GITHUB_OUTPUT
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
