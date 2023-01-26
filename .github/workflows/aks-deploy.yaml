@@ -103,6 +103,9 @@ on:
       webAuthenticationUsername:
         required: false
 
+permissions:
+      id-token: write
+
 jobs:
   setup:
     name: 'Prepare for build'
