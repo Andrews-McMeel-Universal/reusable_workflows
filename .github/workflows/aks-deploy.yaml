@@ -258,7 +258,7 @@ jobs:
         run: |
           containerRegistry="${{ steps.setenvs.outputs.containerRegistry }}"
           echo "::add-mask::$containerRegistry"
-          containerRegistryEncrypted=$(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "$containerRegistry) | base64 -w0)
+          containerRegistryEncrypted=$(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "$containerRegistry)" | base64 -w0)
           echo "containerRegistryEncrypted=$containerRegistryEncrypted" >> $env:GITHUB_ENV
 
     outputs:
