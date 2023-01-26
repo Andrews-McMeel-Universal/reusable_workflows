@@ -145,6 +145,7 @@ jobs:
           $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
           $chartConfig= Get-Envs -PathToYaml $chartYamlPath
           $containerRegistry = $appConfig.image.repository
+          $containerRegistry = $(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "$containerRegistry")
           $appName = $chartConfig.name
           $appVersion = $chartConfig.appVersion
           $appHealthCheck = $appconfig.deployment.healthCheckPath
@@ -177,7 +178,6 @@ jobs:
           
           $release = "$appName-${{ github.sha }}".Substring(0,53)
           $release=($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
-
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
           echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
@@ -336,10 +336,15 @@ jobs:
             echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
           azPSVersion: 'latest'
 
+      - name: Decrypt Azure Container Registry value
+        run: |
+          containerRegistry=$(gpg --decrypt --quiet --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "${{ needs.setup.outputs.containerRegistry }}" | base64 --decode))
+          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
+
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1.0.1
         with:
-          login-server: "${{ needs.setup.outputs.containerRegistry }}"
+          login-server: "${{ env.containerRegistry }}"
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
