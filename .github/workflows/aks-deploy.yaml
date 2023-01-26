@@ -463,6 +463,12 @@ jobs:
     continue-on-error: false
     environment: ${{ inputs.environment }}
     steps:
+      - name: Login via Az module
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
+
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1.2.0
         with:
