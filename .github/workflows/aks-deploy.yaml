@@ -247,7 +247,7 @@ jobs:
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4.0
         with:
-          container-registry-url: "${{ env.containerRegistry }}"
+          container-registry-url: "${{ steps.setenvs.outputs.containerRegistry }}"
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ env.imagePullSecret }}"
@@ -364,8 +364,8 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ needs.setup.outputs.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          docker push "${{ needs.setup.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
   deploy:
     name: 'Deploy to AKS cluster'
@@ -423,6 +423,16 @@ jobs:
           EOF
           fi
 
+      - name: Decrypt containerRegistry value
+        id: decrypt
+        shell: bash
+        run: |
+          containerRegistry=$(gpg --decrypt --quiet --batch --passphrase "$PASSPHRASE" --output - <(echo "$VALUE" | base64 --decode))
+          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
+        env:
+          VALUE: ${{ needs.setup.outputs.containerRegistryEncrypted }}
+          PASSPHRASE: ${{ secrets.registryPassword }}
+
       - name: Bake Helm Templates
         id: bake
         uses: azure/k8s-bake@v2.2
@@ -433,7 +443,7 @@ jobs:
           helm-version: 'latest'
           overrideFiles: ./values-override.yaml
           overrides: |
-            image.repository:${{ needs.setup.outputs.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ needs.setup.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
@@ -457,7 +467,7 @@ jobs:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            "${{ needs.setup.outputs.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+            "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
             "${{ needs.setup.outputs.imagePullSecret }}"
           pull-images: false
