@@ -346,13 +346,6 @@ jobs:
           docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
-  deploy:
-    name: 'Deploy to AKS cluster'
-    needs: [setup,build]
-    runs-on: ubuntu-latest
-    continue-on-error: false
-    environment: ${{ inputs.environment }}
-    steps:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
@@ -417,6 +410,28 @@ jobs:
             ingress.host:${{ needs.setup.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
 
+      - name: Upload bake-manifests-bundle artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: bake-manifests-bundle
+          path: ${{ steps.bake.outputs.manifestsBundle }}
+
+    outputs:
+      manifestsBundle: ${{ steps.bake.outputs.manifestsBundle }}
+
+  deploy:
+    name: 'Deploy to AKS cluster'
+    needs: [setup,build]
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Download bake-manifests-bundle artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: bake-manifests-bundle
+          path: ${{ needs.build.outputs.manifestsBundle }}
+
       - name: Login via Az module
         uses: azure/login@v1.4.7
         with:
@@ -434,7 +449,7 @@ jobs:
         uses: Azure/k8s-deploy@v4.9
         with:
           namespace: ${{ inputs.environment }}
-          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+          manifests: ${{ needs.build.outputs.manifestsBundle }}
           images: |
             "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
