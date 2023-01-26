@@ -190,7 +190,7 @@ jobs:
           echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           echo "release=$release" >> $env:GITHUB_ENV
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_OUTPUT
+          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
@@ -251,11 +251,6 @@ jobs:
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ env.imagePullSecret }}"
-
-      - name: Encrypt Azure Container Registry value
-        run: |
-          containerRegistry=$(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "${{ steps.setenvs.outputs.containerRegistry }}"))
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
 
     outputs:
       appName: ${{ env.appName }}
@@ -340,15 +335,10 @@ jobs:
             echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
           azPSVersion: 'latest'
 
-      - name: Decrypt Azure Container Registry value
-        run: |
-          containerRegistry=$(gpg --decrypt --quiet --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "${{ needs.setup.outputs.containerRegistry }}" | base64 --decode))
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
-
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1.0.1
         with:
-          login-server: "${{ env.containerRegistry }}"
+          login-server: "${{ needs.setup.outputs.containerRegistry }}"
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
