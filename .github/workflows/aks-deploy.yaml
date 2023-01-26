@@ -190,7 +190,7 @@ jobs:
           echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           echo "release=$release" >> $env:GITHUB_ENV
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
+          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_OUTPUT
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
@@ -252,6 +252,15 @@ jobs:
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ env.imagePullSecret }}"
 
+      - name: Encrypt containerRegistry value
+        id: encrypt
+        shell: bash
+        run: |
+          containerRegistry="${{ steps.setenvs.outputs.containerRegistry }}"
+          echo "::add-mask::$containerRegistry"
+          containerRegistryEncrypted=$(gpg --symmetric --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "$containerRegistry) | base64 -w0)
+          echo "containerRegistryEncrypted=$containerRegistryEncrypted" >> $env:GITHUB_ENV
+
     outputs:
       appName: ${{ env.appName }}
       appVersion: ${{ env.appVersion }}
@@ -262,7 +271,7 @@ jobs:
       domainName: ${{ env.domainName }}
       hostName: ${{ env.hostName }}
       imagePullSecret: ${{ env.imagePullSecret }}
-      containerRegistry: ${{ env.containerRegistry }}
+      containerRegistry: ${{ steps.encrypt.outputs.containerRegistryEncrypted }}
       date: ${{ env.date }}
       ingressWhitelist: ${{ env.ingressWhitelist }}
       adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
@@ -335,10 +344,19 @@ jobs:
             echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
           azPSVersion: 'latest'
 
+      - name: Decrypt containerRegistry value
+        id: decrypt
+        shell: bash
+        run: |
+          containerRegistryEncrypted="${{ needs.setup.outputs.containerRegistryEncrypted }}"
+          containerRegistry=$(gpg --decrypt --quiet --batch --passphrase "${{ secrets.registryPassword }}" --output - <(echo "$containerRegistryEncrypted" | base64 --decode))
+          echo "::add-mask::$containerRegistry"
+          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
+
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1.0.1
         with:
-          login-server: "${{ needs.setup.outputs.containerRegistry }}"
+          login-server: "${{ env.containerRegistry }}"
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
