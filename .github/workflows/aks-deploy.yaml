@@ -104,8 +104,7 @@ on:
         required: false
 
 permissions:
-  id-token: write
-  contents: read
+      id-token: write
 
 jobs:
   setup:
