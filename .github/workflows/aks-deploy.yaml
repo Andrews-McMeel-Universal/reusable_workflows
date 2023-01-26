@@ -489,7 +489,7 @@ jobs:
           extra_args: ''
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
 
-      - name: Output summary
+      - name: Create deployment summary
         run: |
           echo "### ${{ needs.setup.outputs.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
           echo "- **Application Name**: ${{ needs.setup.outputs.appName }}" >> $GITHUB_STEP_SUMMARY
