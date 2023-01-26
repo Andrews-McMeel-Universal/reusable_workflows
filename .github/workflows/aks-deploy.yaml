@@ -90,6 +90,8 @@ on:
         required: true
       registryPassword:
         required: true
+      registryHostName:
+        required: true
       storageAccountKey:
         required: true
       webAuthenticationPassword:
@@ -144,7 +146,6 @@ jobs:
           $appConfig = Get-Envs -PathToYaml $valuesYamlPath
           $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
           $chartConfig= Get-Envs -PathToYaml $chartYamlPath
-          $containerRegistry = $appConfig.image.repository
           $appName = $chartConfig.name
           $appVersion = $chartConfig.appVersion
           $appHealthCheck = $appconfig.deployment.healthCheckPath
@@ -190,7 +191,6 @@ jobs:
           echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           echo "release=$release" >> $env:GITHUB_ENV
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_OUTPUT
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
@@ -247,20 +247,10 @@ jobs:
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4.0
         with:
-          container-registry-url: "${{ steps.setenvs.outputs.containerRegistry }}"
+          container-registry-url: ${{ secrets.registryHostName }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ env.imagePullSecret }}"
-
-      - name: Encrypt containerRegistry value
-        id: encrypt
-        shell: bash
-        run: |
-          containerRegistryEncrypted=$(gpg --symmetric --batch --passphrase "$PASSPHRASE" --output - <(echo "$VALUE" | base64 -w0))
-          echo "containerRegistryEncrypted=$containerRegistryEncrypted" >> $env:GITHUB_ENV
-        env:
-          VALUE: ${{ steps.setenvs.outputs.containerRegistry }}
-          PASSPHRASE: ${{ secrets.registryPassword }}
 
     outputs:
       appName: ${{ env.appName }}
@@ -272,7 +262,6 @@ jobs:
       domainName: ${{ env.domainName }}
       hostName: ${{ env.hostName }}
       imagePullSecret: ${{ env.imagePullSecret }}
-      containerRegistryEncrypted: ${{ env.containerRegistryEncrypted }}
       date: ${{ env.date }}
       ingressWhitelist: ${{ env.ingressWhitelist }}
       adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
@@ -345,27 +334,17 @@ jobs:
             echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
           azPSVersion: 'latest'
 
-      - name: Decrypt containerRegistry value
-        id: decrypt
-        shell: bash
-        run: |
-          containerRegistry=$(gpg --decrypt --quiet --batch --passphrase "$PASSPHRASE" --output - <(echo "$VALUE" | base64 --decode))
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
-        env:
-          VALUE: ${{ needs.setup.outputs.containerRegistryEncrypted }}
-          PASSPHRASE: ${{ secrets.registryPassword }}
-
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1.0.1
         with:
-          login-server: "${{ env.containerRegistry }}"
+          login-server: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker push "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
   deploy:
     name: 'Deploy to AKS cluster'
@@ -423,16 +402,6 @@ jobs:
           EOF
           fi
 
-      - name: Decrypt containerRegistry value
-        id: decrypt
-        shell: bash
-        run: |
-          containerRegistry=$(gpg --decrypt --quiet --batch --passphrase "$PASSPHRASE" --output - <(echo "$VALUE" | base64 --decode))
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
-        env:
-          VALUE: ${{ needs.setup.outputs.containerRegistryEncrypted }}
-          PASSPHRASE: ${{ secrets.registryPassword }}
-
       - name: Bake Helm Templates
         id: bake
         uses: azure/k8s-bake@v2.2
@@ -443,7 +412,7 @@ jobs:
           helm-version: 'latest'
           overrideFiles: ./values-override.yaml
           overrides: |
-            image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.repository:${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ needs.setup.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
@@ -467,7 +436,7 @@ jobs:
           namespace: ${{ inputs.environment }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+            "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
             "${{ needs.setup.outputs.imagePullSecret }}"
           pull-images: false
