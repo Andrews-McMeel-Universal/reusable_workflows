@@ -1,0 +1,26 @@
+changelog:
+  exclude:
+    labels:
+      - tests
+  categories:
+    - title: General Changes
+      labels:
+        - "*"
+    - title: Documentation
+      labels:
+        - documentation
+    - title: AKS Deploy Workflow Changes
+      labels:
+        - aks-deploy
+    - title: B2C Build and Deploy Workflow Changes
+      labels:
+        - b2c-build-and-deploy
+    - title: Purge CDN Workflow Changes
+      labels:
+        - purge-cdn
+    - title: Update AD DNS Workflow Changes
+      labels:
+        - update-addns
+    - title: Update Azure API Management Workflow Changes
+      labels:
+        - update-azureapimanagement.yaml
