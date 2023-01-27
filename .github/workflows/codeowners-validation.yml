@@ -1,0 +1,45 @@
+name: Codeowners Validation
+
+on:
+  push:
+    paths:
+      - 'CODEOWNERS'
+      - '.github/workflows/codeowners-validation.yml'
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+  workflow_dispatch: {}
+
+jobs:
+  codeowners-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Get repository owner type
+        id: owner-type
+        run: |
+          REPO_JSON=$(curl -s "${{ github.api_url}}/repos/${{ github.repository }}" -H "Authorization: token ${{ github.token }}")
+          OWNER_TYPE=$(echo $REPO_JSON | jq -r '.owner.type')
+          OWNER_TYPE=$(echo "$OWNER_TYPE" | tr '[:upper:]' '[:lower:]')
+          echo "Owner type: $OWNER_TYPE"
+          echo "owner-type=$OWNER_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Basic CODEOWNERS validation
+        if: ${{ steps.owner-type.outputs.owner-type != 'organization' }}
+        uses: mszostok/codeowners-validator@v0.7.4
+        with:
+          checks: 'duppatterns,syntax'
+          github_access_token: '${{ github.token }}'
+
+      - name: Full CODEOWNERS validation
+        if: ${{ steps.owner-type.outputs.owner-type == 'organization' }}
+        uses: mszostok/codeowners-validator@v0.7.4
+        with:
+          github_access_token: '${{ github.token }}'
+          checks: 'duppatterns,syntax' # Removing files since this is a template for all organization repos.

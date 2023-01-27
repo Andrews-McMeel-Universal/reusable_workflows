@@ -1,3 +1,5 @@
+name: Update Boley AD DNS
+
 on:
   workflow_call:
     inputs:

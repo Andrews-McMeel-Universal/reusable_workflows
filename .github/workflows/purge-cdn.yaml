@@ -1,3 +1,5 @@
+name: Purge Azure CDN
+
 on:
   workflow_call:
     inputs:
