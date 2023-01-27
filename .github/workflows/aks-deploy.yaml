@@ -14,29 +14,35 @@ on:
         type: string
         description: 'GitHub Repository Name.'
       clusterName:
-        required: true
+        required: false
         type: string
         description: 'AKS Cluster name.'
+        default: 'amuaks201'
       clusterResourceGroup:
-        required: true
+        required: false
         type: string
         description: 'AKS Cluster Resource Group.'
+        default: 'AMU_AKS_201'
       aksIngressFqdn:
-        required: true
+        required: false
         type: string
         description: 'FQDN for AKS cluster ingress.'
+        default: 'amuaks201-development-ingress.centralus.cloudapp.azure.com.'
       dnsResourceGroup:
-        required: true
+        required: false
         type: string
         description: 'DNS Resource Group.'
+        default: 'AMU_DNS_RG'
       chartsPath:
-        required: true
+        required: false
         type: string
         description: 'Relative path to Helm charts.'
+        default: './deployments/charts/'
       dockerFilePath:
-        required: true
+        required: false
         type: string
         description: 'Relative path to Dockerfile.'
+        default: '.'
       dockerImageName:
         required: true
         type: string
@@ -51,13 +57,15 @@ on:
         description: 'Maximum number of replicas for the application HPA.'
         default: 4
       storageAccountName:
-        required: true
+        required: false
         type: string
         description: 'Storage Account for application information table.'
+        default: 'amucloudapps'
       appInfoTableName:
-        required: true
+        required: false
         type: string
         description: 'Application information storage table.'
+        default: 'DeployedApplications'
       deploymentTimeout:
         required: false
         type: number
@@ -67,22 +75,22 @@ on:
         required: false
         type: string
         description: 'Enable web authentication'
-        default: false
+        default: 'false'
       ingressWhitelist:
         required: false
         type: string
         description: 'IPs to include in the application whitelist'
-        default: "0.0.0.0/0"
+        default: '0.0.0.0/0'
       adminIngressWhitelist:
         required: false
         type: string
         description: 'IPs to include in the Admin application whitelist'
-        default: "207.67.20.252"
+        default: '207.67.20.252'
       environmentIngress:
         required: false
         type: string
         description: 'Add the environment name to the front of the hostname (for DNS)'
-        default: true
+        default: 'true'
     secrets:
       azureCredentials:
         required: true
