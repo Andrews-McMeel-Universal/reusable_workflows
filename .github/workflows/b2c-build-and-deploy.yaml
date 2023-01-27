@@ -1,3 +1,5 @@
+name: Build and Deploy B2C auth application
+
 on:
   workflow_call:
     inputs:

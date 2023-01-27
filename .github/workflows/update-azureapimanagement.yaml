@@ -1,3 +1,5 @@
+name: Update Azure API Management
+
 on:
   workflow_call:
     inputs:
