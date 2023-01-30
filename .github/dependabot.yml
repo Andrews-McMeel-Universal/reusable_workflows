@@ -9,3 +9,8 @@ updates:
     directory: ".github/workflows"
     schedule:
       interval: "weekly"
+    labels:
+      - 'devops'
+      - 'dependencies'
+    reviewers:
+      - 'Andrews-McMeel-Universal/devops-engineers'
