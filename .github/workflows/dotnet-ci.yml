@@ -13,22 +13,30 @@ on:
         description: 'Path to .NET Project File'
 
 jobs:
-  dotnet-ci:
+  test-in-ci:
     name: Build and Test .NET Application
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
 
-    - name: Setup .NET Core
+    - name: Setup .NET Core SDK
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: ${{ inputs.dotnetVersion }}
+
+    - uses: actions/cache@v3
+      with:
+        path: ~/.nuget/packages
+        # Look to see if there is a cache hit for the corresponding requirements file
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget
 
     - name: Install dependencies
       run: dotnet restore "${{ inputs.dotnetProjectFile }}"
 
     - name: Build
-      run: dotnet build "${{ inputs.dotnetProjectFile }}" -c Release
+      run: dotnet build "${{ inputs.dotnetProjectFile }}" -c Release --no-restore
 
     - name: Fix HTTPS Certs
       run: dotnet dev-certs https
