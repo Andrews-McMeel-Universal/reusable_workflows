@@ -1,0 +1,37 @@
+name: .NET Application CI
+
+on:
+  workflow_call:
+    inputs:
+      dotnetVersion:
+        required: true
+        type: string
+        description: '.NET SDK Version'
+      dotnetProjectFile:
+        required: true
+        type: string
+        description: 'Path to .NET Project File'
+
+jobs:
+  dotnet-ci:
+    name: Build and Test .NET Application
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ inputs.dotnetVersion }}
+
+    - name: Install dependencies
+      run: dotnet restore "${{ inputs.dotnetProjectFile }}"
+
+    - name: Build
+      run: dotnet build "${{ inputs.dotnetProjectFile }}" -c Release
+
+    - name: Fix HTTPS Certs
+      run: dotnet dev-certs https
+
+    - name: Test
+      run: dotnet test "${{ inputs.dotnetProjectFile }}" --no-restore --verbosity normal
