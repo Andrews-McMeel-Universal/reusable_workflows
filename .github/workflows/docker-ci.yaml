@@ -46,7 +46,7 @@ jobs:
             ${{ env.dockerCmd }} &
             RESULT=$?
             if [ $RESULT -eq 0 ]; then
-              curl "http://localhost:${{ env.dockerContainerPort }}"
+              wget -O - -q "http://localhost:${{ env.dockerContainerPort }}"
             else
               exit 1
             fi
