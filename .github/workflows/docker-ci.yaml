@@ -1,0 +1,76 @@
+name: Docker Build CI
+
+on:
+  workflow_call:
+    inputs:
+      repositoryUrl:
+        required: true
+        type: string
+        description: 'GitHub Repository URLl'
+      dockerFilePath:
+        required: true
+        type: string
+        description: 'Relative path to Dockerfile.'
+      dockerImageName:
+        required: true
+        type: string
+        description: 'Docker image name.'
+      dockerImageTag:
+        required: true
+        type: string
+        description: 'Docker image tag.'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+  # Cancel an in-progress deploy if a newer one is pending
+
+jobs:
+  test-in-ci:
+    name: Build Docker App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: ${{ inputs.dockerFilePath }}
+          file: Dockerfile
+          push: false
+          tags: ${{ inputs.repositoryUrl }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+
+      - name: Checkout Code and Variables for the environment
+        id: setenvs
+        shell: pwsh
+        run: |
+          Function Get-Envs {
+            param (
+                [parameter][string]$PathToYaml
+            )
+            Install-Module -Name powershell-yaml -Confirm:$false -Force
+            Import-Module powershell-yaml
+            $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
+            return $Values
+          }
+          $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
+          $appConfig = Get-Envs -PathToYaml $valuesYamlPath
+
+          $targetPort = $appConfig.service.targetPort
+
+          echo "targetPort=$targetPort" >> $env:GITHUB_ENV
+
+      - name: Run yarn test in container
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ inputs.repositoryUrl }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          run: |
+            curl http://localhost:${{ env.targetPort }} &&
+            yarn test
