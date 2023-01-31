@@ -53,7 +53,7 @@ jobs:
           tags: docker-ci:latest
           push: false
           load: true
-          cache-from: type=local,dest=/tmp/docker/
+          cache-from: type=local,src=/tmp/docker/
 
       - name: Get Docker variables from image
         run: |
