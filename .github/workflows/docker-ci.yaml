@@ -9,7 +9,7 @@ concurrency:
   # Cancel an in-progress deploy if a newer one is pending
 
 jobs:
-  test-in-ci:
+  build:
     name: Build Docker App
     runs-on: ubuntu-latest
     steps:
@@ -32,12 +32,15 @@ jobs:
       - name: Get docker container port
         run: |
           dockerContainerPort=$(docker image inspect docker-ci:latest -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp')
+          dockerEntrypoint=$(docker image inspect docker-ci:latest -f "{{json .Config.Entrypoint }}" | tr -d '["]')
 
           echo "dockerContainerPort=$dockerContainerPort" >> $GITHUB_ENV
+          echo "dockerEntrypoint=$dockerEntrypoint" >> $GITHUB_ENV
 
       - name: Run yarn test in container
         uses: addnab/docker-run-action@v3
         with:
           image: docker-ci:latest
-          run: sleep 30 && curl http://localhost:${{ env.dockerContainerPort }}
+          options: -v ${{ github.workspace }}:/app
+          run: $("${{ env.dockerEntrypoint }}") && sleep 30 && curl http://localhost:${{ env.dockerContainerPort }}
 
