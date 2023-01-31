@@ -4,8 +4,6 @@ on:
   push:
   workflow_call:
     secrets:
-      GITHUB_TOKEN:
-        required: true
       PAT_ACTION_CI:
         required: true
 
