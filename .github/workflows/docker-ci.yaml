@@ -3,22 +3,22 @@ name: Docker Build CI
 on:
   workflow_call:
     inputs:
-      repositoryUrl:
+      repositoryName:
         required: true
         type: string
-        description: 'GitHub Repository URLl'
+        description: 'GitHub Repository Name'
       dockerFilePath:
         required: true
         type: string
-        description: 'Relative path to Dockerfile.'
+        description: 'Relative path to Dockerfile'
       dockerImageName:
         required: true
         type: string
-        description: 'Docker image name.'
+        description: 'Docker image name'
       dockerImageTag:
         required: true
         type: string
-        description: 'Docker image tag.'
+        description: 'Docker image tag'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -45,7 +45,7 @@ jobs:
           context: ${{ inputs.dockerFilePath }}
           file: Dockerfile
           push: false
-          tags: ${{ inputs.repositoryUrl }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          tags: ${{ inputs.repositoryName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
 
       - name: Get docker container port
         run: |
@@ -57,7 +57,7 @@ jobs:
       - name: Run yarn test in container
         uses: addnab/docker-run-action@v3
         with:
-          image: ${{ inputs.repositoryUrl }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          image: ${{ inputs.repositoryName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
           run: |
             curl http://localhost:${{ env.targetPort }} &&
             yarn test
