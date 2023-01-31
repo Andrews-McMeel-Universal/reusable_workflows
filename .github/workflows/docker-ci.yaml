@@ -28,24 +28,13 @@ jobs:
           tags: docker-ci:latest
           push: false
           load: true
-          cache-to: type=local,dest=/tmp/docker/
-
-      - name: Upload Docker Build Cached Image Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: docker-cache
-          path: /tmp/docker/
+          cache-to: type=gha,mode=max
 
   test-in-ci:
     name: Test Docker App
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - name: Download Docker Build Cached Image Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: docker-cache
-          path: /tmp/docker/
 
       - name: Docker Build
         uses: docker/build-push-action@v4
@@ -53,7 +42,7 @@ jobs:
           tags: docker-ci:latest
           push: false
           load: true
-          cache-from: type=local,src=/tmp/docker/
+          cache-from: type=gha
 
       - name: Get Docker variables from image
         run: |
