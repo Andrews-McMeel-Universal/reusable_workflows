@@ -2,11 +2,6 @@ name: Docker Build CI
 
 on:
   workflow_call:
-    inputs:
-      dockerContainerPort:
-        required: true
-        type: string
-        description: 'Docker Container Port'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -34,9 +29,15 @@ jobs:
           push: false
           load: true
 
+      - name: Get docker container port
+        run: |
+          dockerContainerPort=$(docker image inspect  reusable_workflows-test-nginx -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp')
+
+          echo "dockerContainerPort=$dockerContainerPort" >> $GITHUB_ENV
+
       - name: Run yarn test in container
         uses: addnab/docker-run-action@v3
         with:
           image: docker-ci:latest
-          run: sleep 30 && curl http://localhost:${{ inputs.dockerContainerPort }}
+          run: sleep 30 && curl http://localhost:${{ env.dockerContainerPort }}
 
