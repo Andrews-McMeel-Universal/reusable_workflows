@@ -28,6 +28,26 @@ jobs:
           tags: docker-ci:latest
           push: false
           load: true
+          outputs: type=docker,dest=/tmp/docker/
+
+      - name: Upload Docker Image Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-image
+          path: /tmp/docker/
+
+  test-in-ci:
+    name: Test Docker App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download Docker Image Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+          path: /tmp/docker/
 
       - name: Get Docker variables from image
         run: |
