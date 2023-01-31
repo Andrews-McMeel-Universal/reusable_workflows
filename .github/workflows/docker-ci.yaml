@@ -38,5 +38,5 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: docker-ci:latest
-          run: curl http://localhost
+          run: sleep 30 && curl http://localhost:${{ inputs.containerPort }}
 
