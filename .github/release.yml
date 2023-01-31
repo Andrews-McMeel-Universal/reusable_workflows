@@ -6,9 +6,6 @@ changelog:
     - title: General Changes
       labels:
         - "*"
-      exclude:
-        labels:
-          - dependencies
     - title: Documentation
       labels:
         - documentation
@@ -27,6 +24,3 @@ changelog:
     - title: Update Azure API Management Workflow Changes
       labels:
         - update-azureapimanagement.yaml
-    - title: GitHub Action Dependencies
-      labels:
-        - dependencies
