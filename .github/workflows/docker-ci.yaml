@@ -43,7 +43,7 @@ jobs:
           image: docker-ci:latest
           options: -v ${{ github.workspace }}:/app
           run: |
-            ${{ env.dockerCmd }} &&
+            ${{ env.dockerCmd }}
             sleep 30 && 
             curl http://localhost:${{ env.dockerContainerPort }}"
 
