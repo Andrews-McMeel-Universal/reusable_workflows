@@ -39,7 +39,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build and push
+      - name: Docker Build
         uses: docker/build-push-action@v4
         with:
           context: ${{ inputs.dockerFilePath }}
@@ -47,25 +47,12 @@ jobs:
           push: false
           tags: ${{ inputs.repositoryUrl }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
 
-      - name: Checkout Code and Variables for the environment
-        id: setenvs
-        shell: pwsh
+      - name: Get docker container port
         run: |
-          Function Get-Envs {
-            param (
-                [parameter][string]$PathToYaml
-            )
-            Install-Module -Name powershell-yaml -Confirm:$false -Force
-            Import-Module powershell-yaml
-            $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
-            return $Values
-          }
-          $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
-          $appConfig = Get-Envs -PathToYaml $valuesYamlPath
+          dockerContainerPort=$(docker container ls --format "table {{.Ports}}" -f "name=^${{ inputs.dockerImageName }}" | awk -F "->" '{print $1}' | awk -F ":" '{print $2}')
 
-          $targetPort = $appConfig.service.targetPort
+          echo "dockerContainerPort=$dockerContainerPort" >> $GITHUB_ENV
 
-          echo "targetPort=$targetPort" >> $env:GITHUB_ENV
 
       - name: Run yarn test in container
         uses: addnab/docker-run-action@v3
