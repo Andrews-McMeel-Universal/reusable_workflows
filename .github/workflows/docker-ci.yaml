@@ -31,7 +31,7 @@ jobs:
 
       - name: Get docker container port
         run: |
-          dockerContainerPort=$(docker image inspect  reusable_workflows-test-nginx -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp')
+          dockerContainerPort=$(docker image inspect docker-ci:latest -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp')
 
           echo "dockerContainerPort=$dockerContainerPort" >> $GITHUB_ENV
 
