@@ -29,15 +29,15 @@ jobs:
           push: false
           load: true
 
-      - name: Get docker container port
+      - name: Get Docker variables from image
         run: |
           dockerContainerPort=$(docker image inspect docker-ci:latest -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp')
-          dockerCmd=$(docker image inspect docker-ci:latest -f "{{json .Config.Cmd }}" | tr -d '"][' | tr "," " ")
+          dockerCmd=$(docker image inspect inspect docker-ci:latest -f "{{json .Config.Cmd }}" | tr -d '][' | tr "," " ")
 
           echo "dockerContainerPort=$dockerContainerPort" >> $GITHUB_ENV
           echo "dockerCmd=$dockerCmd" >> $GITHUB_ENV
 
-      - name: Run yarn test in container
+      - name: Run tests in Docker Container
         uses: addnab/docker-run-action@v3
         with:
           image: docker-ci:latest
