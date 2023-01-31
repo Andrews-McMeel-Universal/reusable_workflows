@@ -32,15 +32,15 @@ jobs:
       - name: Get docker container port
         run: |
           dockerContainerPort=$(docker image inspect docker-ci:latest -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp')
-          dockerEntrypoint=$(docker image inspect docker-ci:latest -f "{{json .Config.Entrypoint }}" | tr -d '["]')
+          dockerCmd=$(docker image inspect docker-ci:latest -f "{{json .Config.Cmd }}" | tr -d '"][' | tr "," " ")
 
           echo "dockerContainerPort=$dockerContainerPort" >> $GITHUB_ENV
-          echo "dockerEntrypoint=$dockerEntrypoint" >> $GITHUB_ENV
+          echo "dockerCmd=$dockerCmd" >> $GITHUB_ENV
 
       - name: Run yarn test in container
         uses: addnab/docker-run-action@v3
         with:
           image: docker-ci:latest
           options: -v ${{ github.workspace }}:/app
-          run: $("${{ env.dockerEntrypoint }}") && sleep 30 && curl http://localhost:${{ env.dockerContainerPort }}
+          run: "${{ env.dockerCmd }}" && sleep 30 && curl http://localhost:${{ env.dockerContainerPort }}
 
