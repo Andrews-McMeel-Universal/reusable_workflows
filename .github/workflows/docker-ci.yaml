@@ -43,12 +43,12 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: false
-          tags: ${{ inputs.dockerImageName }}:latest
+          tags: test-image:latest
 
       - name: Run yarn test in container
         uses: addnab/docker-run-action@v3
         with:
-          image: ${{ inputs.dockerImageName }}:latest
+          image: test-image:latest
           run: |
             curl http://localhost:${{ inputs.dockerContainerPort }} &&
             yarn test
