@@ -41,7 +41,7 @@ jobs:
           context: ${{ inputs.dockerFilePath }}
           file: Dockerfile
           push: false
-          tags: ${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          tags: ${{ inputs.dockerImageName }}:latest
 
       - name: Get docker container port
         run: |
@@ -53,7 +53,7 @@ jobs:
       - name: Run yarn test in container
         uses: addnab/docker-run-action@v3
         with:
-          image: ${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          image: ${{ inputs.dockerImageName }}:latest
           run: |
             curl http://localhost:${{ env.targetPort }} &&
             yarn test
