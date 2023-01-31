@@ -15,6 +15,10 @@ on:
         required: true
         type: string
         description: 'Docker image tag'
+      dockerContainerPort:
+        required: true
+        type: string
+        description: 'Docker Container Port'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -38,22 +42,14 @@ jobs:
       - name: Docker Build
         uses: docker/build-push-action@v4
         with:
-          context: ${{ inputs.dockerFilePath }}
-          file: Dockerfile
           push: false
           tags: ${{ inputs.dockerImageName }}:latest
-
-      - name: Get docker container port
-        run: |
-          dockerContainerPort=$(docker container ls --format "table {{.Ports}}" -f "name=^${{ inputs.dockerImageName }}" | awk -F "->" '{print $1}' | awk -F ":" '{print $2}')
-
-          echo "dockerContainerPort=$dockerContainerPort" >> $GITHUB_ENV
-
 
       - name: Run yarn test in container
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ inputs.dockerImageName }}:latest
           run: |
-            curl http://localhost:${{ env.targetPort }} &&
+            curl http://localhost:${{ inputs.dockerContainerPort }} &&
             yarn test
+
