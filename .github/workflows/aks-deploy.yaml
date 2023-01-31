@@ -1,3 +1,5 @@
+name: AKS Deployment
+
 on:
   workflow_call:
     inputs:
