@@ -44,9 +44,11 @@ jobs:
           options: -v ${{ github.workspace }}:/app
           run: |
             ${{ env.dockerCmd }} &
+            sleep 15
             RESULT=$?
             if [ $RESULT -eq 0 ]; then
-              wget -O - -q "http://localhost:${{ env.dockerContainerPort }}"
+              wget -O - -q "http://localhost:${{ env.dockerContainerPort }}" ||
+              curl "http://localhost:${{ env.dockerContainerPort }}"
             else
               exit 1
             fi
