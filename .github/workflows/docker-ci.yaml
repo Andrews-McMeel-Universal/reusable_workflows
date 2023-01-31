@@ -38,6 +38,7 @@ jobs:
 
   test-in-ci:
     name: Test Docker App
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
