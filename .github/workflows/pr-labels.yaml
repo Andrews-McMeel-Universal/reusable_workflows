@@ -1,0 +1,37 @@
+name: Add PR Labels
+
+on:
+  push:
+  workflow_call:
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+      PAT_ACTION_CI:
+        required: true
+
+jobs:
+  # Automatically apply labels that match globs, defined in .github/labeler.yml
+  # https://github.com/marketplace/actions/labeler
+  triage-labels:
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v4
+        with:
+          repo-token: ${{ secrets.PAT_ACTION_CI }}
+          sync-labels: true
+
+  # Prevent merging if certain labels exist
+  # https://github.com/marketplace/actions/require-labels
+  check-required-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mheap/github-action-required-labels@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          mode: exactly
+          count: 0
+          labels: 'do not merge'

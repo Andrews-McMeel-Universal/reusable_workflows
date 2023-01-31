@@ -1,0 +1,39 @@
+name: PR Lint and Test Bypass
+
+# This action is used to bypass required status checks when files are changed that do not impact the app or require testing
+
+on:
+  workflow_call:
+
+jobs:
+  # Required status check
+  lint-and-format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      # Status Checks
+      - name: Update commit status
+        uses: myrotvorets/set-commit-status-action@master
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+          status: '${{ job.status }}'
+
+  # Required status check
+  test-in-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      # Status Checks
+      - name: Update commit status
+        uses: myrotvorets/set-commit-status-action@master
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+          status: '${{ job.status }}'

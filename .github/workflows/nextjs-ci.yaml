@@ -1,4 +1,4 @@
-name: Node.js Application CI
+name: Next.js Application CI
 
 on:
   workflow_call:
@@ -11,6 +11,22 @@ on:
         required: true
         type: string
         description: 'Application Service API URL'
+      baseUrl:
+        required: true
+        type: string
+        description: 'Base URL'
+      nextAuthUrl:
+        required: true
+        type: string
+        description: 'Next.js Auth URL'
+      serviceAppNameUrl:
+        required: true
+        type: string
+        description: 'Service App Name URL'
+      nextPublicBaseUrl:
+        required: true
+        type: string
+        description: 'Next.js Public Base URL'
     secrets:
       apiSubscriptionKey:
         required: true
@@ -18,10 +34,6 @@ on:
         required: true
       PAT_ACTION_CI:
         required: true
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   # Sets up dependencies and initial cache
