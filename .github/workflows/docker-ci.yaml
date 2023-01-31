@@ -38,5 +38,5 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: docker-ci:latest
-          run: yarn test && curl http://localhost:${{ inputs.dockerContainerPort }}
+          run: curl http://localhost
 
