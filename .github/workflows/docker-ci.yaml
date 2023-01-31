@@ -3,10 +3,6 @@ name: Docker Build CI
 on:
   workflow_call:
     inputs:
-      workflowName:
-        required: true
-        type: string
-        description: 'GitHub Actions Workflow Name'
       dockerFilePath:
         required: true
         type: string
@@ -45,7 +41,7 @@ jobs:
           context: ${{ inputs.dockerFilePath }}
           file: Dockerfile
           push: false
-          tags: ${{ inputs.workflowName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          tags: docker-ci/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
 
       - name: Get docker container port
         run: |
@@ -57,7 +53,7 @@ jobs:
       - name: Run yarn test in container
         uses: addnab/docker-run-action@v3
         with:
-          image: ${{ inputs.workflowName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
+          image: docker-ci/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}
           run: |
             curl http://localhost:${{ env.targetPort }} &&
             yarn test
