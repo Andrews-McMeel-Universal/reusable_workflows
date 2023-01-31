@@ -43,7 +43,10 @@ jobs:
           image: docker-ci:latest
           options: -v ${{ github.workspace }}:/app
           run: |
-            ${{ env.dockerCmd }}
-            sleep 30 && 
-            curl http://localhost:${{ env.dockerContainerPort }}"
-
+            ${{ env.dockerCmd }} &
+            RESULT=$?
+            if [ $RESULT -eq 0 ]; then
+              curl http://localhost:${{ env.dockerContainerPort }}"
+            else
+              exit 1
+            fi
