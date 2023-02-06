@@ -125,7 +125,7 @@ jobs:
         with: 
           ref: ${{ steps.getlatestrelease.outputs.tag_name }}
 
-      - name: Checkout Code and Variables for the environment
+      - name: Extract Helm values
         id: setenvs
         shell: pwsh
         run: |
