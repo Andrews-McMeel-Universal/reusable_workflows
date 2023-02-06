@@ -180,19 +180,19 @@ jobs:
           
           $release = "$appName-${{ github.sha }}".Substring(0,53)
           $release=($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
-          echo "appName=$appName" >> $env:GITHUB_ENV
-          echo "appVersion=$appVersion" >> $env:GITHUB_ENV
-          echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
-          echo "configMap=$configMap" >> $env:GITHUB_ENV
-          echo "configSecret=$configSecret" >> $env:GITHUB_ENV
-          echo "ingress=$ingress" >> $env:GITHUB_ENV
-          echo "domainName=$domainName" >> $env:GITHUB_ENV
-          echo "hostName=$hostName" >> $env:GITHUB_ENV
-          echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
-          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
-          echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
-          echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
-          echo "release=$release" >> $env:GITHUB_ENV
+          echo "appName=$appName" >> $env:GITHUB_OUTPUT
+          echo "appVersion=$appVersion" >> $env:GITHUB_OUTPUT
+          echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_OUTPUT
+          echo "configMap=$configMap" >> $env:GITHUB_OUTPUT
+          echo "configSecret=$configSecret" >> $env:GITHUB_OUTPUT
+          echo "ingress=$ingress" >> $env:GITHUB_OUTPUT
+          echo "domainName=$domainName" >> $env:GITHUB_OUTPUT
+          echo "hostName=$hostName" >> $env:GITHUB_OUTPUT
+          echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_OUTPUT
+          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_OUTPUT
+          echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_OUTPUT
+          echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_OUTPUT
+          echo "release=$release" >> $env:GITHUB_OUTPUT
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
@@ -225,7 +225,7 @@ jobs:
         run: kubectl config set-context --current --namespace="${{ inputs.environment }}"
 
       - name: Apply configMap
-        if: ${{ env.configMap != null }}
+        if: ${{ steps.setenvs.outputs.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1.2.0
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
@@ -233,17 +233,17 @@ jobs:
       - name: Add GitHub secrets to k8s
         shell: pwsh
         run: |
-          if (kubectl get secret | Select-String "${{ env.configSecret }}") {
-            kubectl delete secret "${{ env.configSecret }}"
+          if (kubectl get secret | Select-String "${{ steps.setenvs.outputs.configSecret }}") {
+            kubectl delete secret "${{ steps.setenvs.outputs.configSecret }}"
           }
-          kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
+          kubectl create secret generic "${{ steps.setenvs.outputs.configSecret }}" --from-env-file .env
 
           if ( "${{ inputs.webAuthentication }}" -eq "true") {
-            if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
-              kubectl delete secret "${{ env.appName }}-basic-auth"
+            if (kubectl get secret | Select-String "${{ steps.setenvs.outputs.appName }}-basic-auth") {
+              kubectl delete secret "${{ steps.setenvs.outputs.appName }}-basic-auth"
             }
             htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
-            kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
+            kubectl create secret generic "${{ steps.setenvs.outputs.appName }}-basic-auth" --from-file=auth
           }
 
       - name: Create k8s Image Pull Secret
@@ -252,22 +252,7 @@ jobs:
           container-registry-url: ${{ secrets.registryHostName }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: "${{ env.imagePullSecret }}"
-
-    outputs:
-      appName: ${{ env.appName }}
-      appVersion: ${{ env.appVersion }}
-      appHealthCheck: ${{ env.appHealthCheck }}
-      configMap: ${{ env.configMap }}
-      configSecret: ${{ env.configSecret }}
-      ingress: ${{ env.ingress }}
-      domainName: ${{ env.domainName }}
-      hostName: ${{ env.hostName }}
-      imagePullSecret: ${{ env.imagePullSecret }}
-      date: ${{ env.date }}
-      ingressWhitelist: ${{ env.ingressWhitelist }}
-      adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
-      release: ${{ env.release }}
+          secret-name: "${{ steps.setenvs.outputs.imagePullSecret }}"
 
   build:
     name: 'Build Docker Image'
@@ -316,6 +301,7 @@ jobs:
 
       - name: Generate build args from Azure Key Vaults
         uses: azure/powershell@v1.2.0
+        id: buildargs
         with:
           inlineScript: |
             $KeyVaultName = "${{ inputs.environmentKeyVault }}"
@@ -333,7 +319,7 @@ jobs:
                 $buildArguments = $buildArguments + $buildArgPredicate + $argName + "=" + $argSecret
             }
 
-            echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
+            echo "buildArguments=$buildArguments" >> $env:GITHUB_OUTPUT
           azPSVersion: 'latest'
 
       - name: Login to Azure Container Registry
@@ -345,7 +331,7 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ steps.buildargs.outputs.buildArguments }} -t "${{ secrets.registryHostName  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           docker push "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
       - name: Create values override file
