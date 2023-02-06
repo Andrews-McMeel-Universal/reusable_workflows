@@ -12,11 +12,6 @@ on:
         type: string
         description: 'Path to .NET Project File'
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-  # Cancel an in-progress deploy if a newer one is pending
-
 jobs:
   test-in-ci:
     name: Build and Test .NET Application

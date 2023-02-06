@@ -3,11 +3,6 @@ name: Docker Build CI
 on:
   workflow_call:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-  # Cancel an in-progress deploy if a newer one is pending
-
 jobs:
   build:
     name: Build Docker App
