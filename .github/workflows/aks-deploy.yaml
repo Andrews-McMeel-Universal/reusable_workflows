@@ -178,8 +178,9 @@ jobs:
             }
           }
           
-          $release = "$appName-${{ github.sha }}".Substring(0,53)
-          $release=($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
+          $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)','$1'
+          $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
+          
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
           echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
@@ -399,7 +400,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v2.2
+        uses: azure/k8s-bake@v2.4
         with:
           renderEngine: 'helm'
           helmChart: ${{ inputs.chartsPath }}
