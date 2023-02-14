@@ -1,0 +1,88 @@
+name: 'Test Ruby CI App'
+
+
+on:
+  workflow_call:
+    inputs:
+      BUNDLER_VERSION:
+        required: false
+        type: string
+        default: 2.3.26
+        description: 'Bundler version'
+      RAILS_ENV:
+        required: false
+        type: string
+        default: 'development'
+        description: 'Rails Environment'
+      RAILS_LOG_TO_STDOUT: 
+        required: false
+        type: boolean
+        default: true
+        description: 'Send Rails logs to standard output'
+      RUBY_VERSION: 
+        required: true
+        type: string
+        description: 'Ruby version'
+      APT_PACKAGES: 
+        required: false
+        type: string
+        default: 'curl'
+        description: 'Apt packages to install'
+      INSTALL_NODE: 
+        required: true
+        type: boolean
+        default: false
+        description: 'Whether to install Node.js or not'
+      UBUNTU_VERSION: 
+        required: false
+        type: string
+        default: 'ubuntu-20.04'
+        description: 'Ubuntu version to use for application'
+
+env:
+  BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
+  RAILS_ENV: ${{ inputs.RAILS_ENV }}
+  RAILS_LOG_TO_STDOUT: ${{ inputs.RAILS_LOG_TO_STDOUT }}
+  RUBY_VERSION: ${{ inputs.RUBY_VERSION }}
+  APT_PACKAGES: ${{ inputs.APT_PACKAGES }}
+  INSTALL_NODE: ${{ inputs.INSTALL_NODE }}
+  UBUNTU_VERSION: ${{ inputs.UBUNTU_VERSION }}
+
+jobs:
+  build:
+    name: Build Ruby App
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install necessary packages
+        run: |
+          sudo apt-get update -y --fix-missing &&
+          sudo apt-get install -y ${{ env.APT_PACKAGES }}
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '14'
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1.136.0
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Run tests
+        run: bundle exec rake
+
+      - name: Boot Rails server
+        run: |
+          bundle exec rails s -b 0.0.0.0 -p 3000 &
+          PID=$!
+          sleep 10
+          if [[ $(ps -p $PID) ]] ; then 
+            kill -2 $PID
+            exit 0
+          else
+            echo "App failed to start."
+            exit 1
+          fi
