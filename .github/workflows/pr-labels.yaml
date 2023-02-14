@@ -6,6 +6,8 @@ on:
     secrets:
       PAT_ACTION_CI:
         required: true
+      GITHUB_TOKEN:
+        required: true
 
 jobs:
   # Automatically apply labels that match globs, defined in .github/labeler.yml
