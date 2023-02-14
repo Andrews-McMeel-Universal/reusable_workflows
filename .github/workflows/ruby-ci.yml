@@ -31,22 +31,22 @@ on:
       INSTALL_NODE: 
         required: true
         type: boolean
-        default: false
         description: 'Whether to install Node.js or not'
       UBUNTU_VERSION: 
         required: false
         type: string
         default: 'ubuntu-20.04'
         description: 'Ubuntu version to use for application'
+      NODE_VERSION: 
+        required: false
+        type: string
+        default: '14'
+        description: 'Node.js version to install'
 
 env:
   BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
   RAILS_ENV: ${{ inputs.RAILS_ENV }}
   RAILS_LOG_TO_STDOUT: ${{ inputs.RAILS_LOG_TO_STDOUT }}
-  RUBY_VERSION: ${{ inputs.RUBY_VERSION }}
-  APT_PACKAGES: ${{ inputs.APT_PACKAGES }}
-  INSTALL_NODE: ${{ inputs.INSTALL_NODE }}
-  UBUNTU_VERSION: ${{ inputs.UBUNTU_VERSION }}
 
 jobs:
   build:
@@ -59,16 +59,16 @@ jobs:
       - name: Install necessary packages
         run: |
           sudo apt-get update -y --fix-missing &&
-          sudo apt-get install -y ${{ env.APT_PACKAGES }}
+          sudo apt-get install -y ${{ inputs.APT_PACKAGES }}
 
       - uses: actions/setup-node@v3
         with:
-          node-version: '14'
+          node-version: ${{ inputs.NODE_VERSION }}
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1.136.0
         with:
-          ruby-version: ${{ env.RUBY_VERSION }}
+          ruby-version: ${{ inputs.RUBY_VERSION }}
           bundler-cache: true
 
       - name: Run tests
