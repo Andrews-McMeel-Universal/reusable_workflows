@@ -10,13 +10,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  actionlint:
+  dispatch:
+    name: Call repository dispatch
     runs-on: ubuntu-latest
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.PAT_ACTION_CI }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           repository: Andrews-McMeel-Universal/reusable_workflows-test
           event-type: test-workflow
-          client-payload: '{"ref": "2.1.15"}'
+          client-payload: '{"ref": "2.1.15","run_id": "${{ github.run_id }}"}'
