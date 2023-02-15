@@ -20,4 +20,4 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI }}
           repository: Andrews-McMeel-Universal/reusable_workflows-test
           event-type: test-workflow
-          client-payload: '{"ref": "2.1.15","run_id": "${{ github.run_id }}"}'
+          client-payload: '{"ref": "2.1.15","run_id": "${{ github.run_id }}", "sha": "${{ github.sha }}"}'
