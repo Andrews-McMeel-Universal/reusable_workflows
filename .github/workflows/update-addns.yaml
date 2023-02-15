@@ -27,11 +27,11 @@ on:
         required: true
           
 jobs:
-  Update-AD-DNS:
+  update-boley-dns:
     runs-on: [self-hosted,Windows,boley]
     continue-on-error: false
     timeout-minutes: 10
-
+    name: Update Boley DNS
     steps:
       - name: Retrieve Application information
         id: getappinfo
