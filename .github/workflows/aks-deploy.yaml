@@ -166,9 +166,8 @@ jobs:
           $appDeployDate = Get-Date
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
-          $environmentIngress = "${{ inputs.environmentIngress }}"
-          $hostName = $ingress -replace $domainName, ''
-          $hostName = $hostName -replace "\.$", ""
+          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
           $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
           $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
 
@@ -309,7 +308,7 @@ jobs:
 
       - name: Create values override file
         run: |
-          WEB_AUTHENTICATION="${{ inputs.webAuthentication }}"
+          WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
           INGRESS_WHITELIST_ENV="${{ env.ingressWhitelist }}"
           ADMIN_INGRESS_WHITELIST_ENV="${{ env.adminIngressWhitelist }}"
           if [[ -n "${INGRESS_WHITELIST_ENV}" ]] ; then
