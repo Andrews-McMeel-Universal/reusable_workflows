@@ -17,7 +17,7 @@ jobs:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_ACTION_CI }}
           repository: Andrews-McMeel-Universal/reusable_workflows-test
           event-type: test-workflow
           client-payload: '{"ref": "2.1.15","run_id": "${{ github.run_id }}"}'
