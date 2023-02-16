@@ -1,0 +1,28 @@
+name: Use Node and Node Packages Cache
+
+description: 'Sets up node based on our version, installs it, and then uses yarn to install dependencies.  If no changes to these dependencies are detected, it will attempt to use the cached version.'
+
+runs:
+  using: 'composite'
+  steps:
+  # Installs node and caches the global yarn cache (does not cache node_modules)
+  - name: Set up Node from NVM
+    uses: actions/setup-node@v3
+    with:
+      node-version-file: '.nvmrc'
+      cache: 'yarn'
+
+  # Caches node_modules, breaks cache when yarn.lock is updated
+  - name: Cache dependencies
+    id: dependency-cache
+    uses: actions/cache@v3
+    with:
+      path: |
+        ./node_modules
+      key: ${{ runner.os }}-modules-${{ hashFiles('**/.env') }}-${{ hashFiles('yarn.lock') }}
+
+  # Installs dependencies from the cached packages in the global yarn cache if the cache was broken
+  - name: Install dependencies
+    if: steps.dependency-cache.outputs.cache-hit != 'true'
+    run: yarn install --frozen-lockfile --prefer-offline
+    shell: bash
