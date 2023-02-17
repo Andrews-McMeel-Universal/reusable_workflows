@@ -38,7 +38,7 @@ on:
 
 env:
   BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
-  BUNDLER_PATH: /bundler
+  BUNDLER_PATH: ${{ github.workspace }}/bundler
   RAILS_ENV: ${{ inputs.RAILS_ENV }}
   environment: ${{ inputs.RAILS_ENV }}
   rubyVersion: ${{ inputs.RUBY_VERSION }}
