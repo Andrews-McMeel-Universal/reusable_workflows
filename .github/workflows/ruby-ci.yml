@@ -1,4 +1,4 @@
-name: 'Test Ruby CI App'
+name: Ruby on Rails Application CI
 
 
 on:
@@ -38,35 +38,45 @@ on:
 
 env:
   BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
+  BUNDLER_PATH: /bundler
   RAILS_ENV: ${{ inputs.RAILS_ENV }}
   environment: ${{ inputs.RAILS_ENV }}
+  rubyVersion: ${{ inputs.RUBY_VERSION }}
+  aptPackages: ${{ inputs.APT_PACKAGES }}
 
 jobs:
-  build:
-    name: Build Ruby App
+  setup-and-build:
+    name: Build application
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install necessary packages
-        run: |
-          sudo apt-get update -y --fix-missing &&
-          sudo apt-get install -y ${{ inputs.APT_PACKAGES }}
-
       - uses: actions/setup-node@v3
+        if: inputs.INSTALL_NODE == true
         with:
           node-version: ${{ inputs.NODE_VERSION }}
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1.136.0
-        with:
-          ruby-version: ${{ inputs.RUBY_VERSION }}
-          bundler-cache: true
+      - uses: ./.github/actions/use-ruby-install-cache
 
-      - uses: ./.github/actions/use-env-cache
+  integration-tests:
+    name: Run Integration Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        if: inputs.INSTALL_NODE == true
         with:
-          azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          node-version: ${{ inputs.NODE_VERSION }}
+
+      - name: Use Ruby Install Cache action
+        uses: ./.github/actions/use-ruby-install-cache
+
+      - name: Use .env cache action
+        uses: ./.github/actions/use-env-cache
 
       - name: Boot Rails server
         run: |
