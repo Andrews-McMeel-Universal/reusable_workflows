@@ -1,4 +1,4 @@
-name: Ruby on Rails Application CI
+name: Ruby CI
 
 
 on:
@@ -38,15 +38,13 @@ on:
 
 env:
   BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
-  BUNDLER_PATH: ${{ github.workspace }}/bundler
   RAILS_ENV: ${{ inputs.RAILS_ENV }}
   environment: ${{ inputs.RAILS_ENV }}
-  rubyVersion: ${{ inputs.RUBY_VERSION }}
   aptPackages: ${{ inputs.APT_PACKAGES }}
 
 jobs:
   setup-and-build:
-    name: Build application
+    name: Build app
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
@@ -57,7 +55,11 @@ jobs:
         with:
           node-version: ${{ inputs.NODE_VERSION }}
 
-      - uses: ./.github/actions/use-ruby-install-cache
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1.136.0
+        with:
+          ruby-version: ${{ inputs.RUBY_VERSION }}
+          bundler-cache: true
 
   integration-tests:
     name: Run Integration Tests
@@ -72,9 +74,11 @@ jobs:
         if: inputs.INSTALL_NODE == true
         with:
           node-version: ${{ inputs.NODE_VERSION }}
-
-      - name: Use Ruby Install Cache action
-        uses: ./.github/actions/use-ruby-install-cache
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1.136.0
+        with:
+          ruby-version: ${{ inputs.RUBY_VERSION }}
+          bundler-cache: true
 
       - name: Use .env cache action
         uses: ./.github/actions/use-env-cache
