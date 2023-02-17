@@ -11,26 +11,24 @@ runs:
   using: 'composite'
   steps:
   # Caches the app's build files, breaks cache when yarn.lock, a .js/.jsx file, or the build args are updated
-  - name: Cache build args
-    id: build-args-cache
+  - name: Cache Azure Key Vault Secrets
+    id: secrets-cache
     uses: actions/cache@v3
     with:
       path: |
         ${{ github.workspace }}/.env
       key: pr-${{ runner.os }}-buildargs-${{ hashFiles('**/Secrets.json.gpg') }}-${{ hashFiles('**/yarn.lock') }}
 
-  # Builds the app if the cache was broken
-  # NOTE: The .env file is added as a path to the build-cache so when
-  # yarn build runs, it will have the proper environment variables
+  # Gets the build args if the cache is broken
   - name: Login via Az module
-    if: steps.build-args-cache.outputs.cache-hit != 'true'
+    if: steps.secrets-cache.outputs.cache-hit != 'true'
     uses: azure/login@v1.4.7
     with:
-      creds: "${{ inputs.azurecredentials }}"
+      creds: "${{ env.azureCredentials }}"
       enable-AzPSSession: true
 
-  - name: Generate build args from Azure Key Vaults
-    if: steps.build-args-cache.outputs.cache-hit != 'true'
+  - name: Pull down secrets from Azure Key Vaults
+    if: steps.secrets-cache.outputs.cache-hit != 'true'
     uses: azure/powershell@v1.2.0
     with:
       inlineScript: |
@@ -43,10 +41,9 @@ runs:
             $buildArgumentsContent = $argName + "=" + $argSecret
             Add-Content -Path "${{ github.workspace }}/.env" -Value $buildArgumentsContent
         }
-        
       azPSVersion: 'latest'
 
-  - name: Source Build Args .env file
+  - name: Source secrets file
     shell: sh
     run: | 
       while read -r buildArg; do        

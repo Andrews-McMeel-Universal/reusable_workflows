@@ -1,4 +1,4 @@
-name: Application CI
+name: Next.js Application CI
 
 on:
   workflow_call:
@@ -8,6 +8,9 @@ on:
       PAT_ACTION_CI:
         required: true
 
+env:
+  azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+
 jobs:
   # Sets up dependencies and initial cache
   setup-and-build:
@@ -15,18 +18,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: ./.github/actions/use-build-args-cache
-        with:
-          azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Build Args Cache Action
+        uses: ./.github/actions/use-build-args-cache
 
-      - uses: ./.github/actions/use-node-modules-cache
+      - name: Next.js Install Cache Action
+        uses: ./.github/actions/use-nextjs-install-cache
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Next.js Build Cache Action
+        uses: ./.github/actions/use-nextjs-build-cache
 
   # Reformats code
   lint-and-format:
@@ -37,16 +41,20 @@ jobs:
     steps:
       # This uses the PAT_ACTION_CI token as the normal GITHUB_TOKEN
       # doesn't have the permissions to trigger additional workflows
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
           token: ${{ secrets.PAT_ACTION_CI }}
 
-      - uses: ./.github/actions/use-build-args-cache
+      - name: Build Args Cache Action
+        uses: ./.github/actions/use-build-args-cache
 
-      - uses: ./.github/actions/use-node-modules-cache
+      - name: Next.js Install Cache Action
+        uses: ./.github/actions/use-nextjs-install-cache
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Next.js Build Cache Action
+        uses: ./.github/actions/use-nextjs-build-cache
 
       - name: Lint javascript
         run: yarn lint:js
@@ -55,12 +63,13 @@ jobs:
         run: yarn lint:styles
 
       # This step must be after other jobs or steps that might add or change files
-      - name: Format all
+      - name: Run formatter
         run: yarn format-all
 
       # With the correct PAT token permissions, this can trigger
       # another set of CI tests and workflows after it adds new commits.
-      - uses: stefanzweifel/git-auto-commit-action@v4
+      - name: Commit formatting changes
+        uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
@@ -73,15 +82,19 @@ jobs:
     needs: [setup-and-build,lint-and-format]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
 
-      - uses: ./.github/actions/use-build-args-cache
+      - name: Build Args Cache Action
+        uses: ./.github/actions/use-build-args-cache
 
-      - uses: ./.github/actions/use-node-modules-cache
+      - name: Next.js Install Cache Action
+        uses: ./.github/actions/use-nextjs-install-cache
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Next.js Build Cache Action
+        uses: ./.github/actions/use-nextjs-build-cache
 
       - name: Run Jest tests
         run: yarn test:unit:ci
@@ -94,15 +107,19 @@ jobs:
     needs: [setup-and-build,lint-and-format]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
 
-      - uses: ./.github/actions/use-build-args-cache
+      - name: Build Args Cache Action
+        uses: ./.github/actions/use-build-args-cache
 
-      - uses: ./.github/actions/use-node-modules-cache
+      - name: Next.js Install Cache Action
+        uses: ./.github/actions/use-nextjs-install-cache
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Next.js Build Cache Action
+        uses: ./.github/actions/use-nextjs-build-cache
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
@@ -110,8 +127,8 @@ jobs:
       - name: Run Playwright tests
         run: yarn test:integration:ci
 
-      - uses: actions/upload-artifact@v3
-        if: always()
+      - name: Upload Playwright Report Artifact
+        uses: actions/upload-artifact@v3
         with:
           name: playwright-report
           path: playwright-report/
@@ -123,15 +140,19 @@ jobs:
     needs: [setup-and-build,lint-and-format]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
 
-      - uses: ./.github/actions/use-build-args-cache
+      - name: Build Args Cache Action
+        uses: ./.github/actions/use-build-args-cache
 
-      - uses: ./.github/actions/use-node-modules-cache
+      - name: Next.js Install Cache Action
+        uses: ./.github/actions/use-nextjs-install-cache
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Next.js Build Cache Action
+        uses: ./.github/actions/use-nextjs-build-cache
 
       - name: Run Broken Link Checker
         id: link-checker-report
@@ -149,17 +170,22 @@ jobs:
     needs: [setup-and-build,lint-and-format]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
 
-      - uses: ./.github/actions/use-build-args-cache
+      - name: Build Args Cache Action
+        uses: ./.github/actions/use-build-args-cache
 
-      - uses: ./.github/actions/use-node-modules-cache
+      - name: Next.js Install Cache Action
+        uses: ./.github/actions/use-nextjs-install-cache
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Next.js Build Cache Action
+        uses: ./.github/actions/use-nextjs-build-cache
       
-      - uses: andresz1/size-limit-action@v1
+      - name: Size Limit Action
+        uses: andresz1/size-limit-action@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # The size-limit-action tries to run a 

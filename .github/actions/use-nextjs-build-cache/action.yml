@@ -12,7 +12,7 @@ runs:
     with:
       path: |
         ${{ github.workspace }}/.next
-      key: pr-${{ runner.os }}-nextjs-${{ hashFiles('**/.env') }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/*.[jt]s', '**/*.[jt]sx') }}
+      key: ${{ runner.os }}-nextjs-build-${{ hashFiles('**/.env') }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/*.[jt]s', '**/*.[jt]sx') }}
 
   # Builds the app if the cache was broken
   # NOTE: The .env file is added as a path to the build-cache so when
