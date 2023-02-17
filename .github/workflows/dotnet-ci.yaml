@@ -11,35 +11,44 @@ on:
         required: true
         type: string
         description: 'Path to .NET Project File'
+    secrets:
+      azureCredentials:
+        required: true
+
+env:
+  dotnetProjectFile: ${{ inputs.dotnetProjectFile }}
+  dotnetVersion: ${{ inputs.dotnetVersion }}
+  azureCredentials: ${{ secrets.azureCredentials }}
 
 jobs:
-  test-in-ci:
-    name: Build and Test .NET Application
+  setup-and-build:
+    name: Build Application
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v3
 
-    - name: Setup .NET Core SDK
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: ${{ inputs.dotnetVersion }}
+    - name: .NET Install Cache Action
+      uses: ./.github/actions/use-dotnet-install-cache
 
-    - uses: actions/cache@v3
-      with:
-        path: ~/.nuget/packages
-        # Look to see if there is a cache hit for the corresponding requirements file
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget
+    - name: .NET Build Cache Action
+      uses: ./.github/actions/use-dotnet-build-cache
 
-    - name: Install dependencies
-      run: dotnet restore "${{ inputs.dotnetProjectFile }}"
+  integration-tests:
+    name: Test Application
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
 
-    - name: Build
-      run: dotnet build "${{ inputs.dotnetProjectFile }}" -c Release --no-restore
+    - name: .NET Install Cache Action
+      uses: ./.github/actions/use-dotnet-install-cache
+
+    - name: .NET Build Cache Action
+      uses: ./.github/actions/use-dotnet-build-cache
 
     - name: Fix HTTPS Certs
       run: dotnet dev-certs https
 
-    - name: Test
-      run: dotnet test "${{ inputs.dotnetProjectFile }}" --no-restore --verbosity normal
+    - name: Run tests
+      run: dotnet test "${{ env.dotnetProjectFile }}" --no-restore --verbosity normal
