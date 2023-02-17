@@ -40,6 +40,7 @@ env:
   BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
   RAILS_ENV: ${{ inputs.RAILS_ENV }}
   environment: ${{ inputs.RAILS_ENV }}
+  azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
 
 jobs:
   setup-and-build:
