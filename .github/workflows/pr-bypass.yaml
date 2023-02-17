@@ -8,6 +8,7 @@ on:
 jobs:
   # Required status check
   lint-and-format:
+    name: Lint and Format
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -23,7 +24,25 @@ jobs:
           status: '${{ job.status }}'
 
   # Required status check
-  test-in-ci:
+  unit-tests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      # Status Checks
+      - name: Update commit status
+        uses: myrotvorets/set-commit-status-action@master
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+          status: '${{ job.status }}'
+
+  # Required status check
+  integration-tests:
+    name: Run Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

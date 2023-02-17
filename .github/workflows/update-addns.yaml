@@ -27,7 +27,7 @@ on:
         required: true
           
 jobs:
-  update-boley-dns:
+  update-dns:
     runs-on: [self-hosted,Windows,boley]
     continue-on-error: false
     timeout-minutes: 10
@@ -80,7 +80,7 @@ jobs:
             echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
           azPSVersion: "latest"
 
-      - name: Update Internal DNS
+      - name: Update Internal Boley DNS
         run:
           | 
           try {Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} } catch {Write-Host "Record Already Exists"}

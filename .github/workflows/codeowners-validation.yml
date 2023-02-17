@@ -6,10 +6,11 @@ on:
 
 jobs:
   codeowners-validation:
+    name: Codeowners File Validation
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout repository
+      - name: Checkout branch or tag
         uses: actions/checkout@v3
         with:
           fetch-depth: 1

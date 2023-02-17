@@ -6,9 +6,11 @@ on:
 
 jobs:
   actionlint:
+    name: Run actionlint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout branch or tag
+        uses: actions/checkout@v3
 
       - name: Download actionlint
         id: get_actionlint

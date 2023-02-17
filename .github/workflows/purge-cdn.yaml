@@ -20,7 +20,8 @@ on:
         required: true
 
 jobs:
-  AKS_Deploy:
+  purge-cdn:
+    name: Purge CDN Cache
     runs-on: ubuntu-latest
     continue-on-error: false
     timeout-minutes: 20     
@@ -30,6 +31,6 @@ jobs:
         with:
           creds: '${{ secrets.azureCredentials }}'
           enable-AzPSSession: false
-      - name: Purge CDN
+      - name: Purge CDN cache
         run: |
             az cdn endpoint purge --resource-group ${{ inputs.cdnResourceGroup }} --profile-name ${{ inputs.cdnProfile }} --name ${{ inputs.cdnEndpoint }} --content-paths '/*'

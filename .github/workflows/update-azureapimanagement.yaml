@@ -58,7 +58,7 @@ on:
 
         
 jobs:
-  Update_Azure_API_Management:
+  update-api-management:
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve Application information
