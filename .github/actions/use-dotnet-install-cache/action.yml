@@ -1,4 +1,4 @@
-name: Install dependencies and setup cache 
+name: Cache .NET Install
 
 description: 'Sets up the application based on our version, installs it, and then installs dependencies.  If no changes to these dependencies are detected, it will attempt to use the cached version.'
 

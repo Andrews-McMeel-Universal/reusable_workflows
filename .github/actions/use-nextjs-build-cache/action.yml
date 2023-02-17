@@ -1,4 +1,4 @@
-name: Use build cache
+name: Cache Yarn Build
 
 description: Builds the application and caches the result
 

@@ -1,4 +1,4 @@
-name: Use Cached Environment Variables
+name: Cache Env Vars
 
 description: Generates and caches a env file
 

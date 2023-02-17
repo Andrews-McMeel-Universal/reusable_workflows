@@ -1,4 +1,4 @@
-name: Use Cached Build Arguments
+name: Cache Build Args
 
 description: Generates and caches a build args file
 
