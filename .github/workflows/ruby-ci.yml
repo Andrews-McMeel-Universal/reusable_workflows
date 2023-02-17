@@ -40,7 +40,6 @@ env:
   BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
   RAILS_ENV: ${{ inputs.RAILS_ENV }}
   environment: ${{ inputs.RAILS_ENV }}
-  aptPackages: ${{ inputs.APT_PACKAGES }}
 
 jobs:
   setup-and-build:
@@ -55,11 +54,17 @@ jobs:
         with:
           node-version: ${{ inputs.NODE_VERSION }}
 
+      - uses: awalsh128/cache-apt-pkgs-action@v1.2.4
+        with:
+          packages: ${{ inputs.APT_PACKAGES }}
+          version: 1.0
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1.136.0
         with:
           ruby-version: ${{ inputs.RUBY_VERSION }}
           bundler-cache: true
+
 
   integration-tests:
     name: Run Integration Tests
@@ -74,6 +79,12 @@ jobs:
         if: inputs.INSTALL_NODE == true
         with:
           node-version: ${{ inputs.NODE_VERSION }}
+
+      - uses: awalsh128/cache-apt-pkgs-action@v1.2.4
+        with:
+          packages: ${{ inputs.APT_PACKAGES }}
+          version: 1.0
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1.136.0
         with:
