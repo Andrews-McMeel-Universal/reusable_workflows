@@ -61,6 +61,7 @@ jobs:
 
   integration-tests:
     name: Run Integration Tests
+    needs: [setup-and-build]
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
