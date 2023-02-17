@@ -1,6 +1,6 @@
 name: Use build cache
 
-description: Builds the Next.js app and caches the result
+description: Builds the application and caches the result
 
 runs:
   using: 'composite'
@@ -18,6 +18,6 @@ runs:
   # NOTE: The .env file is added as a path to the build-cache so when
   # yarn build runs, it will have the proper environment variables
   - name: Build app
+    shell: sh
     if: steps.build-cache.outputs.cache-hit != 'true'
     run: yarn build
-    shell: bash
