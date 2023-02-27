@@ -280,6 +280,14 @@ jobs:
       - name: Add GitHub secrets to k8s
         shell: pwsh
         run: |
+          WEB_AUTHENTICATION_USERNAME="${{ secrets.webAuthenticationUsername }}"
+          WEB_AUTHENTICATION_PASSWORD="${{ secrets.webAuthenticationPassword }}"
+
+          if [[ -z $WEB_AUTHENTICATION_USERNAME ]] || [[ -z $WEB_AUTHENTICATION_PASSWORD ]]; then
+              echo "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' environment secrets are set."
+              exit 1
+          fi
+
           if (kubectl get secret | Select-String "${{ env.configSecret }}") {
             kubectl delete secret "${{ env.configSecret }}"
           }
@@ -289,7 +297,7 @@ jobs:
             if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
               kubectl delete secret "${{ env.appName }}-basic-auth"
             }
-            htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
+            htpasswd -cb auth "$WEB_AUTHENTICATION_USERNAME" "$WEB_AUTHENTICATION_PASSWORD"
             kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
           }
 
