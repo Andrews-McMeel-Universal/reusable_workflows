@@ -49,7 +49,7 @@ on:
         required: false
         type: string
         description: 'Maximum number of replicas for the application HPA.'
-        default: 4
+        default: 30
       storageAccountName:
         required: true
         type: string
