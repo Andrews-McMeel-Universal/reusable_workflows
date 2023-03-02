@@ -98,12 +98,11 @@ on:
       azureCredentials:
         required: true
       registryUserName:
-        required: false
+        required: true
       registryPassword:
-        required: false
+        required: true
       registryHostName:
-        required: false
-        description: Hostname for the Docker Registry
+        required: true
       storageAccountKey:
         required: true
       webAuthenticationPassword:
@@ -184,27 +183,6 @@ jobs:
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
           $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
           $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
-
-          if ("${{ secrets.registryUserName }}") {
-            echo "registryUserName=${{ secrets.registryUserName }}" >> $env:GITHUB_ENV
-          }
-          else {
-            echo "registryUserName=${{ secrets.AMUAPPIMAGES201_USERNAME }}" >> $env:GITHUB_ENV
-          }
-
-          if ("${{ secrets.registryPassword }}") {
-            echo "registryPassword=${{ secrets.registryPassword }}" >> $env:GITHUB_ENV
-          }
-          else {
-            echo "registryPassword=${{ secrets.AMUAPPIMAGES201_PASSWORD }}" >> $env:GITHUB_ENV
-          }
-
-          if ("${{ secrets.registryHostName }}") {
-            echo "registryHostName=${{ secrets.registryHostName }}" >> $env:GITHUB_ENV
-          }
-          else {
-            echo "registryHostName=${{ secrets.AMUAPPIMAGES201_HOSTNAME }}" >> $env:GITHUB_ENV
-          }
 
           if ($environmentIngress -eq "true") {
             $ingress = "$appEnvironment.$ingress"
@@ -294,8 +272,8 @@ jobs:
         uses: Azure/docker-login@v1.0.1
         with:
           login-server: ${{ env.containerRegistry }}
-          username: ${{ env.registryUserName }}
-          password: ${{ env.registryPassword }}
+          username: ${{ secrets.registryUserName }}
+          password: ${{ secrets.registryPassword }}
 
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
@@ -332,8 +310,8 @@ jobs:
         uses: Azure/k8s-create-secret@v4.0
         with:
           container-registry-url: "${{ env.containerRegistry }}"
-          container-registry-username: ${{ env.registryUserName  }}
-          container-registry-password: ${{ env.registryPassword  }}
+          container-registry-username: ${{ secrets.registryUserName  }}
+          container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ env.imagePullSecret }}"
 
       - name: Build & Push Docker Image
