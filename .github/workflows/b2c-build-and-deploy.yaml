@@ -20,10 +20,6 @@ on:
     secrets:
       azureCredentials:
         required: true
-      registryUserName:
-        required: true
-      registryPassword:
-        required: true
       storageAccountKey:
         required: true
       azureB2CClientId:
