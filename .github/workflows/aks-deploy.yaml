@@ -10,9 +10,10 @@ on:
         type: string
         description: 'AKS Key vault.'
       repositoryName:
-        required: true
+        required: false
         type: string
         description: 'GitHub Repository Name.'
+        default: ${{ github.event.repository.name }}
       clusterName:
         required: false
         type: string
@@ -34,22 +35,25 @@ on:
         description: 'DNS Resource Group.'
         default: 'AMU_DNS_RG'
       chartsPath:
-        required: true
+        required: false
         type: string
         description: 'Relative path to Helm charts.'
+        default: './deployments/charts'
       dockerFilePath:
         required: false
         type: string
         description: 'Relative path to Dockerfile.'
         default: '.'
       dockerImageName:
-        required: true
+        required: false
         type: string
         description: 'Docker image name.'
+        default: ${{ github.event.repository.name }}
       dockerImageTag:
-        required: true
+        required: false
         type: string
         description: 'Docker image tag.'
+        default: ${{ github.sha }}
       maximumReplicas:
         required: false
         type: string
