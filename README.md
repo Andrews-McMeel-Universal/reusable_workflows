@@ -15,7 +15,7 @@ information about the application.   Reads the specified Azure KeyVaults for sec
 jobs:
   deploy:
     name: 'AKS Deployment'
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@2.2.0
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@x.x.x
     with:
       repositoryName: ${{ github.event.repository.name }}
       environment: development
@@ -23,6 +23,7 @@ jobs:
       chartsPath: ./deployments/charts
       dockerImageName: ${{ github.event.repository.name }}
       dockerImageTag: ${{ github.sha }}
+      environmentIngress: true|false
 
     secrets:
       azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
