@@ -1,0 +1,109 @@
+name: Ruby CI
+
+
+on:
+  workflow_call:
+    inputs:
+      BUNDLER_VERSION:
+        required: false
+        type: string
+        default: 2.3.26
+        description: 'Bundler version'
+      RAILS_ENV:
+        required: false
+        type: string
+        default: 'development'
+        description: 'Rails Environment'
+      RUBY_VERSION: 
+        required: true
+        type: string
+        description: 'Ruby version'
+      APT_PACKAGES: 
+        required: false
+        type: string
+        default: 'curl'
+        description: 'Apt packages to install'
+      INSTALL_NODE: 
+        required: true
+        type: boolean
+        description: 'Whether to install Node.js or not'
+      NODE_VERSION: 
+        required: false
+        type: string
+        default: '14'
+        description: 'Node.js version to install'
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+
+env:
+  BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
+  RAILS_ENV: ${{ inputs.RAILS_ENV }}
+  environment: ${{ inputs.RAILS_ENV }}
+  azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+
+jobs:
+  setup-and-build:
+    name: Build app
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        if: inputs.INSTALL_NODE == true
+        with:
+          node-version: ${{ inputs.NODE_VERSION }}
+
+      - uses: awalsh128/cache-apt-pkgs-action@v1.2.4
+        with:
+          packages: ${{ inputs.APT_PACKAGES }}
+          version: 1.0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1.136.0
+        with:
+          ruby-version: ${{ inputs.RUBY_VERSION }}
+          bundler-cache: true
+
+
+  integration-tests:
+    name: Run Integration Tests
+    needs: [setup-and-build]
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        if: inputs.INSTALL_NODE == true
+        with:
+          node-version: ${{ inputs.NODE_VERSION }}
+
+      - uses: awalsh128/cache-apt-pkgs-action@v1.2.4
+        with:
+          packages: ${{ inputs.APT_PACKAGES }}
+          version: 1.0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1.136.0
+        with:
+          ruby-version: ${{ inputs.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Use .env cache action
+        uses: ./.github/actions/use-env-cache
+
+      - name: Boot Rails server
+        run: |
+          bundle exec rails s -b 0.0.0.0 -p 3000 &
+          PID=$!
+          sleep 10
+          if [[ $(ps -p $PID) ]] ; then 
+            kill -2 $PID
+            exit 0
+          else
+            echo "App failed to start."
+            exit 1
+          fi

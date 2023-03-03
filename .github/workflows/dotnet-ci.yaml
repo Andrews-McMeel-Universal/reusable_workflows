@@ -1,0 +1,54 @@
+name: .NET Application CI
+
+on:
+  workflow_call:
+    inputs:
+      dotnetVersion:
+        required: true
+        type: string
+        description: '.NET SDK Version'
+      dotnetProjectFile:
+        required: true
+        type: string
+        description: 'Path to .NET Project File'
+    secrets:
+      azureCredentials:
+        required: true
+
+env:
+  dotnetProjectFile: ${{ inputs.dotnetProjectFile }}
+  dotnetVersion: ${{ inputs.dotnetVersion }}
+  azureCredentials: ${{ secrets.azureCredentials }}
+
+jobs:
+  setup-and-build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: .NET Install Cache Action
+      uses: ./.github/actions/use-dotnet-install-cache
+
+    - name: .NET Build Cache Action
+      uses: ./.github/actions/use-dotnet-build-cache
+
+  integration-tests:
+    name: Test Application
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: .NET Install Cache Action
+      uses: ./.github/actions/use-dotnet-install-cache
+
+    - name: .NET Build Cache Action
+      uses: ./.github/actions/use-dotnet-build-cache
+
+    - name: Fix HTTPS Certs
+      run: dotnet dev-certs https
+
+    - name: Run tests
+      run: dotnet test "${{ env.dotnetProjectFile }}" --no-restore --verbosity normal

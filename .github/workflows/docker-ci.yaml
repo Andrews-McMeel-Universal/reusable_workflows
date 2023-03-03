@@ -1,0 +1,63 @@
+name: Docker Build CI
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build Docker App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Run Docker Build
+        uses: docker/build-push-action@v4
+        with:
+          tags: docker-ci:latest
+          push: false
+          load: true
+          cache-to: type=gha,mode=max
+
+  integration-tests:
+    name: Test Docker App
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docker Build
+        uses: docker/build-push-action@v4
+        with:
+          tags: docker-ci:latest
+          push: false
+          load: true
+          cache-from: type=gha
+
+      - name: Get Docker variables
+        run: |
+          dockerContainerPort=$(docker image inspect docker-ci:latest -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp')
+          dockerCmd=$(docker image inspect inspect docker-ci:latest -f "{{json .Config.Cmd }}" | tr -d '][' | tr "," " ")
+
+          echo "dockerContainerPort=$dockerContainerPort" >> $GITHUB_ENV
+          echo "dockerCmd=$dockerCmd" >> $GITHUB_ENV
+
+      - name: Run tests
+        uses: addnab/docker-run-action@v3
+        with:
+          image: docker-ci:latest
+          options: -v ${{ github.workspace }}:/app
+          run: |
+            ${{ env.dockerCmd }} &
+            sleep 15
+            RESULT=$?
+            if [ $RESULT -eq 0 ]; then
+              wget -O - -q "http://localhost:${{ env.dockerContainerPort }}" ||
+              curl "http://localhost:${{ env.dockerContainerPort }}"
+            else
+              exit 1
+            fi
