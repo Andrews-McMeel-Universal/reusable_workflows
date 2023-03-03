@@ -111,22 +111,8 @@ jobs:
     continue-on-error: false
     environment: ${{ inputs.environment }}
     steps:
-      - name: Checkout if Staging or Development deployment
-        if: ${{ inputs.environment != 'production'}}
-        uses: actions/checkout@v3.2.0
-
-      - name: Get latest release if production deployment
-        if: ${{ inputs.environment == 'production'}}
-        id: getlatestrelease
-        uses: thebritican/fetch-latest-release@v2.0.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Checkout Latest release if Production deployment
-        if: ${{ inputs.environment == 'production'}}
-        uses: actions/checkout@v3.2.0
-        with: 
-          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Extract Helm values
         id: setenvs
@@ -163,7 +149,12 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
           $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.ingressWhitelist }}
-          $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.adminIngressWhitelist }}
+          if $($appConfig.adminingress) {
+            $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.adminIngressWhitelist }}
+          }
+          else {
+            $adminIngressWhitelist = "undefined"
+          }
 
           if ($environmentIngress -eq "true") {
             $ingress = "$appEnvironment.$ingress"
@@ -284,22 +275,8 @@ jobs:
     continue-on-error: false
     environment: ${{ inputs.environment }}
     steps:
-      - name: Checkout if Staging or Development deployment
-        if: ${{ inputs.environment != 'production'}}
-        uses: actions/checkout@v3.2.0
-
-      - name: Get latest release if production deployment
-        if: ${{ inputs.environment == 'production'}}
-        id: getlatestrelease
-        uses: thebritican/fetch-latest-release@v2.0.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Checkout Latest release if Production deployment
-        if: ${{ inputs.environment == 'production'}}
-        uses: actions/checkout@v3.2.0
-        with: 
-          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
@@ -363,6 +340,7 @@ jobs:
           ADMIN_INGRESS_WHITELIST="${{ needs.setup.outputs.adminIngressWhitelist }}"
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
+            if [[ "${ADMIN_INGRESS_WHITELIST}" != "undefined" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -375,7 +353,18 @@ jobs:
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
-          else
+            else
+          cat << EOF >> values-override.yaml
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
+              nginx.ingress.kubernetes.io/auth-type: "basic"
+              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.setup.outputs.appName }}-basic-auth"
+              nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+          EOF
+            fi
+          elif [[ "${ADMIN_INGRESS_WHITELIST}" == "undefined" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -384,6 +373,13 @@ jobs:
           adminingress:
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
+          EOF
+          else
+          cat << EOF >> values-override.yaml
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
           EOF
           fi
 
