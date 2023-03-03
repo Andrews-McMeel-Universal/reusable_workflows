@@ -1,3 +1,5 @@
+name: Build and Deploy B2C auth application
+
 on:
   workflow_call:
     inputs:
@@ -29,11 +31,13 @@ on:
 
 jobs:
   build:
+    name: Build B2C Application
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     continue-on-error: false
     steps:
-      - uses: actions/checkout@v3.2.0
+      - name: Checkout
+        uses: actions/checkout@v3.2.0
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
@@ -99,6 +103,6 @@ jobs:
             ./deployments/scripts/Deploy-B2C_Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath -ProductPath "${{ inputs.azureB2CProductName }}"
           azPSVersion: 'latest'
 
-      - name: Purge CDN
+      - name: Purge CDN Cache
         run: |
           az cdn endpoint purge --resource-group 'Site_Assets' --profile-name 'amuauthassets' --name 'amuauthassets' --content-paths '/*'

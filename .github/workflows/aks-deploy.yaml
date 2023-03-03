@@ -1,3 +1,5 @@
+name: AKS Deployment
+
 on:
   workflow_call:
     inputs:
@@ -58,7 +60,7 @@ on:
         required: false
         type: string
         description: 'Maximum number of replicas for the application HPA.'
-        default: 4
+        default: 30
       storageAccountName:
         required: false
         type: string
@@ -111,8 +113,8 @@ on:
         required: false
 
 jobs:
-  AKS_Deploy:
-    name: 'AKS Deployment'
+  deploy:
+    name: AKS Deployment
     runs-on: ubuntu-latest
     continue-on-error: false
     environment: ${{ inputs.environment }}
@@ -134,7 +136,7 @@ jobs:
         with: 
           ref: ${{ steps.getlatestrelease.outputs.tag_name }}
 
-      - name: Checkout Code and Variables for the environment
+      - name: Extract Helm Values
         id: setenvs
         shell: pwsh
         run: |
@@ -284,7 +286,7 @@ jobs:
       - name: Switch to ${{ inputs.environment }} Namespace
         run: kubectl config set-context --current --namespace="${{ inputs.environment }}"
 
-      - name: Apply configMap
+      - name: Apply configMap if it exists
         if: ${{ env.configMap != null }}
         uses: swdotcom/update-and-apply-kubernetes-configs@v1.2.0
         with:
@@ -299,6 +301,11 @@ jobs:
           kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
 
           if ( "${{ inputs.webAuthentication }}" -eq "true") {
+            if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
+                echo "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
+                exit 1
+            }
+
             if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
               kubectl delete secret "${{ env.appName }}-basic-auth"
             }
@@ -306,7 +313,7 @@ jobs:
             kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
           }
 
-      - name: Create k8s Image Pull Secret
+      - name: Create K8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4.0
         with:
           container-registry-url: "${{ env.containerRegistry }}"
@@ -324,16 +331,16 @@ jobs:
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
           INGRESS_WHITELIST_ENV="${{ env.ingressWhitelist }}"
           ADMIN_INGRESS_WHITELIST_ENV="${{ env.adminIngressWhitelist }}"
-          if [[ -n "${INGRESS_WHITELIST_ENV}" ]] ; then
-            INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
-          else
+          if [[ -z "${INGRESS_WHITELIST_ENV}" ]] ; then
             INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
+          else
+            INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
           fi
 
-          if [[ -n "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
-            ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
-          else
+          if [[ -z "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
             ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
+          else
+            ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
           fi
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
@@ -349,7 +356,7 @@ jobs:
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
-          elif [[ "${ADMIN_INGRESS_WHITELIST}" != "207.67.20.252" ]] || [[ "${INGRESS_WHITELIST}" != "0.0.0.0/0" ]]; then
+          else
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -358,13 +365,6 @@ jobs:
           adminingress:
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
-          EOF
-          else
-          cat << EOF >> values-override.yaml
-          ingress:
-            annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
           EOF
           fi
 
@@ -383,7 +383,7 @@ jobs:
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
 
-      - name: Deploy to Azure ${{ inputs.environment }}
+      - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v4.9
         with:
@@ -403,7 +403,7 @@ jobs:
             New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName "${{ env.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "latest"
 
-      - name: Record deployment information in Azure Storage Table ${{ inputs.appInfoTableName }}
+      - name: Record deployment information in Azure Storage Table
         uses: LadyCailin/azure-table-storage-upload@v1.0.1
         with:
           table_name: "${{ inputs.appInfoTableName }}"
