@@ -1,7 +1,5 @@
 name: AKS Deployment
 
-name: AKS Deployment
-
 on:
   workflow_call:
     inputs:
@@ -361,23 +359,8 @@ jobs:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
-          INGRESS_WHITELIST_ENV="${{ env.ingressWhitelist }}"
-          ADMIN_INGRESS_WHITELIST_ENV="${{ env.adminIngressWhitelist }}"
-          if [[ -z "${INGRESS_WHITELIST_ENV}" ]] ; then
-            INGRESS_WHITELIST="${{ needs.setup.outputs.ingressWhitelist }}"
-          else
-            INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
-          else
-            INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
-          fi
-
-          if [[ -z "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
-            ADMIN_INGRESS_WHITELIST="${{ needs.setup.outputs.adminIngressWhitelist }}"
-          else
-            ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
-          else
-            ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
-          fi
+          INGRESS_WHITELIST="${${{ needs.setup.outputs.ingressWhitelist }}:-${{ inputs.ingressWhitelist }}"
+          ADMIN_INGRESS_WHITELIST="${${{ needs.setup.outputs.adminIngressWhitelist }}:-${{ inputs.adminIngressWhitelist }}"
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
           cat << EOF >> values-override.yaml
