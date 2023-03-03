@@ -286,10 +286,7 @@ jobs:
           kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
 
           if ( "${{ inputs.webAuthentication }}" -eq "true") {
-            $webAuthenticationUsername"${{ secrets.webAuthenticationUsername }}"
-            $webAuthenticationPassword="${{ secrets.webAuthenticationPassword }}"
-
-            if (!$webAuthenticationUsername -or !$webAuthenticationPassword) {
+            if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
                 echo "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' environment secrets are set."
                 exit 1
             }
@@ -297,7 +294,7 @@ jobs:
             if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
               kubectl delete secret "${{ env.appName }}-basic-auth"
             }
-            htpasswd -cb auth "$webAuthenticationUsername" "$webAuthenticationPassword"
+            htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
             kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
           }
 
