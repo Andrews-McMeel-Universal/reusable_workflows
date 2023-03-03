@@ -85,6 +85,11 @@ on:
         type: string
         description: 'Add the environment name to the front of the hostname (for DNS)'
         default: true
+      registryHostname:
+        required: false
+        type: string
+        description: 'Container Registry Hostname'
+        default: "amuappimages201.azurecr.io"
     secrets:
       azureCredentials:
         required: true
@@ -92,8 +97,6 @@ on:
         required: true
       registryPassword:
         required: true
-      registryHostName:
-        required: false
       storageAccountKey:
         required: true
       webAuthenticationPassword:
@@ -249,7 +252,7 @@ jobs:
       - name: Create k8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4.0
         with:
-          container-registry-url: ${{ secrets.AMUAPPIMAGES201_HOSTNAME }}
+          container-registry-url: ${{ inputs.registryHostName }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ env.imagePullSecret }}"
@@ -339,14 +342,14 @@ jobs:
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1.0.1
         with:
-          login-server: ${{ secrets.AMUAPPIMAGES201_HOSTNAME }}
+          login-server: ${{ inputs.registryHostName }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.AMUAPPIMAGES201_HOSTNAME }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          docker push "${{ secrets.AMUAPPIMAGES201_HOSTNAME }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker push "${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
       - name: Create values override file
         run: |
@@ -407,7 +410,7 @@ jobs:
           helm-version: 'latest'
           overrideFiles: ./values-override.yaml
           overrides: |
-            image.repository:${{ secrets.AMUAPPIMAGES201_HOSTNAME }}/${{ inputs.dockerImageName }}
+            image.repository:${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ needs.setup.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
@@ -454,7 +457,7 @@ jobs:
           namespace: ${{ inputs.environment }}
           manifests: ${{ needs.build.outputs.manifestsBundle }}
           images: |
-            "${{ secrets.AMUAPPIMAGES201_HOSTNAME }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+            "${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
             "${{ needs.setup.outputs.imagePullSecret }}"
           pull-images: false
