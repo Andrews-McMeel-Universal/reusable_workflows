@@ -289,10 +289,10 @@ jobs:
             WEB_AUTHENTICATION_USERNAME="${{ secrets.webAuthenticationUsername }}"
             WEB_AUTHENTICATION_PASSWORD="${{ secrets.webAuthenticationPassword }}"
 
-            if [[ -z $WEB_AUTHENTICATION_USERNAME ]] || [[ -z $WEB_AUTHENTICATION_PASSWORD ]]; then
+            if (!$WEB_AUTHENTICATION_USERNAME -or !$WEB_AUTHENTICATION_PASSWORD) {
                 echo "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' environment secrets are set."
                 exit 1
-            fi
+            }
 
             if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
               kubectl delete secret "${{ env.appName }}-basic-auth"
