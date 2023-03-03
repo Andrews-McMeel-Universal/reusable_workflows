@@ -149,8 +149,11 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
           $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.ingressWhitelist }}
-          if $($appConfig.adminingress) {
+          if ($appConfig.adminingress) {
             $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.adminIngressWhitelist }}
+            if ($adminIngressWhitelist -eq "0") { 
+              $adminIngressWhitelist = ${{ inputs.adminIngressWhitelist }} 
+            }
           }
           else {
             $adminIngressWhitelist = "undefined"
