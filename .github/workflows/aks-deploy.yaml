@@ -319,16 +319,16 @@ jobs:
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
           INGRESS_WHITELIST_ENV="${{ env.ingressWhitelist }}"
           ADMIN_INGRESS_WHITELIST_ENV="${{ env.adminIngressWhitelist }}"
-          if [[ -n "${INGRESS_WHITELIST_ENV}" ]] ; then
-            INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
-          else
+          if [[ -z "${INGRESS_WHITELIST_ENV}" ]] ; then
             INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
+          else
+            INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
           fi
 
-          if [[ -n "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
-            ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
-          else
+          if [[ -z "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
             ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
+          else
+            ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
           fi
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
@@ -344,7 +344,7 @@ jobs:
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
-          elif [[ "${ADMIN_INGRESS_WHITELIST}" != "207.67.20.252" ]] || [[ "${INGRESS_WHITELIST}" != "0.0.0.0/0" ]]; then
+          else
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -353,13 +353,6 @@ jobs:
           adminingress:
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
-          EOF
-          else
-          cat << EOF >> values-override.yaml
-          ingress:
-            annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
           EOF
           fi
 
