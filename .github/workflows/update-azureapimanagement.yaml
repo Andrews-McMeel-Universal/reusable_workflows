@@ -59,6 +59,7 @@ on:
         
 jobs:
   update-api-management:
+    name: Update API Management Service
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve Application information
