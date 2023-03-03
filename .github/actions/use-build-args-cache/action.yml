@@ -1,0 +1,54 @@
+name: Cache Build Args
+
+description: Generates and caches a build args file
+
+inputs:
+  azurecredentials:
+    description: 'Credentials to login to Azure'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+  # Caches the app's build files, breaks cache when yarn.lock, a .js/.jsx file, or the build args are updated
+  - name: Cache Azure Key Vault Secrets
+    id: secrets-cache
+    uses: actions/cache@v3
+    with:
+      path: |
+        ${{ github.workspace }}/.env
+      key: pr-${{ runner.os }}-buildargs-${{ hashFiles('**/Secrets.json.gpg') }}-${{ hashFiles('**/yarn.lock') }}
+
+  # Gets the build args if the cache is broken
+  - name: Login via Az module
+    if: steps.secrets-cache.outputs.cache-hit != 'true'
+    uses: azure/login@v1.4.7
+    with:
+      creds: "${{ env.azureCredentials }}"
+      enable-AzPSSession: true
+
+  - name: Pull down secrets from Azure Key Vaults
+    if: steps.secrets-cache.outputs.cache-hit != 'true'
+    uses: azure/powershell@v1.2.0
+    with:
+      inlineScript: |
+        $KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
+        $buildSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'BuildArg') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+        $buildSecrets | ForEach-Object {
+            $argName = $_.ToUpper()
+            $argName = $argName.Replace("-","_")
+            $argSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
+            $buildArgumentsContent = $argName + "=" + $argSecret
+            Add-Content -Path "${{ github.workspace }}/.env" -Value $buildArgumentsContent
+        }
+      azPSVersion: 'latest'
+
+  - name: Source secrets file
+    shell: sh
+    run: | 
+      while read -r buildArg; do        
+        if [ $(echo "${buildArg}" | grep -Ei "SECRET|TOKEN|KEY|PASS") ]; then
+          echo "::add-mask::$(echo ${buildArg} | awk -F '=' '{print $2}')"
+        fi
+        echo "$buildArg" >> $GITHUB_ENV
+      done < ${{ github.workspace }}/.env

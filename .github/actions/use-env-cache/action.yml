@@ -1,0 +1,54 @@
+name: Cache Env Vars
+
+description: Generates and caches a env file
+
+inputs:
+  azurecredentials:
+    description: 'Credentials to login to Azure'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+  # Caches the app's environment variables, breaks cache when the Secrets.json.gpg file is updated
+  - name: Cache Azure Key Vault Secrets
+    id: secrets-cache
+    uses: actions/cache@v3
+    with:
+      path: |
+        ${{ github.workspace }}/.env
+      key: ${{ runner.os }}-env-${{ hashFiles('**/Secrets.json.gpg') }}-${{ hashFiles('**/*.lock') }}
+
+  # Gets the environment variables if the cache is broken
+  - name: Login via Az module
+    if: steps.secrets-cache.outputs.cache-hit != 'true'
+    uses: azure/login@v1.4.7
+    with:
+      creds: "${{ env.azureCredentials }}"
+      enable-AzPSSession: true
+
+  - name: Pull down secrets from Azure Key Vaults
+    if: steps.secrets-cache.outputs.cache-hit != 'true'
+    uses: azure/powershell@v1.2.0
+    with:
+      inlineScript: |
+        $KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
+        $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+        $envSecrets | ForEach-Object {
+            $envName = $_.ToUpper()
+            $envName = $envName.Replace("-","_")
+            $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
+            $envContent = $envName + "=" + $envSecret
+            Add-Content -Path "${{ github.workspace }}/.env" -Value $envContent
+        }
+      azPSVersion: 'latest'
+
+  - name: Source secrets file
+    shell: sh
+    run: | 
+      while read -r envVar; do
+        if [ $(echo "${envVar}" | grep -Ei "SECRET|TOKEN|KEY|PASS") ]; then
+          echo "::add-mask::$(echo ${envVar} | awk -F '=' '{print $2}')"
+        fi
+        echo "$envVar" >> $GITHUB_ENV
+      done < ${{ github.workspace }}/.env

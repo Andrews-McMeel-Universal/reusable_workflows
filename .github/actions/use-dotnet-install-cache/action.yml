@@ -1,0 +1,28 @@
+name: Cache .NET Install
+
+description: 'Sets up the application based on our version, installs it, and then installs dependencies.  If no changes to these dependencies are detected, it will attempt to use the cached version.'
+
+runs:
+  using: 'composite'
+  steps:
+  # Installs dotnet
+  - name: Setup application platform
+    uses: actions/setup-dotnet@v3
+    with:
+      dotnet-version: ${{ env.dotnetVersion }}
+
+  # Caches nuget packages, breaks cache when packages.lock.json is updated
+  - name: Cache dependencies
+    id: dependency-cache
+    uses: actions/cache@v3
+    with:
+      path: |
+        ${{ github.workspace }}/.nuget/packages
+      # Look to see if there is a cache hit for the corresponding requirements file
+      key: ${{ runner.os }}-dotnet-install-${{ hashFiles('**/packages.lock.json') }}
+
+  # Installs dependencies if the cache was broken
+  - name: Install dependencies
+    if: steps.dependency-cache.outputs.cache-hit != 'true'
+    shell: sh
+    run: dotnet restore "${{ env.dotnetProjectFile }}"
