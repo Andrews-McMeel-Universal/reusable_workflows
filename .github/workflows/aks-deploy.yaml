@@ -151,12 +151,14 @@ jobs:
           $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.ingressWhitelist }}
           if ($appConfig.adminingress) {
             $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.adminIngressWhitelist }}
-            if ($adminIngressWhitelist -eq "0") { 
+            if (![bool]($adminIngressWhitelist -match "^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?(,\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?)*$")) { 
+              echo "::warning file=$valuesYamlPath::Invalid value set for 'adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range'. Defaulting to ${{ inputs.adminIngressWhitelist }}"
               $adminIngressWhitelist = ${{ inputs.adminIngressWhitelist }} 
             }
           }
           else {
-            $adminIngressWhitelist = "undefined"
+            echo "::notice file=$valuesYamlPath::adminingress values not defined. Skipping setting adminIngressWhitelist"
+            $adminIngressWhitelist = "ParentUndefined"
           }
 
           if ($environmentIngress -eq "true") {
@@ -173,7 +175,8 @@ jobs:
               $hostName = "www"
             }
           }
-          
+          echo "::notice file=$valuesYamlPath::This application's hostname is $hostName"
+
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)','$1'
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
           
@@ -343,7 +346,7 @@ jobs:
           ADMIN_INGRESS_WHITELIST="${{ needs.setup.outputs.adminIngressWhitelist }}"
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
-            if [[ "${ADMIN_INGRESS_WHITELIST}" != "undefined" ]] ; then
+            if [[ "${ADMIN_INGRESS_WHITELIST}" != "ParentUndefined" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -367,7 +370,7 @@ jobs:
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           EOF
             fi
-          elif [[ "${ADMIN_INGRESS_WHITELIST}" == "undefined" ]] ; then
+          elif [[ "${ADMIN_INGRESS_WHITELIST}" == "ParentUndefined" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
