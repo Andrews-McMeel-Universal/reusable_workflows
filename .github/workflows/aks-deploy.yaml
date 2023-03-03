@@ -162,8 +162,8 @@ jobs:
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
-          $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
-          $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
+          $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.ingressWhitelist }}
+          $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.adminIngressWhitelist }}
 
           if ($environmentIngress -eq "true") {
             $ingress = "$appEnvironment.$ingress"
@@ -359,8 +359,8 @@ jobs:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
-          INGRESS_WHITELIST="${${{ needs.setup.outputs.ingressWhitelist }}:-${{ inputs.ingressWhitelist }}"
-          ADMIN_INGRESS_WHITELIST="${${{ needs.setup.outputs.adminIngressWhitelist }}:-${{ inputs.adminIngressWhitelist }}"
+          INGRESS_WHITELIST="${{ needs.setup.outputs.ingressWhitelist }}"
+          ADMIN_INGRESS_WHITELIST="${{ needs.setup.outputs.adminIngressWhitelist }}"
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
           cat << EOF >> values-override.yaml
