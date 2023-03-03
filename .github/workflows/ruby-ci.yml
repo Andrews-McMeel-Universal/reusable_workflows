@@ -93,7 +93,7 @@ jobs:
           bundler-cache: true
 
       - name: Use .env cache action
-        uses: ./.github/actions/use-env-cache
+        uses: Andrews-McMeel-Universal/get-envs@v1.1
 
       - name: Boot Rails server
         run: |
