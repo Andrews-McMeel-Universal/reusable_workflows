@@ -1,3 +1,5 @@
+name: Update Azure API Management
+
 on:
   workflow_call:
     inputs:
@@ -56,7 +58,8 @@ on:
 
         
 jobs:
-  Update_Azure_API_Management:
+  update-api-management:
+    name: Update API Management Service
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve Application information
