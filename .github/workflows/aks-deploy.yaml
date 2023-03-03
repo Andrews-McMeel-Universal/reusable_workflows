@@ -493,4 +493,6 @@ jobs:
           echo "- **FQDN**: ${{ needs.setup.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Cluster**: ${{ inputs.clusterName }}" >> $GITHUB_STEP_SUMMARY
           echo "- **ConfigSecret**: ${{ needs.setup.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **ConfigMap**: ${{ needs.setup.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
+          if [[ -z "${{ needs.setup.outputs.configMap }}" ]] ; then
+            echo "- **ConfigMap**: ${{ needs.setup.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
+          fi
