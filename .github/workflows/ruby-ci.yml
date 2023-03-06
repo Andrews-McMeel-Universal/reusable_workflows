@@ -94,6 +94,8 @@ jobs:
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1.1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Boot Rails server
         run: |
