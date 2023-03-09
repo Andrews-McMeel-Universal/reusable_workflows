@@ -1,4 +1,4 @@
-name: Bump Version
+name: Bump App Version
 
 on:
   workflow_call:
@@ -97,7 +97,7 @@ jobs:
           labels: |
             maintenance
 
-      - name: Auto Approve Dependabot PRs
+      - name: Auto Approve Version Update PR
         uses: hmarr/auto-approve-action@v3
         with:
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
