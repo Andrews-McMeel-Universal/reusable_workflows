@@ -6,84 +6,84 @@ on:
       environment:
         required: true
         type: string
-        description: 'Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production.'
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
       environmentKeyVault:
         required: true
         type: string
-        description: 'AKS Key vault.'
+        description: "AKS Key vault."
       repositoryName:
         required: true
         type: string
-        description: 'GitHub Repository Name.'
+        description: "GitHub Repository Name."
       clusterName:
         required: true
         type: string
-        description: 'AKS Cluster name.'
+        description: "AKS Cluster name."
       clusterResourceGroup:
         required: true
         type: string
-        description: 'AKS Cluster Resource Group.'
+        description: "AKS Cluster Resource Group."
       aksIngressFqdn:
         required: true
         type: string
-        description: 'FQDN for AKS cluster ingress.'
+        description: "FQDN for AKS cluster ingress."
       dnsResourceGroup:
         required: true
         type: string
-        description: 'DNS Resource Group.'
+        description: "DNS Resource Group."
       chartsPath:
         required: true
         type: string
-        description: 'Relative path to Helm charts.'
+        description: "Relative path to Helm charts."
       dockerFilePath:
         required: true
         type: string
-        description: 'Relative path to Dockerfile.'
+        description: "Relative path to Dockerfile."
       dockerImageName:
         required: true
         type: string
-        description: 'Docker image name.'
+        description: "Docker image name."
       dockerImageTag:
         required: true
         type: string
-        description: 'Docker image tag.'
+        description: "Docker image tag."
       maximumReplicas:
         required: false
         type: string
-        description: 'Maximum number of replicas for the application HPA.'
+        description: "Maximum number of replicas for the application HPA."
         default: 30
       storageAccountName:
         required: true
         type: string
-        description: 'Storage Account for application information table.'
+        description: "Storage Account for application information table."
       appInfoTableName:
         required: true
         type: string
-        description: 'Application information storage table.'
+        description: "Application information storage table."
       deploymentTimeout:
         required: false
         type: number
-        description: 'Timeout for GitHub deployments'
+        description: "Timeout for GitHub deployments"
         default: 20
       webAuthentication:
         required: false
         type: string
-        description: 'Enable web authentication'
+        description: "Enable web authentication"
         default: false
       ingressWhitelist:
         required: false
         type: string
-        description: 'IPs to include in the application whitelist'
+        description: "IPs to include in the application whitelist"
         default: "0.0.0.0/0"
       adminIngressWhitelist:
         required: false
         type: string
-        description: 'IPs to include in the Admin application whitelist'
+        description: "IPs to include in the Admin application whitelist"
         default: "207.67.20.252"
       environmentIngress:
         required: false
         type: string
-        description: 'Add the environment name to the front of the hostname (for DNS)'
+        description: "Add the environment name to the front of the hostname (for DNS)"
         default: true
     secrets:
       azureCredentials:
@@ -120,7 +120,7 @@ jobs:
       - name: Checkout Latest release if Production deployment
         if: ${{ inputs.environment == 'production'}}
         uses: actions/checkout@v3.2.0
-        with: 
+        with:
           ref: ${{ steps.getlatestrelease.outputs.tag_name }}
 
       - name: Extract Helm Values
@@ -187,7 +187,7 @@ jobs:
               $hostName = "www"
             }
           }
-          
+
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)','$1'
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
 
@@ -255,7 +255,7 @@ jobs:
             $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
 
             echo "buildArguments=$buildArguments" >> $env:GITHUB_OUTPUT
-          azPSVersion: 'latest'
+          azPSVersion: "latest"
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1.0.1
@@ -359,10 +359,10 @@ jobs:
         id: bake
         uses: azure/k8s-bake@v2.4
         with:
-          renderEngine: 'helm'
+          renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
           releaseName: ${{ env.release }}
-          helm-version: 'latest'
+          helm-version: "latest"
           overrideFiles: ./values-override.yaml
           overrides: |
             image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
@@ -397,6 +397,6 @@ jobs:
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
           data: "ApplicationName=${{ env.appName }} Version=${{ env.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ env.hostName }} DomainName=${{ env.domainName }} IngressFqdn=${{ env.ingress }} HealthCheckPath=${{ env.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{ env.configSecret }} ConfigMap=${{ env.configMap }} LastDeploy=${{ env.date }}"
-          if_exists: 'replace'
-          extra_args: ''
+          if_exists: "replace"
+          extra_args: ""
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
