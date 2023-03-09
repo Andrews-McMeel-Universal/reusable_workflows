@@ -27,10 +27,9 @@ on:
         description: 'AKS Cluster Resource Group.'
         default: 'AMU_AKS_201'
       aksIngressFqdn:
-        required: false
+        required: true
         type: string
         description: 'FQDN for AKS cluster ingress.'
-        default: 'amuaks201-development-ingress.centralus.cloudapp.azure.com.'
       dnsResourceGroup:
         required: false
         type: string

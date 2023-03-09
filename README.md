@@ -19,6 +19,7 @@ jobs:
     with:
       environment: development
       environmentKeyVault: amu-shared
+      aksIngressFqdn: amuaks201-development-ingress.centralus.cloudapp.azure.com.
       environmentIngress: true|false # OPTIONAL, defaults to false
       webAuthentication: true|false # OPTIONAL, defaults to false
     secrets:
