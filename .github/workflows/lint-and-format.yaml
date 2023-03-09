@@ -5,6 +5,9 @@ on:
     types: [opened, synchronize, reopened]
     branches: [main]
   workflow_call:
+    secrets:
+      PAT_ACTION_CI:
+        required: true
 
 jobs:
   prettier:
