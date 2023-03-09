@@ -3,15 +3,15 @@ name: WP Engine Deployment
 on:
   workflow_call:
     inputs:
-      WPE_ENV_NAME: 
+      WPE_ENV_NAME:
         type: string
         description: WordPress engine site environment name
         required: true
-      SOURCE_PATH: 
+      SOURCE_PATH:
         type: string
         description: WordPress engine site source path
         required: true
-      PUBLISH_PATH: 
+      PUBLISH_PATH:
         type: string
         description: WordPress engine site destination path
         required: true
@@ -20,22 +20,25 @@ on:
         required: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest  
-    steps: 
-    - name: Checkout
-      uses: actions/checkout@v2
+  deploy:
+    name: WP Engine Deployment
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
 
-    - name: GitHub Action Deploy to WP Engine
-      uses: wpengine/github-action-wpe-site-deploy@v3.2.2
-      with:
-      # Deploy vars 
-        WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPENGINE_ED25514 }} 
-        WPE_ENV: ${{ inputs.WPE_ENV_NAME }}
-        # Deploy Options
-        SRC_PATH: ${{ inputs.SOURCE_PATH }}
-        REMOTE_PATH: ${{ inputs.PUBLISH_PATH }}
-        PHP_LINT: TRUE
-        FLAGS: -azvr --inplace --delete --exclude=".*" --exclude-from=.deployignore
-        #SCRIPT: "path/yourscript.sh" 
-        CACHE_CLEAR: TRUE
+      - name: Deploy to WP Engine
+        uses: wpengine/github-action-wpe-site-deploy@v3.2.2
+        with:
+          # Deploy vars
+          WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPENGINE_ED25514 }}
+          WPE_ENV: ${{ inputs.WPE_ENV_NAME }}
+          # Deploy Options
+          SRC_PATH: ${{ inputs.SOURCE_PATH }}
+          REMOTE_PATH: ${{ inputs.PUBLISH_PATH }}
+          PHP_LINT: TRUE
+          FLAGS: -azvr --inplace --delete --exclude=".*" --exclude-from=.deployignore
+          #SCRIPT: "path/yourscript.sh"
+          CACHE_CLEAR: TRUE
