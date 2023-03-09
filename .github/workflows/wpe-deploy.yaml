@@ -3,6 +3,10 @@ name: WP Engine Deployment
 on:
   workflow_call:
     inputs:
+      environment:
+        required: true
+        type: string
+        description: "Deploy Environment. Can be development, staging, or production."
       WPE_ENV_NAME:
         type: string
         description: WordPress engine site environment name
