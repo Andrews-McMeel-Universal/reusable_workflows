@@ -32,4 +32,4 @@ jobs:
         with:
           mode: exactly
           count: 0
-          labels: 'do not merge'
+          labels: "do not merge"

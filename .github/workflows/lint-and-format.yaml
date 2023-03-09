@@ -1,0 +1,44 @@
+name: Lint and Format Code
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+  workflow_call:
+
+jobs:
+  prettier:
+    name: Prettier Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+
+      - uses: actionsx/prettier@v2
+        with:
+          # prettier CLI arguments.
+          args: --write .
+
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_user_name: amutechtest
+          commit_user_email: amu_deploy@amuniversal.com
+          commit_message: Apply prettier changes
+
+  lint-workflows:
+    name: Workflow linter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Download actionlint
+        id: get_actionlint
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+        shell: bash
+
+      - name: Lint workflow files
+        run: ${{ steps.get_actionlint.outputs.executable }} -color -ignore "SC2086" -ignore "SC2129"
+        shell: bash
