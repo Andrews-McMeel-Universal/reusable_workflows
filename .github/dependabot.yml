@@ -10,7 +10,7 @@ updates:
     schedule:
       interval: "weekly"
     labels:
-      - 'devops'
-      - 'dependencies'
+      - "devops"
+      - "dependencies"
     reviewers:
-      - 'Andrews-McMeel-Universal/devops-engineers'
+      - "Andrews-McMeel-Universal/devops-engineers"
