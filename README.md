@@ -1,4 +1,4 @@
-# reusable_workflows
+# Reusable Workflows
 
 Reusable workflows can be called from other workflows within repositories to perform a variety of tasks. We use them to automate deployments, PR-related checks, update APIs, etc.
 
