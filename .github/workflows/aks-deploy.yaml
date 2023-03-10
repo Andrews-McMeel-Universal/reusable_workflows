@@ -95,7 +95,7 @@ on:
         required: false
         type: string
         description: "Container Registry Hostname"
-        default: "amuappimages201.azurecr.io"
+        default: "${{ secrets.AMUAPPIMAGES201_HOSTNAME }}"
     secrets:
       azureCredentials:
         required: true
