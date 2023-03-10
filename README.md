@@ -6,19 +6,9 @@ Reusable workflows can be called from other workflows within repositories to per
 
 ## Getting Started
 
-Whenever calling the reusable workflows, you just need to make sure the `uses:` option contains the path to the reusable workflow repo, `Andrews-McMeel-Universal/reusable_workflows/.github/workflows/` along with the workflow name. Here is an example:
+Whenever calling the reusable workflows, you need to make sure the `uses:` option contains the path to the reusable workflow repo, `Andrews-McMeel-Universal/reusable_workflows/.github/workflows/` along with the workflow name. If the workflow requires any inputs to be passed in, make sure to include those under either the `with:` and `secrets:` sections.
 
-```YAML
-uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@x.x.x
-```
-
-When referencing workflows, you can specify either a tag or a branch from this repository. For example, you can use the `2.2.3` release to get a static copy of the workflows at that point:
-
-``Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@2.2.3`
-
-Or you can specify a branch:
-
-`Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@DEVOPS-fix-aks-deploy-bug`
+When referencing workflows, you can specify either a tag or a branch from this repository. For example, you can use the `2.2.3` release to get a static copy of the workflows at that point, `Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@2.2.3` or to specify a branch, `Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@DEVOPS-fix-aks-deploy-bug`
 
 > NOTE: You can call multiple reusable workflows within a single workflow file.
 
@@ -30,7 +20,7 @@ Or you can specify a branch:
 git clone https://github.com/Andrews-McMeel-Universal/reusable_workflows.git
 ```
 
-We primarily test workflows with the (reusable_workflows-test)[https://github.com/Andrews-McMeel-Universal/reusable_workflows-test] repository. You can test and link the respective workflow tests with PRs by doing the following:
+We primarily test workflows with the [reusable_workflows-test](https://github.com/Andrews-McMeel-Universal/reusable_workflows-test) repository. You can test and link the respective workflow tests with PRs by doing the following:
 
 1. Create a branch in the `reusable_workflows` repository
 2. Create a branch that matches the name of the branch in the `reusable_workflows` repository in the `reusable_workflows-test` repository.
@@ -47,7 +37,7 @@ We primarily test workflows with the (reusable_workflows-test)[https://github.co
 
 Depending on the app, you will want to use a combination of different workflows. For example, for a Kubernetes-based application, you would want to use the `aks-deploy.yaml` to deploy the application to the Azure Kubernetes Service cluster along with a few PR checking workflows like, `codeowners-validation.yaml`, `pr-labels.yaml`, and `lint-and-format.yaml`.
 
-To get an idea of what workflows a specific application might need, you can reference the template repository that is closely related to the app. For example, for a Kubernetes-based Ruby on Rails application, you can reference (k8sapp_ruby_template)[https://github.com/Andrews-McMeel-Universal/k8sapp_ruby_template]
+To get an idea of what workflows a specific application might need, you can reference the template repository that is closely related to the app. For example, for a Kubernetes-based Ruby on Rails application, you can reference [k8sapp_ruby_template](https://github.com/Andrews-McMeel-Universal/k8sapp_ruby_template)
 
 ### Azure Kubernetes Service Deploy
 
@@ -344,10 +334,10 @@ Jira Release: <https://amuniversal.atlassian.net/projects/AMUPRODUCTJIRAKEY/vers
 
 Once a pull request is merged into _main_, it passes all CI checks and passes QA, it will be ready for being released to staging and production.
 
-> The AMU software engineer **must** create a tagged version. 
+> The AMU software engineer **must** create a tagged version.
 
 1. Navigate to the [product releases in github](https://github.com/Andrews-McMeel-Universal/AMUPRODUCTJIRAKEY/releases)
-2. Click the button for "Draft a New Release" and then click "Auto-generated Release Notes". 
-> NOTE: We do not use the `vx.x.x` pattern for version naming. We simply have the semantic release version number like this: `x.x.x`
+2. Click the button for "Draft a New Release" and then click "Auto-generated Release Notes".
+   > NOTE: We do not use the `vx.x.x` pattern for version naming. We simply have the semantic release version number like this: `x.x.x`
 3. If this is for a staging deployment, check `Set as a pre-release` option and make sure to add `-rc` to the end of the tag name/
 4. Click "Publish Release"
