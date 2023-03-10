@@ -34,7 +34,7 @@ on:
         type: string
         description: "API Service Resource Group."
       azureUser:
-        required: true
+        required: false
         type: string
         description: "Azure user with credentials to add APIs."
         default: "amu_deploy@amuniversal.com"
