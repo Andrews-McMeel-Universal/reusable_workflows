@@ -348,7 +348,7 @@ jobs:
         run: |
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
           INGRESS_WHITELIST="${{ needs.setup.outputs.ingressWhitelist }}"
-          ADMIN_INGRESS_WHITELIST="${{ needs.setup.outputs.adminIngressWhitelist }}"
+          ADMIN_INGRESS_WHITELIST=${{ needs.setup.outputs.adminIngressWhitelist }}
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
             if [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
