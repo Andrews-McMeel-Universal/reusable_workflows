@@ -278,6 +278,25 @@ jobs:
       PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
 ```
 
+### Clear PR Caches
+
+Workflow file: `pr-clean-caches.yaml`
+
+Example:
+
+```YAML
+name: Cleanup caches after PR is closed
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  pr-clean-caches:
+    name: Clear PR Caches
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/pr-clean-caches.yaml@x.x.x
+```
+
 ---
 
 ## Repository Synchronization
