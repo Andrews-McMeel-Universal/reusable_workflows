@@ -1,0 +1,104 @@
+name: Bump App Version
+
+on:
+  workflow_call:
+    inputs:
+      releaseType:
+        required: true
+        type: string
+        description: Type of release
+
+jobs:
+  bump-version:
+    name: Bump Versions to next ${{ inputs.releaseType }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get latest release
+        id: latestrelease
+        uses: thebritican/fetch-latest-release@v2.0.0
+
+      - name: Get Chart.yaml appVersion
+        id: chartyaml
+        uses: rmeneely/get-yaml-value@v1
+        with:
+          infile: deployments/charts/Chart.yaml
+          varlist: appVersion
+
+      - name: Check if package.json exists
+        id: packagejsonfile
+        uses: andstor/file-existence-action@v2
+        with:
+          files: "package.json"
+
+      - name: Get package.json version
+        if: steps.packagejsonfile.outputs.files_exists == 'true'
+        id: packagejson
+        uses: notiz-dev/github-action-json-property@v0.2.0
+        with:
+          path: "package.json"
+          prop_path: "version"
+
+      - name: Gets next semantic release
+        shell: pwsh
+        run: |
+          [Version]$a = "${{ steps.packagejson.outputs.prop || '0.0.0' }}"
+          [Version]$b = "${{ steps.chartyaml.outputs.values || '0.0.0' }}"
+          [Version]$c = "${{ steps.latestrelease.outputs.tag_name || '0.0.0' }}"
+
+          $versions = [array]($a,$b,$c)
+          $v = [version]($versions | Sort-Object -Descending | Select-Object -First 1)
+
+          if ( "${{ inputs.releaseType }}" -match "major") {
+            $release = [version]::New($v.Major+1,0,0)
+          }
+          elseif ( "${{ inputs.releaseType }}" -match "minor" ) {
+            $release = [version]::New($v.Major,$v.Minor+1,0)
+          }
+          elseif ( "${{ inputs.releaseType }}" -match "patch" ) {
+            $release = [version]::New($v.Major,$v.Minor,$v.Build+1)
+          }
+
+          echo "release=$release" >> $env:GITHUB_ENV
+          echo "::notice::Bumping version to $release"
+
+      - name: Update version in package.json
+        if: steps.packagejsonfile.outputs.files_exists == 'true'
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: '"version": .*'
+          replace: '"version": "${{ env.release }}",'
+          regex: true
+          include: "package.json"
+
+      - name: Update version in Chart.yaml
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "appVersion: .*"
+          replace: "appVersion: ${{ env.release }}"
+          regex: true
+          include: "**Chart.yaml"
+
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v4
+        with:
+          commit-message: "⬆️ Version bump: ${{ env.release }}"
+          branch: maintenance/bump-version/${{ env.release }}
+          committer: AMU Automations <amu_deploy@amuniversal.com>
+          delete-branch: true
+          title: "⬆️ Version bump: ${{ env.release }}"
+          body: |
+            Updating version to ${{ env.release }} in:
+            - `deployments/charts/Charts.yaml`
+            - `package.json`
+          labels: |
+            maintenance
+
+      - name: Auto Approve Version Update PR
+        uses: hmarr/auto-approve-action@v3
+        with:
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          github-token: ${{ secrets.PAT_ACTION_CI }}

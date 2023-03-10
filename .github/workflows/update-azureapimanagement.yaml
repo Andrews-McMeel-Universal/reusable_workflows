@@ -48,15 +48,13 @@ on:
         type: string
         description: "Application information storage table."
     secrets:
-        azurePassword:
-          required: true
-        azureSubscription:
-          required: true
-        storageAccountKey:
-          required: true
+      azurePassword:
+        required: true
+      azureSubscription:
+        required: true
+      storageAccountKey:
+        required: true
 
-
-        
 jobs:
   update-api-management:
     name: Update API Management Service
@@ -65,7 +63,7 @@ jobs:
       - name: Retrieve Application information
         id: getappinfo
         uses: azure/powershell@v1.2.0
-        with: 
+        with:
           inlineScript: |
             Install-Module -Name AzTable -Force
             Import-Module AzTable
