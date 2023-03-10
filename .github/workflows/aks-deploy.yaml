@@ -14,42 +14,42 @@ on:
       repositoryName:
         required: false
         type: string
-        description: 'GitHub Repository Name.'
+        description: "GitHub Repository Name."
         default: ${{ github.event.repository.name }}
       clusterName:
         required: false
         type: string
-        description: 'AKS Cluster name.'
-        default: 'amuaks201'
+        description: "AKS Cluster name."
+        default: "amuaks201"
       clusterResourceGroup:
         required: false
         type: string
-        description: 'AKS Cluster Resource Group.'
-        default: 'AMU_AKS_201'
+        description: "AKS Cluster Resource Group."
+        default: "AMU_AKS_201"
       dnsResourceGroup:
         required: false
         type: string
-        description: 'DNS Resource Group.'
-        default: 'AMU_DNS_RG'
+        description: "DNS Resource Group."
+        default: "AMU_DNS_RG"
       chartsPath:
         required: false
         type: string
-        description: 'Relative path to Helm charts.'
-        default: './deployments/charts'
+        description: "Relative path to Helm charts."
+        default: "./deployments/charts"
       dockerFilePath:
         required: false
         type: string
-        description: 'Relative path to Dockerfile.'
-        default: '.'
+        description: "Relative path to Dockerfile."
+        default: "."
       dockerImageName:
         required: false
         type: string
-        description: 'Docker image name.'
+        description: "Docker image name."
         default: ${{ github.event.repository.name }}
       dockerImageTag:
         required: false
         type: string
-        description: 'Docker image tag.'
+        description: "Docker image tag."
         default: ${{ github.sha }}
       maximumReplicas:
         required: false
@@ -59,13 +59,13 @@ on:
       storageAccountName:
         required: false
         type: string
-        description: 'Storage Account for application information table.'
-        default: 'amucloudapps'
+        description: "Storage Account for application information table."
+        default: "amucloudapps"
       appInfoTableName:
         required: false
         type: string
-        description: 'Application information storage table.'
-        default: 'DeployedApplications'
+        description: "Application information storage table."
+        default: "DeployedApplications"
       deploymentTimeout:
         required: false
         type: number

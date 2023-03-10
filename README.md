@@ -283,6 +283,7 @@ jobs:
 Workflow file: `pr-clean-caches.yaml`
 
 Example:
+
 ```YAML
 name: Cleanup caches after PR is closed
 
