@@ -14,42 +14,42 @@ on:
       repositoryName:
         required: false
         type: string
-        description: 'GitHub Repository Name.'
+        description: "GitHub Repository Name."
         default: ${{ github.event.repository.name }}
       clusterName:
         required: false
         type: string
-        description: 'AKS Cluster name.'
-        default: 'amuaks201'
+        description: "AKS Cluster name."
+        default: "amuaks201"
       clusterResourceGroup:
         required: false
         type: string
-        description: 'AKS Cluster Resource Group.'
-        default: 'AMU_AKS_201'
+        description: "AKS Cluster Resource Group."
+        default: "AMU_AKS_201"
       dnsResourceGroup:
         required: false
         type: string
-        description: 'DNS Resource Group.'
-        default: 'AMU_DNS_RG'
+        description: "DNS Resource Group."
+        default: "AMU_DNS_RG"
       chartsPath:
         required: false
         type: string
-        description: 'Relative path to Helm charts.'
-        default: './deployments/charts'
+        description: "Relative path to Helm charts."
+        default: "./deployments/charts"
       dockerFilePath:
         required: false
         type: string
-        description: 'Relative path to Dockerfile.'
-        default: '.'
+        description: "Relative path to Dockerfile."
+        default: "."
       dockerImageName:
         required: false
         type: string
-        description: 'Docker image name.'
+        description: "Docker image name."
         default: ${{ github.event.repository.name }}
       dockerImageTag:
         required: false
         type: string
-        description: 'Docker image tag.'
+        description: "Docker image tag."
         default: ${{ github.sha }}
       maximumReplicas:
         required: false
@@ -59,13 +59,13 @@ on:
       storageAccountName:
         required: false
         type: string
-        description: 'Storage Account for application information table.'
-        default: 'amucloudapps'
+        description: "Storage Account for application information table."
+        default: "amucloudapps"
       appInfoTableName:
         required: false
         type: string
-        description: 'Application information storage table.'
-        default: 'DeployedApplications'
+        description: "Application information storage table."
+        default: "DeployedApplications"
       deploymentTimeout:
         required: false
         type: number
@@ -94,7 +94,7 @@ on:
       registryHostname:
         required: false
         type: string
-        description: 'Container Registry Hostname'
+        description: "Container Registry Hostname"
         default: "amuappimages201.azurecr.io"
     secrets:
       azureCredentials:
@@ -112,7 +112,7 @@ on:
 
 jobs:
   setup:
-    name: 'Prepare for build'
+    name: "Prepare for build"
     runs-on: ubuntu-latest
     continue-on-error: false
     environment: ${{ inputs.environment }}
@@ -185,7 +185,7 @@ jobs:
 
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)','$1'
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
-          
+
           echo "appName=$appName" >> $env:GITHUB_ENV
           echo "appVersion=$appVersion" >> $env:GITHUB_ENV
           echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
@@ -219,7 +219,7 @@ jobs:
                 $envFileContent = $envName + "=" + $envSecret
                 Add-Content -Path ".env" -Value $envFileContent
             }
-          azPSVersion: 'latest'
+          azPSVersion: "latest"
 
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
@@ -281,7 +281,7 @@ jobs:
       release: ${{ env.release }}
 
   build:
-    name: 'Build Docker Image'
+    name: "Build Docker Image"
     runs-on: ubuntu-latest
     needs: [setup]
     continue-on-error: false
@@ -309,7 +309,7 @@ jobs:
                 $envFileContent = $envName + "=" + $envSecret
                 Add-Content -Path ".env" -Value $envFileContent
             }
-          azPSVersion: 'latest'
+          azPSVersion: "latest"
 
       - name: Generate build args from Azure Key Vaults
         uses: azure/powershell@v1.2.0
@@ -331,7 +331,7 @@ jobs:
             }
 
             echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
-          azPSVersion: 'latest'
+          azPSVersion: "latest"
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1.0.1
@@ -421,8 +421,8 @@ jobs:
       manifestsBundle: ${{ steps.bake.outputs.manifestsBundle }}
 
   deploy:
-    name: 'Deploy to AKS cluster'
-    needs: [setup,build]
+    name: "Deploy to AKS cluster"
+    needs: [setup, build]
     runs-on: ubuntu-latest
     continue-on-error: false
     environment: ${{ inputs.environment }}
@@ -459,7 +459,7 @@ jobs:
 
   update-records:
     name: Update deployment records
-    needs: [setup,build,deploy]
+    needs: [setup, build, deploy]
     runs-on: ubuntu-latest
     continue-on-error: false
     environment: ${{ inputs.environment }}

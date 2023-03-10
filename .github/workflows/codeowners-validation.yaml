@@ -5,8 +5,8 @@ on:
     types: [opened, synchronize, reopened]
     branches: [main, development]
     paths:
-      - '.github/CODEOWNERS'
-      - '.github/workflows/codeowners-validation.yml'
+      - ".github/CODEOWNERS"
+      - ".github/workflows/codeowners-validation.yml"
   workflow_dispatch: {}
 
 jobs:

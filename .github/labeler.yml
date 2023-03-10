@@ -1,21 +1,21 @@
 aks-deploy:
-  - '.github/workflows/aks-deploy.yaml'
+  - ".github/workflows/aks-deploy.yaml"
 
 b2c-build-and-deploy:
-  - '.github/workflows/b2c-build-and-deploy.yaml'
+  - ".github/workflows/b2c-build-and-deploy.yaml"
 
 purge-cdn:
-  - '.github/workflows/purge-cdn.yaml'
+  - ".github/workflows/purge-cdn.yaml"
 
 update-addns:
-  - '.github/workflows/update-addns.yaml'
+  - ".github/workflows/update-addns.yaml"
 
 update-azureapimanagement.yaml:
-  - '.github/workflows/update-azureapimanagement.yaml'
+  - ".github/workflows/update-azureapimanagement.yaml"
 
 tests:
-  - '.github/workflows/workflow-linter.yaml'
-  - '.github/actionlint.yaml'
+  - ".github/workflows/workflow-linter.yaml"
+  - ".github/actionlint.yaml"
 
 documentation:
-  - 'README.md'
+  - "README.md"
