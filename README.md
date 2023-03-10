@@ -297,6 +297,18 @@ jobs:
     uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/pr-clean-caches.yaml@x.x.x
 ```
 
+### Dependabot Automations
+
+Workflow file: `dependabot-automations.yaml`
+
+Auto-approves and auto-merges in dependabot PRs.
+```YAML
+jobs:
+  dependabot-automations:
+    name: Dependabot Automations
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/dependabot-automations.yaml@x.x.x
+```
+
 ---
 
 ## Repository Synchronization
