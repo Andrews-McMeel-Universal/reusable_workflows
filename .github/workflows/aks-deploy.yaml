@@ -348,13 +348,14 @@ jobs:
         run: |
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
           INGRESS_WHITELIST="${{ needs.setup.outputs.ingressWhitelist }}"
-          ADMIN_INGRESS_WHITELIST=${{ needs.setup.outputs.adminIngressWhitelist }}
+          ADMIN_INGRESS_WHITELIST="${{ needs.setup.outputs.adminIngressWhitelist }}"
           echo "::debug::WEB_AUTHENTICATION=$WEB_AUTHENTICATION"
           echo "::debug::INGRESS_WHITELIST=$INGRESS_WHITELIST"
           echo "::debug::ADMIN_INGRESS_WHITELIST=$ADMIN_INGRESS_WHITELIST"
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
             if [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
+              echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST!=null"
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -368,6 +369,7 @@ jobs:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
             else
+              echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST=null"
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -379,6 +381,7 @@ jobs:
           EOF
             fi
           elif [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
+            echo "::debug::WEB_AUTHENTICATION=false,ADMIN_INGRESS_WHITELIST!=null"
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -389,6 +392,7 @@ jobs:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
           else
+            echo "::debug::WEB_AUTHENTICATION=false,ADMIN_INGRESS_WHITELIST=null"
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
