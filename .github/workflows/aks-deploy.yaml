@@ -164,7 +164,6 @@ jobs:
           }
           else {
             echo "::notice file=$valuesYamlPath::adminingress values not defined. Skipping setting adminIngressWhitelist"
-            $adminIngressWhitelist = "ParentUndefined"
           }
 
           if ($environmentIngress -eq "true") {
@@ -352,7 +351,7 @@ jobs:
           ADMIN_INGRESS_WHITELIST="${{ needs.setup.outputs.adminIngressWhitelist }}"
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
-            if [[ "${ADMIN_INGRESS_WHITELIST}" != "ParentUndefined" ]] ; then
+            if [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -376,7 +375,7 @@ jobs:
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           EOF
             fi
-          elif [[ "${ADMIN_INGRESS_WHITELIST}" != "ParentUndefined" ]] ; then
+          elif [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
