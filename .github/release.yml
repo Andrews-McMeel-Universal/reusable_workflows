@@ -3,12 +3,6 @@ changelog:
     labels:
       - tests
   categories:
-    - title: General Changes
-      labels:
-        - "*"
-      exclude:
-        labels:
-          - dependencies
     - title: Documentation
       labels:
         - documentation
