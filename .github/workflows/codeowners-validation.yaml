@@ -1,13 +1,8 @@
 name: Validate Codeowners File
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main, development]
-    paths:
-      - ".github/CODEOWNERS"
-      - ".github/workflows/codeowners-validation.yml"
-  workflow_dispatch: {}
+  workflow_call:
+  push:
 
 jobs:
   codeowners-validation:
