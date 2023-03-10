@@ -8,17 +8,20 @@ on:
         type: string
         description: "Deploy environment. Can be development, staging, or production."
       repositoryName:
-        required: true
+        required: false
         type: string
         description: "GitHub Repository Name."
+        default: ${{ github.event.repository.name }}
       storageAccountName:
-        required: true
+        required: false
         type: string
         description: "Storage Account for application information table."
+        default: "amucloudapps"
       appInfoTableName:
-        required: true
+        required: false
         type: string
         description: "Application information storage table."
+        default: "DeployedApplications"
     secrets:
       domainController:
         required: true
