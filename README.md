@@ -285,6 +285,7 @@ Workflow file: `dependabot-automations.yaml`
 Auto-approves and auto-merges in dependabot PRs.
 
 Example:
+
 ```YAML
 jobs:
   dependabot-automations:
