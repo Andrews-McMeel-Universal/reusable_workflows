@@ -1,8 +1,10 @@
 name: Validate Codeowners File
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
   workflow_call:
-  push:
 
 jobs:
   codeowners-validation:

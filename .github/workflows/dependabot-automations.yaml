@@ -1,6 +1,11 @@
 name: Dependabot Automations
 
 on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches:
+      # Filter by Dependabot PRs
+      - "dependabot/**"
   workflow_call:
 
 jobs:
