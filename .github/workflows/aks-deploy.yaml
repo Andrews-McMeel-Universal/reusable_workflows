@@ -354,7 +354,7 @@ jobs:
           echo "::debug::ADMIN_INGRESS_WHITELIST=$ADMIN_INGRESS_WHITELIST"
 
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
-            if [[ -z "${ADMIN_INGRESS_WHITELIST}" ]] ; then
+            if [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -378,7 +378,7 @@ jobs:
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           EOF
             fi
-          elif [[ -z "${ADMIN_INGRESS_WHITELIST}" ]] ; then
+          elif [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
