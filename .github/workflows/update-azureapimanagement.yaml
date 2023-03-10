@@ -16,13 +16,15 @@ on:
         type: string
         description: "API Name for Azure API Management."
       apiProductId:
-        required: true
+        required: false
         type: string
         description: "Azure API Management Product Name for API."
+        default: "AZ-WebServices"
       apiSubscriptionRequired:
-        required: true
+        required: false
         type: boolean
         description: "Is a subcription required to access the API."
+        default: true
       apiServiceName:
         required: true
         type: string
@@ -32,31 +34,33 @@ on:
         type: string
         description: "API Service Resource Group."
       azureUser:
-        required: true
+        required: false
         type: string
         description: "Azure user with credentials to add APIs."
+        default: "amu_deploy@amuniversal.com"
       repositoryName:
-        required: true
+        required: false
         type: string
         description: "GitHub Repository Name."
+        default: ${{ github.event.repository.name }}
       storageAccountName:
-        required: true
+        required: false
         type: string
         description: "Storage Account for application information table."
+        default: "amucloudapps"
       appInfoTableName:
-        required: true
+        required: false
         type: string
         description: "Application information storage table."
+        default: "DeployedApplications"
     secrets:
-        azurePassword:
-          required: true
-        azureSubscription:
-          required: true
-        storageAccountKey:
-          required: true
+      azurePassword:
+        required: true
+      azureSubscription:
+        required: true
+      storageAccountKey:
+        required: true
 
-
-        
 jobs:
   update-api-management:
     name: Update API Management Service
@@ -65,7 +69,7 @@ jobs:
       - name: Retrieve Application information
         id: getappinfo
         uses: azure/powershell@v1.2.0
-        with: 
+        with:
           inlineScript: |
             Install-Module -Name AzTable -Force
             Import-Module AzTable

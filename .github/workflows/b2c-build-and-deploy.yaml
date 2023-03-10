@@ -6,25 +6,21 @@ on:
       environment:
         required: true
         type: string
-        description: 'Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production.'
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
       environmentKeyVault:
         required: true
         type: string
-        description: 'Azure Key vault Name.'
+        description: "Azure Key vault Name."
       azureB2CProductName:
         required: true
         type: string
-        description: 'Name of the B2C product.'
+        description: "Name of the B2C product."
       azureB2CDomain:
         required: true
         type: string
-        description: 'Domain name of the B2C tenant.'
+        description: "Domain name of the B2C tenant."
     secrets:
       azureCredentials:
-        required: true
-      registryUserName:
-        required: true
-      registryPassword:
         required: true
       storageAccountKey:
         required: true
@@ -73,7 +69,7 @@ jobs:
             Write-Host $Secret
 
             echo "buildArguments=$buildArguments" >> $GITHUB_OUTPUT
-          azPSVersion: 'latest'
+          azPSVersion: "latest"
 
       - name: Get Fresh Packages
         shell: pwsh
@@ -89,11 +85,11 @@ jobs:
           yarn config set environment $Environment
           yarn build
 
-      - name: 'Upload TrustFrameworkBase Policy'
+      - name: "Upload TrustFrameworkBase Policy"
         uses: azure-ad-b2c/deploy-trustframework-policy@v5.3
         with:
-          folder: './dist/${{ inputs.azureB2CProductName }}/custom-policies'
-          files: 'B2C_1A_TPS_SIGNINSIGNOUT_BASE.xml,B2C_1A_TPS_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_TPS_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_TPS_IMPERSONATION.xml'
+          folder: "./dist/${{ inputs.azureB2CProductName }}/custom-policies"
+          files: "B2C_1A_TPS_SIGNINSIGNOUT_BASE.xml,B2C_1A_TPS_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_TPS_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_TPS_IMPERSONATION.xml"
           tenant: ${{ inputs.azureB2CDomain }}
           clientId: ${{ secrets.azureB2CClientId }}
           clientSecret: ${{ secrets.azureB2CClientSecret }}
@@ -105,7 +101,7 @@ jobs:
             $BasePath = Get-Location
             $DistPath = Join-Path $BasePath "dist"
             ./deployments/scripts/Deploy-B2C_Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath -ProductPath "${{ inputs.azureB2CProductName }}"
-          azPSVersion: 'latest'
+          azPSVersion: "latest"
 
       - name: Purge CDN Cache
         run: |

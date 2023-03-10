@@ -6,84 +6,90 @@ on:
       environment:
         required: true
         type: string
-        description: 'Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production.'
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
       environmentKeyVault:
         required: true
         type: string
-        description: 'AKS Key vault.'
+        description: "AKS Key vault."
       repositoryName:
-        required: true
+        required: false
         type: string
         description: 'GitHub Repository Name.'
+        default: ${{ github.event.repository.name }}
       clusterName:
-        required: true
+        required: false
         type: string
         description: 'AKS Cluster name.'
+        default: 'amuaks201'
       clusterResourceGroup:
-        required: true
+        required: false
         type: string
         description: 'AKS Cluster Resource Group.'
-      aksIngressFqdn:
-        required: true
-        type: string
-        description: 'FQDN for AKS cluster ingress.'
+        default: 'AMU_AKS_201'
       dnsResourceGroup:
-        required: true
+        required: false
         type: string
         description: 'DNS Resource Group.'
+        default: 'AMU_DNS_RG'
       chartsPath:
-        required: true
+        required: false
         type: string
         description: 'Relative path to Helm charts.'
+        default: './deployments/charts'
       dockerFilePath:
-        required: true
+        required: false
         type: string
         description: 'Relative path to Dockerfile.'
+        default: '.'
       dockerImageName:
-        required: true
+        required: false
         type: string
         description: 'Docker image name.'
+        default: ${{ github.event.repository.name }}
       dockerImageTag:
-        required: true
+        required: false
         type: string
         description: 'Docker image tag.'
+        default: ${{ github.sha }}
       maximumReplicas:
         required: false
         type: string
-        description: 'Maximum number of replicas for the application HPA.'
+        description: "Maximum number of replicas for the application HPA."
         default: 30
       storageAccountName:
-        required: true
+        required: false
         type: string
         description: 'Storage Account for application information table.'
+        default: 'amucloudapps'
       appInfoTableName:
-        required: true
+        required: false
         type: string
         description: 'Application information storage table.'
+        default: 'DeployedApplications'
       deploymentTimeout:
         required: false
         type: number
-        description: 'Timeout for GitHub deployments'
+        description: "Timeout for GitHub deployments"
         default: 20
       webAuthentication:
         required: false
         type: string
-        description: 'Enable web authentication'
-        default: false
+        description: "Enable web authentication"
+        default: "false"
       ingressWhitelist:
         required: false
         type: string
-        description: 'IPs to include in the application whitelist'
+        description: "IPs to include in the application whitelist"
         default: "0.0.0.0/0"
       adminIngressWhitelist:
         required: false
         type: string
-        description: 'IPs to include in the Admin application whitelist'
+        description: "IPs to include in the Admin application whitelist"
         default: "207.67.20.252"
       environmentIngress:
         required: false
         type: string
-        description: 'Add the environment name to the front of the hostname (for DNS)'
+        description: "Add the environment name to the front of the hostname (for DNS)"
         default: true
       registryHostname:
         required: false
@@ -393,10 +399,10 @@ jobs:
         id: bake
         uses: azure/k8s-bake@v2.4
         with:
-          renderEngine: 'helm'
+          renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
           releaseName: ${{ needs.setup.outputs.release }}
-          helm-version: 'latest'
+          helm-version: "latest"
           overrideFiles: ./values-override.yaml
           overrides: |
             image.repository:${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}
@@ -468,7 +474,7 @@ jobs:
         uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
-            $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
+            $NewRecords = New-AzDnsRecordConfig -Cname "${{ inputs.clusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com.";
             New-AzDnsRecordSet -Name "${{ needs.setup.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.setup.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "latest"
 
@@ -478,9 +484,9 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.setup.outputs.appName }} Version=${{ needs.setup.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.setup.outputs.hostName }} DomainName=${{ needs.setup.outputs.domainName }} IngressFqdn=${{ needs.setup.outputs.ingress }} HealthCheckPath=${{ needs.setup.outputs.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.setup.outputs.configSecret }} ConfigMap=${{ needs.setup.outputs.configMap }} LastDeploy=${{ needs.setup.outputs.date }}"
-          if_exists: 'replace'
-          extra_args: ''
+          data: "ApplicationName=${{ needs.setup.outputs.appName }} Version=${{ needs.setup.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.setup.outputs.hostName }} DomainName=${{ needs.setup.outputs.domainName }} IngressFqdn=${{ needs.setup.outputs.ingress }} HealthCheckPath=${{ needs.setup.outputs.appHealthCheck }} AksIngress=${{ inputs.clusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.setup.outputs.configSecret }} ConfigMap=${{ needs.setup.outputs.configMap }} LastDeploy=${{ needs.setup.outputs.date }}"
+          if_exists: "replace"
+          extra_args: ""
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
 
       - name: Create deployment summary
