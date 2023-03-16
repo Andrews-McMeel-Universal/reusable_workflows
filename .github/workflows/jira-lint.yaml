@@ -1,8 +1,7 @@
 name: Run Jira Linter
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  push:
   workflow_call:
 
 jobs:
