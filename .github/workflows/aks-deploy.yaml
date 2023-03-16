@@ -8,7 +8,7 @@ on:
         type: string
         description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
       environmentKeyVault:
-        required: true
+        required: false
         type: string
         description: "AKS Key vault."
       repositoryName:
