@@ -278,6 +278,21 @@ jobs:
       PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
 ```
 
+### PR Labels
+
+Workflow file: `jira-lint.yaml`
+
+> NOTE: It is recommended to use this workflow with the `codeowners-validation.yaml`, `lint-and-format.yaml`, and `pr-labels.yaml` workflows.
+
+Example:
+
+```YAML
+jobs:
+  jira-lint:
+    name: Jira PR Linter
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/jira-lint.yaml@x.x.x
+```
+
 ### Clear PR Caches
 
 Workflow file: `pr-clean-caches.yaml`
@@ -302,6 +317,7 @@ jobs:
 Workflow file: `dependabot-automations.yaml`
 
 Auto-approves and auto-merges in dependabot PRs.
+
 ```YAML
 jobs:
   dependabot-automations:
