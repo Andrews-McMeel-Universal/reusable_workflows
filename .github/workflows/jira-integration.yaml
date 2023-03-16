@@ -22,6 +22,6 @@ jobs:
       - name: Jira login
         uses: atlassian/gajira-login@v3
         env:
-            JIRA_BASE_URL: https://amuniversal.atlassian.net
-            JIRA_USER_EMAIL: ebronson@amuniversal.com
-            JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_BASE_URL: https://amuniversal.atlassian.net
+          JIRA_USER_EMAIL: ebronson@amuniversal.com
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
