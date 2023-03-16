@@ -278,7 +278,7 @@ jobs:
       PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
 ```
 
-### PR Labels
+### Jira Lint
 
 Workflow file: `jira-lint.yaml`
 
