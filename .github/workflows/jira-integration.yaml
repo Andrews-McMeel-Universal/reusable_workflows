@@ -10,7 +10,7 @@ jobs:
     name: Run Jira Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: btwrk/action-jira-linter@v1.0.1
+      - uses: jira-tools/action-jira-linter@v1.0.1
         name: Jira Lint
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
