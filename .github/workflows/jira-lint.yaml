@@ -18,4 +18,16 @@ jobs:
           jira-token: ${{ secrets.JIRA_TOKEN }}
           jira-base-url: https://amuniversal.atlassian.net
           pr-threshold: 1000
-          jira-user: ebronson@amuniversal.com
+          jira-user: amu_deploy@amuniversal.com
+          validate-issue-status: true
+          allowed-issue-statuses: |
+            New
+            Reopened
+            To Do
+            In Progress
+            Peer Review
+            In Staging / QA
+            Ready For Staging
+            In Development Env
+            Approved
+            Resolved
