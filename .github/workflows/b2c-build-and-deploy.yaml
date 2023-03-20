@@ -49,7 +49,7 @@ jobs:
         uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
-            $KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName ?? "${{ inputs.environmentKeyVault }}"
+            $KeyVaultName = "${{ inputs.environmentKeyVault }}" ?? (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
             $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
             $envSecrets | ForEach-Object {
                 $envName = $_.ToUpper()
