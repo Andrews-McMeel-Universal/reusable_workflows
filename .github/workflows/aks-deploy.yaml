@@ -210,7 +210,7 @@ jobs:
         with:
           inlineScript: |
             if ("${{ inputs.environmentKeyVault }}") {
-              $KeyVaultName = ${{ inputs.environmentKeyVault }}
+              $KeyVaultName = "${{ inputs.environmentKeyVault }}"
             }
             else {
               $KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
