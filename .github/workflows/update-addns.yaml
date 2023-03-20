@@ -82,17 +82,18 @@ jobs:
 
       - name: Update Internal Boley DNS
         uses: azure/powershell@v1.2.0
-        run: |
-          try {
-            Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
-          } 
-          catch {
-            Write-Host "Record Already Exists"
-          }
-          Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ env.aksIngress }}" | Format-List
-          try {
-            Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
-          } 
-          catch {
-            Write-Host "Skipping zone sync. Zone is currently being synced."
-          }
+        with:
+          inlineScript: |
+            try {
+              Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
+            } 
+            catch {
+              Write-Host "Record Already Exists"
+            }
+            Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ env.aksIngress }}" | Format-List
+            try {
+              Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
+            } 
+            catch {
+              Write-Host "Skipping zone sync. Zone is currently being synced."
+            }
