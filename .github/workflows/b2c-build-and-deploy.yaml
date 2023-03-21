@@ -45,30 +45,24 @@ jobs:
           creds: ${{ secrets.azureCredentials }}
           enable-AzPSSession: true
 
-      - name: Get Secrets from Key Vaults
-        id: getsecrets
+      - name: Generate .env file from Azure Key Vaults
         uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
-            Function Get-EnvSecrets {
-              param (
-                  $KeyVaultName
-              )
-                #$secretTable = @{}
-                $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
-                $envSecrets | ForEach-Object {
-                    $envName = $_.ToUpper()
-                    $envName = $envName.Replace("-","_")
-                    $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                    $envFileContent = $envName + "=" + $envSecret
-                    Add-Content -Path ".env" -Value $envFileContent
-                }
-                return $Secret
+            if ("${{ inputs.environmentKeyVault }}") {
+              $KeyVaultName = "${{ inputs.environmentKeyVault }}"
             }
-            Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
-            Write-Host $Secret
-
-            echo "buildArguments=$buildArguments" >> $GITHUB_OUTPUT
+            else {
+              $KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
+            }
+            $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+            $envSecrets | ForEach-Object {
+                $envName = $_.ToUpper()
+                $envName = $envName.Replace("-","_")
+                $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
+                $envFileContent = $envName + "=" + $envSecret
+                Add-Content -Path ".env" -Value $envFileContent
+            }
           azPSVersion: "latest"
 
       - name: Get Fresh Packages
