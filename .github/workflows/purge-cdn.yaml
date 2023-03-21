@@ -28,6 +28,16 @@ jobs:
     name: Purge CDN Cache
     runs-on: ubuntu-latest
     steps:
+      - name: Check inputs
+        uses: azure/powershell@v1.2.0
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            if ((!"${{ inputs.environment }}") -and ((!"${{ inputs.cdnResourceGroup }}") -and (!"${{ inputs.cdnProfile }}") -and (!"${{ inputs.cdnEndpoint }}"))) {
+              echo "::error::The environment input and all of the CDN inputs are missing from the workflow call. Please try again"
+              exit 1
+            }
+
       - name: Login via Az module
         uses: azure/login@v1.4.7
         with:
@@ -39,10 +49,6 @@ jobs:
         with:
           azPSVersion: "latest"
           inlineScript: |
-            if ((!"${{ inputs.environment }}") -and ((!"${{ inputs.cdnResourceGroup }}") -and (!"${{ inputs.cdnProfile }}") -and (!"${{ inputs.cdnEndpoint }}"))) {
-              echo "::error::The environment input or any of the CDN inputs are missing from the workflow call. Please try again"
-              exit 1
-            }
             if ("${{ inputs.cdnResourceGroup }}") {
               $ResourceGroup = "${{ inputs.cdnResourceGroup }}"
             }
