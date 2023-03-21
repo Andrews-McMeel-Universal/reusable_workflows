@@ -1,9 +1,6 @@
 name: Run Jira Linter
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main]
   workflow_call:
     secrets:
       JIRA_TOKEN:
