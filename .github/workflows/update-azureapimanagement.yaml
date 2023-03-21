@@ -156,6 +156,7 @@ jobs:
             else {
               $ApiId = ("${{ github.event.repository.name }}-api").Replace("_","-") 
             }
+
             if ("${{ inputs.apiServiceResourceGroup }}") {
               $ResourceGroup = "${{ inputs.apiServiceResourceGroup }}"
             }
