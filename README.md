@@ -65,9 +65,7 @@ jobs:
     uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@x.x.x
     with:
       environment: development
-      environmentKeyVault: amu-shared
-      environmentIngress: true|false # OPTIONAL, defaults to false
-      webAuthentication: true|false # OPTIONAL, defaults to false
+      environmentIngress: true|false # If set to true, the environment name will be prepended to the application hostname.
     secrets:
       azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
       registryUserName: ${{ secrets.AMUAPPIMAGES201_USERNAME }}
@@ -139,15 +137,15 @@ jobs:
     name: Update Azure API Management
     uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/update-azureapimanagement.yaml@x.x.x
     with:
-          environment: development
-          apiSpecificationPath: "/swagger/v1/swagger.json"
-          apiId: gocomics-user-info-service-api
-          apiServiceName: amudevelopmentapi101
-          apiServiceResourceGroup: AMU_DEV_RG
+      environment: development  # This is required
+      apiId: gocomics-user-info-service-api  # Defaults to "[REPOSITORY_NAME]-api"
+      apiServiceName: amudevelopmentapi101  # Defaults to the resource with a "environment" tag matching the environment input set above.
+      apiServiceResourceGroup: AMU_DEV_RG  # Defaults to the resource with a "environment" tag matching the environment input set above.
     secrets:
-          azurePassword: ${{ secrets.AMU_DEPLOY_PASSWORD }}
-          azureSubscription: ${{ secrets.AMU_PAY_AS_YOU_GO_SUBSCRIPTION_ID }}
-          storageAccountKey: ${{ secrets.AMUCLOUDAPPS_KEY }}
+      azurePassword: ${{ secrets.AMU_DEPLOY_PASSWORD }}  # Only set if the API service is in the fdickinson tenant
+      azureSubscription: ${{ secrets.AMU_PAY_AS_YOU_GO_SUBSCRIPTION_ID }}  # Only set if the API service is in the fdickinson tenant
+      azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}  # Only set if the API service is NOT in the fdickinson tenant
+      storageAccountKey: ${{ secrets.AMUCLOUDAPPS_KEY }}
 ```
 
 ### Purge CDN
@@ -164,9 +162,10 @@ jobs:
     name: Purge CDN
     uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/purge-cdn.yaml@x.x.x
     with:
-      cdnResourceGroup: AMU_Games_RG
-      cdnProfile: production-games
-      cdnEndpoint: appname-game
+      environment: staging  # This is required
+      cdnResourceGroup: AMU_Games_RG  # Defaults to the resource with a "environment" tag matching the environment input set above.
+      cdnProfile: production-games  # Defaults to the resource with a "environment" tag matching the environment input set above.
+      cdnEndpoint: appname-game  # Defaults to the resource with a "repository-name" tag matching the GitHub repository name.
     secrets:
       azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
 ```
@@ -233,7 +232,6 @@ jobs:
    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/b2c-build-and-deploy.yaml@x.x.x
    with:
       environment: development
-      environmentKeyVault: b2c-appid-development
       azureB2CProductName: appname
       azureB2CDomain: developmentamub2c.onmicrosoft.com
    secrets:
