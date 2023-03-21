@@ -74,14 +74,14 @@ jobs:
       azureSubscription: ${{ secrets.azureSubscription }}
     steps:
       - name: Login via Az module
-        if: ${{ secrets.azureCredentials }}
+        if: ${{ env.azureCredentials }}
         uses: azure/login@v1.4.7
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
       - name: Login via PowerShell
-        if: ${{ env.azureCredentials == "" && inputs.azureUser != "" && env.azurePassword != "" && env.azureSubscription != "" }}
+        if: ${{ inputs.azureUser != "" && env.azurePassword != "" && env.azureSubscription != "" }}
         uses: azure/powershell@v1.2.0
         with:
           azPSVersion: "latest"
