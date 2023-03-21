@@ -81,7 +81,7 @@ jobs:
           enable-AzPSSession: true
 
       - name: Login via PowerShell
-        if: ${{ inputs.azureUser != "" && env.azurePassword != "" && env.azureSubscription != "" }}
+        if: ${{ inputs.azureUser && env.azurePassword && env.azureSubscription }}
         uses: azure/powershell@v1.2.0
         with:
           azPSVersion: "latest"
