@@ -2,6 +2,11 @@ name: Run Jira Linter
 
 on:
   workflow_call:
+    inputs:
+      fail-on-error:
+        type: boolean
+        description: A Boolean which, if set to true, fails the GitHub Action when an error occurs. Default true.
+        default: true
     secrets:
       JIRA_TOKEN:
         required: true
@@ -31,3 +36,4 @@ jobs:
             In Development Env
             Approved
             Resolved
+          fail-on-error: ${{ inputs.fail-on-error }}
