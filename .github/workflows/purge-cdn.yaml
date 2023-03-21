@@ -33,8 +33,8 @@ jobs:
         with:
           azPSVersion: "latest"
           inlineScript: |
-            if ((!"${{ inputs.environment }}") -and ((!"${{ inputs.cdnResourceGroup }}") -and (!"${{ inputs.cdnProfile }}") -and (!"${{ inputs.cdnEndpoint }}"))) {
-              echo "::error::The environment input and all of the CDN inputs are missing from the workflow call. Please try again"
+            if ((!"${{ inputs.environment }}") -and ((!"${{ inputs.cdnResourceGroup }}") -or (!"${{ inputs.cdnProfile }}") -or (!"${{ inputs.cdnEndpoint }}"))) {
+              echo "::error::The environment input and at least one of the CDN inputs are missing from the workflow call. Please try again"
               exit 1
             }
 
