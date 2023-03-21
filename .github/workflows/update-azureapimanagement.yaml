@@ -105,7 +105,7 @@ jobs:
 
             $appInfoTableName = "${{ inputs.appInfoTableName }}"
 
-            $storageContext = New-AzStorageContext -StorageAccountName "${{ inputs.storageAccountName }}" -StorageAccountKey "${{ secrets.storageAccountKey }}"
+            $storageContext = New-AzStorageContext -StorageAccountName ${{ inputs.storageAccountName }} -StorageAccountKey ${{ secrets.storageAccountKey }}
 
             #Get Storage table
             try {
