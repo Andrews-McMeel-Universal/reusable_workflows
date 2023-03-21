@@ -3,18 +3,10 @@ name: Purge Azure CDN
 on:
   workflow_call:
     inputs:
-      cdnResourceGroup:
+      environment:
         required: true
         type: string
-        description: "CDN Resource Group."
-      cdnProfile:
-        required: true
-        type: string
-        description: "CDN Profile."
-      cdnEndpoint:
-        required: true
-        type: string
-        description: "CDN Endpoint."
+        description: "Deploy Environment. Can be development, staging, or production."
     secrets:
       azureCredentials:
         required: true
@@ -23,14 +15,20 @@ jobs:
   purge-cdn:
     name: Purge CDN Cache
     runs-on: ubuntu-latest
-    continue-on-error: false
-    timeout-minutes: 20
     steps:
       - name: Login via Az module
         uses: azure/login@v1.4.7
         with:
           creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: false
+          enable-AzPSSession: true
+
       - name: Purge CDN cache
-        run: |
-          az cdn endpoint purge --resource-group ${{ inputs.cdnResourceGroup }} --profile-name ${{ inputs.cdnProfile }} --name ${{ inputs.cdnEndpoint }} --content-paths '/*'
+        uses: azure/powershell@v1.2.0
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            $ProfileName = (Get-AzResource -ResourceType Microsoft.Cdn/profiles -Tag @{"environment"="${{ inputs.environment }}"}).Name
+            $ResourceGroup = (Get-AzResource -ResourceType Microsoft.Cdn/profiles -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
+            $EndpointName = (Get-AzResource -ResourceType Microsoft.Cdn/profiles/endpoints -Tag @{"repository-name"="${{ github.event.repository.name }}"} | Where-Object { $_.Tags."environment" -contains "staging" }).Name -replace ("${ProfileName}/","")
+
+            Clear-AzCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPath '/*'
