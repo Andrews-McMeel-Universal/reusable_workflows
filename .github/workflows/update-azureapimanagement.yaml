@@ -8,11 +8,12 @@ on:
         type: string
         description: "Deploy environment. Can be development, staging, or production."
       apiSpecificationPath:
-        required: true
+        required: false
         type: string
         description: "Relative Path to Open API Specification."
+        default: "/swagger/v1/swagger.json"
       apiId:
-        required: true
+        required: false
         type: string
         description: "API Name for Azure API Management."
       apiProductId:
@@ -26,11 +27,11 @@ on:
         description: "Is a subcription required to access the API."
         default: true
       apiServiceName:
-        required: true
+        required: false
         type: string
         description: "Name of API Management Service."
       apiServiceResourceGroup:
-        required: true
+        required: false
         type: string
         description: "API Service Resource Group."
       azureUser:
@@ -55,8 +56,10 @@ on:
         default: "DeployedApplications"
     secrets:
       azurePassword:
-        required: true
+        required: false
       azureSubscription:
+        required: false
+      azureCredentials:
         required: true
       storageAccountKey:
         required: true
@@ -65,20 +68,44 @@ jobs:
   update-api-management:
     name: Update API Management Service
     runs-on: ubuntu-latest
+    env:
+      azureCredentials: ${{ secrets.azureCredentials }}
+      azurePassword: ${{ secrets.azurePassword }}
+      azureSubscription: ${{ secrets.azureSubscription }}
     steps:
+      - name: Login via Az module
+        if: ${{ secrets.azureCredentials }}
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
+
+      - name: Login via PowerShell
+        if: ${{ env.azureCredentials == "" && inputs.azureUser != "" && env.azurePassword != "" && env.azureSubscription != "" }}
+        uses: azure/powershell@v1.2.0
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            $User = "${{ inputs.azureUser }}"
+            $Password = ConvertTo-SecureString -String "${{ secrets.azurePassword }}" -AsPlainText -Force
+            $Subscription = "${{ secrets.azureSubscription }}"
+            $Credential = New-Object -TypeName "System.Management.Automation.PSCredential" -ArgumentList $User,$Password
+            $ResourceGroup = "${{ inputs.apiServiceResourceGroup }}"
+            $ServiceName = "${{ inputs.apiServiceName }}"
+            Connect-AzAccount -Subscription $Subscription -Credential $Credential
+
       - name: Retrieve Application information
         id: getappinfo
         uses: azure/powershell@v1.2.0
         with:
+          azPSVersion: "latest"
           inlineScript: |
             Install-Module -Name AzTable -Force
             Import-Module AzTable
 
-            $storageAccountName = "${{ inputs.storageAccountName }}"
-            $storageAccountKey = ${{ secrets.storageAccountKey }}
             $appInfoTableName = "${{ inputs.appInfoTableName }}"
 
-            $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+            $storageContext = New-AzStorageContext -StorageAccountName "${{ inputs.storageAccountName }}" -StorageAccountKey "${{ secrets.storageAccountKey }}"
 
             #Get Storage table
             try {
@@ -89,10 +116,7 @@ jobs:
                 return
                 }
 
-            $repoName = "${{ inputs.repositoryName }}"
-            $appEnvironment = "${{ inputs.environment }}"
-
-            $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey $repoName -RowKey $appEnvironment
+            $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey "${{ inputs.repositoryName }}" -RowKey "${{ inputs.environment }}"
 
             $applicationName = $appInfo.ApplicationName
             $version = $appInfo.Version
@@ -111,29 +135,41 @@ jobs:
             echo "applicationIngressFqdn=$ingressFqdn" >> $env:GITHUB_ENV
             echo "healthCheckPath=$healthCheckPath" >> $env:GITHUB_ENV
             echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
-          azPSVersion: "latest"
 
       - name: Update Azure API Management
         uses: azure/powershell@v1.2.0
         with:
+          azPSVersion: "latest"
           inlineScript: |
             $serviceFqdn = "${{ env.applicationIngressFqdn }}"
-            Write-Host $serviceFqdn
             $APISpecPath = "${{ inputs.apiSpecificationPath }}"
             $SwaggerURL = "https://$serviceFqdn$APISpecPath"
-            Write-Host $SwaggerURL
             $ServiceURL = "https://$serviceFqdn"
-            $ApiId = "${{ inputs.apiId }}"
             $ApiProductId = "${{ inputs.apiProductId }}"
             $ApiSubscriptionRequired = ${{ inputs.apiSubscriptionRequired }}
-            #Login to Azure subscription
-            $User = "${{ inputs.azureUser }}"
-            $Password = ConvertTo-SecureString -String "${{ secrets.azurePassword }}" -AsPlainText -Force
-            $Subscription = "${{ secrets.azureSubscription }}"
-            $Credential = New-Object -TypeName "System.Management.Automation.PSCredential" -ArgumentList $User,$Password
-            $ResourceGroup = "${{ inputs.apiServiceResourceGroup }}"
-            $ServiceName = "${{ inputs.apiServiceName }}"
-            Connect-AzAccount -Subscription $Subscription -Credential $Credential
+            
+            echo "::notice::SwaggerURL: $SwaggerURL"
+
+            if ("${{ inputs.apiId }}") {
+              $ApiId = "${{ inputs.apiId }}"
+            }
+            else {
+              $ApiId = ("${{ github.event.repository.name }}-api").Replace("_","-") 
+            }
+            if ("${{ inputs.apiServiceResourceGroup }}") {
+              $ResourceGroup = "${{ inputs.apiServiceResourceGroup }}"
+            }
+            else {
+              $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
+            }
+            
+            if ("${{ inputs.apiServiceName }}") {
+              $ServiceName = "${{ inputs.apiServiceName }}"
+            }
+            else {
+              $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).Name
+            }
+            
             $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
             Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId $ApiId
             $Api = Get-AzApiManagementApi -Context $Context -ApiId $ApiId
@@ -141,4 +177,3 @@ jobs:
             $Api.SubscriptionRequired = $ApiSubscriptionRequired
             Set-AzApiManagementApi -InputObject $Api
             Add-AzApiManagementApiToProduct -Context $Context -ApiId $ApiId -ProductId $ApiProductId
-          azPSVersion: "latest"
