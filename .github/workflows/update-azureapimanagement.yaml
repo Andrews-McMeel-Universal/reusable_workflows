@@ -160,7 +160,7 @@ jobs:
               $ResourceGroup = "${{ inputs.apiServiceResourceGroup }}"
             }
             else {
-              $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
+              $ResourceGroup = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
             }
 
             if ("${{ inputs.apiServiceName }}") {
