@@ -34,12 +34,6 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
-      - name: Check Inputs
-        uses: azure/powershell@v1.2.0
-        with:
-          azPSVersion: "latest"
-          inlineScript: |
-
       - name: Purge CDN cache
         uses: azure/powershell@v1.2.0
         with:
