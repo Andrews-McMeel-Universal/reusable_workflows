@@ -9,8 +9,12 @@ updates:
     directory: ".github/"
     schedule:
       interval: "weekly"
+      day: "monday"
     labels:
       - "devops"
-      - "dependencies"
     reviewers:
       - "Andrews-McMeel-Universal/devops-engineers"
+    open-pull-requests-limit: 10
+    commit-message:
+      # Prefix all commit messages with "github-actions"
+      prefix: "github-actions"

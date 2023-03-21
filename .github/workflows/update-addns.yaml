@@ -40,6 +40,7 @@ jobs:
         id: getappinfo
         uses: azure/powershell@v1.2.0
         with:
+          azPSVersion: "latest"
           inlineScript: |
             Install-Module -Name AzTable -Force
             Import-Module AzTable
@@ -78,11 +79,11 @@ jobs:
             echo "applicationIngressFqdn=$ingressFqdn" >> $env:GITHUB_ENV
             echo "healthCheckPath=$healthCheckPath" >> $env:GITHUB_ENV
             echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
-          azPSVersion: "latest"
 
       - name: Update Internal Boley DNS
         uses: azure/powershell@v1.2.0
         with:
+          azPSVersion: "latest"
           inlineScript: |
             try {
               Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 

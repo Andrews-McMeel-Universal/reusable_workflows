@@ -3,16 +3,20 @@ name: Purge Azure CDN
 on:
   workflow_call:
     inputs:
+      environment:
+        required: false
+        type: string
+        description: "Deploy Environment. Can be development, staging, or production."
       cdnResourceGroup:
-        required: true
+        required: false
         type: string
         description: "CDN Resource Group."
       cdnProfile:
-        required: true
+        required: false
         type: string
         description: "CDN Profile."
       cdnEndpoint:
-        required: true
+        required: false
         type: string
         description: "CDN Endpoint."
     secrets:
@@ -23,14 +27,47 @@ jobs:
   purge-cdn:
     name: Purge CDN Cache
     runs-on: ubuntu-latest
-    continue-on-error: false
-    timeout-minutes: 20
     steps:
+      - name: Check inputs
+        uses: azure/powershell@v1.2.0
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            if ((!"${{ inputs.environment }}") -and ((!"${{ inputs.cdnResourceGroup }}") -or (!"${{ inputs.cdnProfile }}") -or (!"${{ inputs.cdnEndpoint }}"))) {
+              echo "::error::The environment input and at least one of the CDN inputs are missing from the workflow call. Please try again"
+              exit 1
+            }
+
       - name: Login via Az module
         uses: azure/login@v1.4.7
         with:
           creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: false
+          enable-AzPSSession: true
+
       - name: Purge CDN cache
-        run: |
-          az cdn endpoint purge --resource-group ${{ inputs.cdnResourceGroup }} --profile-name ${{ inputs.cdnProfile }} --name ${{ inputs.cdnEndpoint }} --content-paths '/*'
+        uses: azure/powershell@v1.2.0
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            if ("${{ inputs.cdnResourceGroup }}") {
+              $ResourceGroup = "${{ inputs.cdnResourceGroup }}"
+            }
+            else {
+              $ResourceGroup = (Get-AzResource -ResourceType Microsoft.Cdn/profiles -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
+            }
+
+            if ("${{ inputs.cdnProfile }}") {
+              $ProfileName = "${{ inputs.cdnProfile }}"
+            }
+            else {
+              $ProfileName = (Get-AzResource -ResourceType Microsoft.Cdn/profiles -Tag @{"environment"="${{ inputs.environment }}"}).Name
+            }
+
+            if ("${{ inputs.cdnEndpoint }}") {
+              $EndpointName = "${{ inputs.cdnEndpoint }}"
+            }
+            else {
+              $EndpointName = (Get-AzResource -ResourceType Microsoft.Cdn/profiles/endpoints -Tag @{"repository-name"="${{ github.event.repository.name }}"} | Where-Object { $_.Tags."environment" -contains "staging" }).Name -replace ("${ProfileName}/","")
+            }
+
+            Clear-AzCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPath '/*'
