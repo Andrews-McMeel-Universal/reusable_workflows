@@ -7,6 +7,10 @@ on:
         type: boolean
         description: A Boolean which, if set to true, fails the GitHub Action when an error occurs. Default true.
         default: true
+      skip-comments:
+        type: boolean
+        description: A Boolean if set to true then action-jira-linter will skip adding lint comments for PR title.
+        default: false
     secrets:
       JIRA_TOKEN:
         required: true
@@ -37,3 +41,4 @@ jobs:
             Approved
             Resolved
           fail-on-error: ${{ inputs.fail-on-error }}
+          skip-comments: ${{ inputs.skip-comments }}
