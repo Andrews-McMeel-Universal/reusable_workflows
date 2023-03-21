@@ -147,7 +147,7 @@ jobs:
             $ServiceURL = "https://$serviceFqdn"
             $ApiProductId = "${{ inputs.apiProductId }}"
             $ApiSubscriptionRequired = ${{ inputs.apiSubscriptionRequired }}
-            
+
             echo "::notice::SwaggerURL: $SwaggerURL"
 
             if ("${{ inputs.apiId }}") {
@@ -162,14 +162,14 @@ jobs:
             else {
               $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
             }
-            
+
             if ("${{ inputs.apiServiceName }}") {
               $ServiceName = "${{ inputs.apiServiceName }}"
             }
             else {
               $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).Name
             }
-            
+
             $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
             Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId $ApiId
             $Api = Get-AzApiManagementApi -Context $Context -ApiId $ApiId
