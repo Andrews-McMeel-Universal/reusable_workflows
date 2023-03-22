@@ -50,15 +50,15 @@ jobs:
         with:
           inlineScript: |
             if ("${{ inputs.environmentKeyVault }}") {
-              $KeyVaultName = "${{ inputs.environmentKeyVault }}"
+                $KeyVaultName = "${{ inputs.environmentKeyVault }}"
             }
             else {
-              [string]$KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
+                $KeyVaultName = (Get-AzKeyVault -Tag @{"environment" = "${{ env.environment }}" } | Get-AzKeyVault -Tag @{"repository-name" = "${{ github.event.repository.name }}" }).VaultName
             }
-            $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+            [string]$KeyVaultName = $KeyVaultName.Replace(" ", "-")
+            $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName | Where-Object { ($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env') }).Name
             $envSecrets | ForEach-Object {
-                $envName = $_.ToUpper()
-                $envName = $envName.Replace("-","_")
+                $envName = $_.ToUpper().Replace("-", "_")
                 $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
                 $envFileContent = $envName + "=" + $envSecret
                 Add-Content -Path ".env" -Value $envFileContent
