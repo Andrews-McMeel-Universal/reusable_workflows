@@ -126,90 +126,88 @@ jobs:
         run: |
           Install-Module -Name powershell-yaml -Confirm:$false -Force
           Function Get-Envs {
-            param (
-                [parameter(Mandatory = $true, ValueFromPipeline = $true)]
-                [string]$PathToYaml
-            )
+              param (
+                  [parameter(Mandatory = $true, ValueFromPipeline = $true)]
+                  [string]$PathToYaml
+              )
               Import-Module powershell-yaml
               Write-Host "Getting configuration from: $PathToYaml."
               $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
               return $Values
           }
-
-
-          $appEnvironment= "${{ inputs.environment }}"
+          
+          $appEnvironment = "${{ inputs.environment }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Envs -PathToYaml $valuesYamlPath
           $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
-          $chartConfig= Get-Envs -PathToYaml $chartYamlPath
+          $chartConfig = Get-Envs -PathToYaml $chartYamlPath
+          
           $appName = $chartConfig.name
           $appVersion = $chartConfig.appVersion
           $appHealthCheck = $appconfig.deployment.healthCheckPath
           $configMap = $appConfig.deployment.configMap
           $configSecret = $appConfig.deployment.secret
           $imagePullSecret = "$appName-pull-secret"
-          $appDeployDate = Get-Date
+          $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
+          $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
-          $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.ingressWhitelist }}
+          $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.ingressWhitelist } }
           if ($appConfig.adminingress) {
-            $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.adminIngressWhitelist }}
-            if (![bool]($adminIngressWhitelist -match "^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?(,\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?)*$")) { 
-              echo "::warning file=$valuesYamlPath::Invalid value set for 'adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range'. Defaulting to ${{ inputs.adminIngressWhitelist }}. Value: $adminIngressWhitelist"
-              $adminIngressWhitelist = ${{ inputs.adminIngressWhitelist }} 
-            }
+              $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range" ?? ${{ inputs.adminIngressWhitelist } }
+              if (![bool]($adminIngressWhitelist -match "^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?(,\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?)*$")) { 
+                  Write-Output "::warning file=$valuesYamlPath::Invalid value set for 'adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range'. Defaulting to ${{ inputs.adminIngressWhitelist }}. Value: $adminIngressWhitelist"
+                  $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
+              }
           }
           else {
-            echo "::notice file=$valuesYamlPath::adminingress values not defined. Skipping setting adminIngressWhitelist"
+              Write-Output "::notice file=$valuesYamlPath::adminingress values not defined. Skipping setting adminIngressWhitelist"
           }
-
+          
           if ($environmentIngress -eq "true") {
-            $ingress = "$appEnvironment.$ingress"
-            if ($hostName.Length -gt 0) {
-              $hostName = "$appEnvironment.$hostName"
-            }
-            else {
-              $hostName = "$appEnvironment"
-            }
+              $ingress = "$appEnvironment.$ingress"
+              if ($hostName.Length -gt 0) {
+                  $hostName = "$appEnvironment.$hostName"
+              }
+              else {
+                  $hostName = "$appEnvironment"
+              }
           }
           else {
-            if ($hostName.Length -eq 0) {
-              $hostName = "www"
-            }
+              if ($hostName.Length -eq 0) {
+                  $hostName = "www"
+              }
           }
-          echo "::notice file=$valuesYamlPath::This application's hostname is $hostName.$domainName"
-
-          $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)','$1'
-          $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
-
-          echo "appName=$appName" >> $env:GITHUB_ENV
-          echo "appVersion=$appVersion" >> $env:GITHUB_ENV
-          echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
-          echo "configMap=$configMap" >> $env:GITHUB_ENV
-          echo "configSecret=$configSecret" >> $env:GITHUB_ENV
-          echo "ingress=$ingress" >> $env:GITHUB_ENV
-          echo "domainName=$domainName" >> $env:GITHUB_ENV
-          echo "hostName=$hostName" >> $env:GITHUB_ENV
-          echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
-          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
-          echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
-          echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
-          echo "release=$release" >> $env:GITHUB_ENV
-
-      - name: Login via Az module
-        uses: azure/login@v1.4.7
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: true
+          Write-Output "::notice file=$valuesYamlPath::This application's hostname is $hostName.$domainName"
+          
+          Write-Output "appName=$appName" >> $env:GITHUB_ENV
+          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
+          Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
+          Write-Output "configMap=$configMap" >> $env:GITHUB_ENV
+          Write-Output "configSecret=$configSecret" >> $env:GITHUB_ENV
+          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+          Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
+          Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
+          Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
+          Write-Output "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
+          Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
+          Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
+          Write-Output "release=$release" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
+
+      - name: Login via Az module
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
 
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
@@ -230,21 +228,21 @@ jobs:
         shell: pwsh
         run: |
           if (kubectl get secret | Select-String "${{ env.configSecret }}") {
-            kubectl delete secret "${{ env.configSecret }}"
+              kubectl delete secret "${{ env.configSecret }}"
           }
           kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
-
+          
           if ( "${{ inputs.webAuthentication }}" -eq "true") {
-            if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
-                echo "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
-                exit 1
-            }
-
-            if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
-              kubectl delete secret "${{ env.appName }}-basic-auth"
-            }
-            htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
-            kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
+              if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
+                  Write-Output "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
+                  exit 1
+              }
+          
+              if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
+                  kubectl delete secret "${{ env.appName }}-basic-auth"
+              }
+              htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
+              kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
           }
 
       - name: Create K8s Image Pull Secret
@@ -280,17 +278,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Login via Az module
-        uses: azure/login@v1.4.7
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: true
-
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
+
+      - name: Login via Az module
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
 
       - name: Generate build args from Azure Key Vaults
         uses: azure/powershell@v1.2.0
@@ -340,7 +338,7 @@ jobs:
           echo "::debug::WEB_AUTHENTICATION=$WEB_AUTHENTICATION"
           echo "::debug::INGRESS_WHITELIST=$INGRESS_WHITELIST"
           echo "::debug::ADMIN_INGRESS_WHITELIST=$ADMIN_INGRESS_WHITELIST"
-
+          
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
             if [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
               echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST!=null"
@@ -467,7 +465,8 @@ jobs:
         uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
-            $NewRecords = New-AzDnsRecordConfig -Cname "${{ inputs.clusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com.";
+            $NewRecords = New-AzDnsRecordConfig -Cname "${{ inputs.clusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."
+            
             New-AzDnsRecordSet -Name "${{ needs.setup.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.setup.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "latest"
 
