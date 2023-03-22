@@ -213,9 +213,9 @@ jobs:
               $KeyVaultName = "${{ inputs.environmentKeyVault }}"
             }
             else {
-              $KeyVaultName = [string](Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
+              [string]$KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
             }
-            $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+            $envSecrets = (Get-AzKeyVaultSecret -VaultName [ref]$KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
             $envSecrets | ForEach-Object {
                 $envName = $_.ToUpper()
                 $envName = $envName.Replace("-","_")
@@ -308,9 +308,9 @@ jobs:
               $KeyVaultName = "${{ inputs.environmentKeyVault }}"
             }
             else {
-              $KeyVaultName = [string](Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
+              [string]$KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
             }
-            $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+            $envSecrets = (Get-AzKeyVaultSecret -VaultName [ref]$KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
             $envSecrets | ForEach-Object {
                 $envName = $_.ToUpper()
                 $envName = $envName.Replace("-","_")
@@ -328,9 +328,9 @@ jobs:
               $KeyVaultName = "${{ inputs.environmentKeyVault }}"
             }
             else {
-              $KeyVaultName = [string](Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
+              [string]$KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
             }
-            $buildSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'BuildArg') -or ($_.ContentType -contains 'BuildArg Env')}).Name
+            $buildSecrets = (Get-AzKeyVaultSecret -VaultName [ref]$KeyVaultName  | Where-Object {($_.ContentType -contains 'BuildArg') -or ($_.ContentType -contains 'BuildArg Env')}).Name
             if ($buildSecrets.Count -gt 0) {
                 $buildArgPredicate = ' --build-arg '
             }
