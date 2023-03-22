@@ -206,24 +206,10 @@ jobs:
           enable-AzPSSession: true
 
       - name: Generate .env file from Azure Key Vaults
-        uses: azure/powershell@v1.2.0
+        uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
-          inlineScript: |
-            if ("${{ inputs.environmentKeyVault }}") {
-                $KeyVaultName = "${{ inputs.environmentKeyVault }}"
-            }
-            else {
-                $KeyVaultName = (Get-AzKeyVault -Tag @{"environment" = "${{ env.environment }}" } | Get-AzKeyVault -Tag @{"repository-name" = "${{ github.event.repository.name }}" }).VaultName
-            }
-            [string]$KeyVaultName = $KeyVaultName.Replace(" ", "-")
-            $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName | Where-Object { ($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env') }).Name
-            $envSecrets | ForEach-Object {
-                $envName = $_.ToUpper().Replace("-", "_")
-                $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                $envFileContent = $envName + "=" + $envSecret
-                Add-Content -Path ".env" -Value $envFileContent
-            }
-          azPSVersion: "latest"
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environment: ${{ inputs.environment }}
 
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
@@ -301,6 +287,12 @@ jobs:
           enable-AzPSSession: true
 
       - name: Generate .env file from Azure Key Vaults
+        uses: Andrews-McMeel-Universal/get-envs@v1.2
+        with:
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environment: ${{ inputs.environment }}
+
+      - name: Generate build args from Azure Key Vaults
         uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
@@ -311,26 +303,6 @@ jobs:
                 $KeyVaultName = (Get-AzKeyVault -Tag @{"environment" = "${{ env.environment }}" } | Get-AzKeyVault -Tag @{"repository-name" = "${{ github.event.repository.name }}" }).VaultName
             }
             [string]$KeyVaultName = $KeyVaultName.Replace(" ", "-")
-            $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName | Where-Object { ($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env') }).Name
-            $envSecrets | ForEach-Object {
-                $envName = $_.ToUpper().Replace("-", "_")
-                $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                $envFileContent = $envName + "=" + $envSecret
-                Add-Content -Path ".env" -Value $envFileContent
-            }
-          azPSVersion: "latest"
-
-      - name: Generate build args from Azure Key Vaults
-        uses: azure/powershell@v1.2.0
-        with:
-          inlineScript: |
-            if ("${{ inputs.environmentKeyVault }}") {
-                $KeyVaultName = "${{ inputs.environmentKeyVault }}"
-            }
-            else {
-                $KeyVaultName = (Get-AzKeyVault -Tag @{"environment"="${{ env.environment }}"} | Get-AzKeyVault -Tag @{"repository-name"="${{ github.event.repository.name }}"}).VaultName
-            }
-            [string]$KeyVaultName = $KeyVaultName.Replace(" ","-")
             $buildSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object { ($_.ContentType -contains 'BuildArg') -or ($_.ContentType -contains 'BuildArg Env') }).Name
             if ($buildSecrets.Count -gt 0) {
                 $buildArgPredicate = ' --build-arg '
