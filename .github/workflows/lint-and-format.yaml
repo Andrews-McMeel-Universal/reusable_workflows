@@ -10,14 +10,14 @@ on:
         type: string
         description: "Comma-separated list of linters to run"
         default: "all"
-      APPLY_FIXES_EVENT:
-        type: string
-        description: "Apply fixes event"
-        default: "pull_request"
       APPLY_FIXES_MODE:
         type: string
         description: "Create PR or commit directly to branch"
         default: "commit"
+      APPLY_FIXES_EVENT:
+        type: string
+        description: "Apply fixes event"
+        default: "pull_request"
     secrets:
       PAT_ACTION_CI:
         required: true
