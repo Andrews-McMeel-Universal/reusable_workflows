@@ -18,6 +18,8 @@ on:
         type: string
         description: "Apply fixes event"
         default: "pull_request"
+      NODE_ENV:
+        type: string
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -50,6 +52,7 @@ jobs:
       APPLY_FIXES: ${{ inputs.APPLY_FIXES }}
       APPLY_FIXES_MODE: ${{ inputs.APPLY_FIXES_MODE }}
       APPLY_FIXES_EVENT: ${{ inputs.APPLY_FIXES_EVENT }}
+      NODE_ENV: ${{ inputs.NODE_ENV || 'development' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
