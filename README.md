@@ -69,10 +69,10 @@ jobs:
     secrets:
       azureClusterName: ${{ secrets.AKS_CLUSTER_NAME }}
       azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
-      registryHostName: ${{ secrets.AMUAPPIMAGES201_HOSTNAME }}
-      registryUserName: ${{ secrets.AMUAPPIMAGES201_USERNAME }}
-      registryPassword: ${{ secrets.AMUAPPIMAGES201_PASSWORD }}
-      storageAccountKey: ${{ secrets.AMUCLOUDAPPS_KEY }}
+      registryHostName: ${{ secrets.REGISTRY_HOSTNAME }}
+      registryUserName: ${{ secrets.REGISTRY_USERNAME }}
+      registryPassword: ${{ secrets.REGISTRY_PASSWORD }}
+      storageAccountKey: ${{ secrets.STORAGEACCOUNT_KEY }}
 ```
 
 ### WordPress Site Deploy
@@ -118,7 +118,7 @@ jobs:
       environment: staging
     secrets:
       domainController: ${{ secrets.BOLEY_DC }}
-      storageAccountKey: ${{ secrets.AMUCLOUDAPPS_KEY }}
+      storageAccountKey: ${{ secrets.STORAGEACCOUNT_KEY }}
 ```
 
 ### Update Azure API Management
@@ -147,7 +147,7 @@ jobs:
       azurePassword: ${{ secrets.AMU_DEPLOY_PASSWORD }}  # Only set if the API service is in the fdickinson tenant
       azureSubscription: ${{ secrets.AMU_PAY_AS_YOU_GO_SUBSCRIPTION_ID }}  # Only set if the API service is in the fdickinson tenant
       azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}  # Only set if the API service is NOT in the fdickinson tenant
-      storageAccountKey: ${{ secrets.AMUCLOUDAPPS_KEY }}
+      storageAccountKey: ${{ secrets.STORAGEACCOUNT_KEY }}
 ```
 
 ### Purge CDN
@@ -238,7 +238,7 @@ jobs:
       azureB2CDomain: developmentamub2c.onmicrosoft.com
    secrets:
     azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
-    storageAccountKey: ${{ secrets.AMUCLOUDAPPS_KEY }}
+    storageAccountKey: ${{ secrets.STORAGEACCOUNT_KEY }}
     azureB2CClientId: ${{ secrets.B2C_CLIENT_ID }}
     azureB2CClientSecret: ${{ secrets.B2C_CLIENT_SECRET }}
 ```
