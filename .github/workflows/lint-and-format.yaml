@@ -8,40 +8,44 @@ on:
     secrets:
       PAT_ACTION_CI:
         required: true
+  workflow_dispatch:
 
 jobs:
-  prettier:
-    name: Prettier Check
+  lint:
+    name: Run MegaLinter
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.PAT_ACTION_CI }}
+      # Run the MegaLinter Github Action
+      - name: MegaLinter
+        id: ml
+        # You can override MegaLinter flavor used to have faster performances
+        # More info at https://megalinter.io/flavors/
+        uses: oxsecurity/megalinter/flavors/cupcake@v6.20.1
+        env:
+          VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
+          GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
 
-      - uses: actionsx/prettier@v2
+      # Creates archive artifact of linting reports
+      # Upload MegaLinter artifacts
+      - name: Archive production artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v3
         with:
-          # prettier CLI arguments.
-          args: --write .
+          name: MegaLinter reports
+          path: |
+            megalinter-reports
+            mega-linter.log
+          retention-days: 7
 
-      - uses: stefanzweifel/git-auto-commit-action@v4
+      # Commit fixes back into the raised PR branch
+      - name: Prepare Linting Fix Commit
+        if: steps.ml.outputs.has_updated_sources == 1 && env.APPLY_FIXES_MODE == 'commit' && github.ref != 'refs/heads/main'
+        run: sudo chown -Rc $UID .git/
+
+      - name: Commit and Push Linting Fixes
+        if: steps.ml.outputs.has_updated_sources == 1 && env.APPLY_FIXES_MODE == 'commit' && github.ref != 'refs/heads/main'
+        uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
-          commit_message: Apply prettier changes
-
-  lint-workflows:
-    name: Workflow linter
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Download actionlint
-        id: get_actionlint
-        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-        shell: bash
-
-      - name: Lint workflow files
-        run: ${{ steps.get_actionlint.outputs.executable }} -color -ignore "SC2086" -ignore "SC2129"
-        shell: bash
+          commit_message: "[MegaLinter] Apply prettier changes"
