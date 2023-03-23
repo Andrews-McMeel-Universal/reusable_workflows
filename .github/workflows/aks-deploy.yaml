@@ -16,11 +16,6 @@ on:
         type: string
         description: "GitHub Repository Name."
         default: ${{ github.event.repository.name }}
-      clusterName:
-        required: false
-        type: string
-        description: "AKS Cluster name."
-        default: "amuaks201"
       clusterResourceGroup:
         required: false
         type: string
@@ -91,13 +86,12 @@ on:
         type: string
         description: "Add the environment name to the front of the hostname (for DNS)"
         default: true
-      registryHostname:
-        required: false
-        type: string
-        description: "Container Registry Hostname"
-        default: "amuappimages201.azurecr.io"
     secrets:
+      azureClusterName:
+        required: true
       azureCredentials:
+        required: true
+      registryHostName:
         required: true
       registryUserName:
         required: true

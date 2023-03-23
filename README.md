@@ -67,7 +67,9 @@ jobs:
       environment: development
       environmentIngress: true|false # If set to true, the environment name will be prepended to the application hostname.
     secrets:
+      azureClusterName: ${{ secrets.AKS_CLUSTER_NAME }}
       azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+      registryHostName: ${{ secrets.AMUAPPIMAGES201_HOSTNAME }}
       registryUserName: ${{ secrets.AMUAPPIMAGES201_USERNAME }}
       registryPassword: ${{ secrets.AMUAPPIMAGES201_PASSWORD }}
       storageAccountKey: ${{ secrets.AMUCLOUDAPPS_KEY }}
