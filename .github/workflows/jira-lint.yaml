@@ -1,0 +1,44 @@
+name: Run Jira Linter
+
+on:
+  workflow_call:
+    inputs:
+      fail-on-error:
+        type: boolean
+        description: A Boolean which, if set to true, fails the GitHub Action when an error occurs. Default true.
+        default: true
+      skip-comments:
+        type: boolean
+        description: A Boolean if set to true then action-jira-linter will skip adding lint comments for PR title.
+        default: false
+    secrets:
+      JIRA_TOKEN:
+        required: true
+
+jobs:
+  jira-lint:
+    name: Run Jira Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jira-tools/action-jira-linter@v1.0.1
+        name: Jira Lint
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          jira-token: ${{ secrets.JIRA_TOKEN }}
+          jira-base-url: https://amuniversal.atlassian.net
+          pr-threshold: 1000
+          jira-user: amu_deploy@amuniversal.com
+          validate-issue-status: true
+          allowed-issue-statuses: |
+            New
+            Reopened
+            To Do
+            In Progress
+            Peer Review
+            In Staging / QA
+            Ready For Staging
+            In Development Env
+            Approved
+            Resolved
+          fail-on-error: ${{ inputs.fail-on-error }}
+          skip-comments: ${{ inputs.skip-comments }}

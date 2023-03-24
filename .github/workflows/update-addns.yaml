@@ -8,27 +8,30 @@ on:
         type: string
         description: "Deploy environment. Can be development, staging, or production."
       repositoryName:
-        required: true
+        required: false
         type: string
         description: "GitHub Repository Name."
+        default: ${{ github.event.repository.name }}
       storageAccountName:
-        required: true
+        required: false
         type: string
         description: "Storage Account for application information table."
+        default: "amucloudapps"
       appInfoTableName:
-        required: true
+        required: false
         type: string
         description: "Application information storage table."
+        default: "DeployedApplications"
     secrets:
       domainController:
         required: true
         description: "Domain Controller Server Name."
       storageAccountKey:
         required: true
-          
+
 jobs:
   update-dns:
-    runs-on: [self-hosted,Windows,boley]
+    runs-on: [self-hosted, Windows, boley]
     continue-on-error: false
     timeout-minutes: 10
     name: Update Boley DNS
@@ -36,7 +39,8 @@ jobs:
       - name: Retrieve Application information
         id: getappinfo
         uses: azure/powershell@v1.2.0
-        with: 
+        with:
+          azPSVersion: "latest"
           inlineScript: |
             Install-Module -Name AzTable -Force
             Import-Module AzTable
@@ -56,10 +60,7 @@ jobs:
                 return
                 }
 
-            $repoName = "${{ inputs.repositoryName }}"
-            $appEnvironment = "${{ inputs.environment }}"
-
-            $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey $repoName -RowKey $appEnvironment
+            $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey "${{ inputs.repositoryName }}" -RowKey "${{ inputs.environment }}"
 
             $applicationName = $appInfo.ApplicationName
             $version = $appInfo.Version
@@ -78,13 +79,22 @@ jobs:
             echo "applicationIngressFqdn=$ingressFqdn" >> $env:GITHUB_ENV
             echo "healthCheckPath=$healthCheckPath" >> $env:GITHUB_ENV
             echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
-          azPSVersion: "latest"
 
       - name: Update Internal Boley DNS
-        run:
-          | 
-          try {Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} } catch {Write-Host "Record Already Exists"}
-          Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ env.aksIngress }}" | Format-List
-          try {Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}} catch {Write-Host "Skipping zone sync. Zone is currently being synced."}
-      
-   
+        uses: azure/powershell@v1.2.0
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            try {
+              Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
+            } 
+            catch {
+              Write-Host "Record Already Exists"
+            }
+            Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ env.aksIngress }}" | Format-List
+            try {
+              Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
+            } 
+            catch {
+              Write-Host "Skipping zone sync. Zone is currently being synced."
+            }

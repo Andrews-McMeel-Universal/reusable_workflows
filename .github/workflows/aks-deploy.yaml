@@ -6,87 +6,92 @@ on:
       environment:
         required: true
         type: string
-        description: 'Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production.'
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
       environmentKeyVault:
-        required: true
+        required: false
         type: string
-        description: 'AKS Key vault.'
+        description: "AKS Key vault."
       repositoryName:
-        required: true
+        required: false
         type: string
-        description: 'GitHub Repository Name.'
-      clusterName:
-        required: true
-        type: string
-        description: 'AKS Cluster name.'
+        description: "GitHub Repository Name."
+        default: ${{ github.event.repository.name }}
       clusterResourceGroup:
-        required: true
+        required: false
         type: string
-        description: 'AKS Cluster Resource Group.'
-      aksIngressFqdn:
-        required: true
-        type: string
-        description: 'FQDN for AKS cluster ingress.'
+        description: "AKS Cluster Resource Group."
+        default: "AMU_AKS_201"
       dnsResourceGroup:
-        required: true
+        required: false
         type: string
-        description: 'DNS Resource Group.'
+        description: "DNS Resource Group."
+        default: "AMU_DNS_RG"
       chartsPath:
-        required: true
+        required: false
         type: string
-        description: 'Relative path to Helm charts.'
+        description: "Relative path to Helm charts."
+        default: "./deployments/charts"
       dockerFilePath:
-        required: true
+        required: false
         type: string
-        description: 'Relative path to Dockerfile.'
+        description: "Relative path to Dockerfile."
+        default: "."
       dockerImageName:
-        required: true
+        required: false
         type: string
-        description: 'Docker image name.'
+        description: "Docker image name."
+        default: ${{ github.event.repository.name }}
       dockerImageTag:
-        required: true
+        required: false
         type: string
-        description: 'Docker image tag.'
+        description: "Docker image tag."
+        default: ${{ github.sha }}
       maximumReplicas:
         required: false
         type: string
-        description: 'Maximum number of replicas for the application HPA.'
+        description: "Maximum number of replicas for the application HPA."
         default: 30
       storageAccountName:
-        required: true
+        required: false
         type: string
-        description: 'Storage Account for application information table.'
+        description: "Storage Account for application information table."
+        default: "amucloudapps"
       appInfoTableName:
-        required: true
+        required: false
         type: string
-        description: 'Application information storage table.'
+        description: "Application information storage table."
+        default: "DeployedApplications"
       deploymentTimeout:
         required: false
         type: number
-        description: 'Timeout for GitHub deployments'
+        description: "Timeout for GitHub deployments"
         default: 20
       webAuthentication:
         required: false
         type: string
-        description: 'Enable web authentication'
-        default: false
+        description: "Enable web authentication"
+        default: "false"
       ingressWhitelist:
         required: false
         type: string
-        description: 'IPs to include in the application whitelist'
+        description: "IPs to include in the application whitelist"
         default: "0.0.0.0/0"
       adminIngressWhitelist:
         required: false
         type: string
-        description: 'IPs to include in the Admin application whitelist'
+        description: "IPs to include in the Admin application whitelist"
         default: "207.67.20.252"
       environmentIngress:
         required: false
         type: string
-        description: 'Add the environment name to the front of the hostname (for DNS)'
+        description: "Add the environment name to the front of the hostname (for DNS)"
         default: true
     secrets:
+      azureClusterName:
+        required: true
       azureCredentials:
+        required: true
+      registryHostName:
         required: true
       registryUserName:
         required: true
@@ -100,169 +105,103 @@ on:
         required: false
 
 jobs:
-  deploy:
-    name: AKS Deployment
+  setup:
+    name: "Prepare for build"
     runs-on: ubuntu-latest
     continue-on-error: false
     environment: ${{ inputs.environment }}
     steps:
-      - name: Checkout if Staging or Development deployment
-        if: ${{ inputs.environment != 'production'}}
-        uses: actions/checkout@v3.2.0
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - name: Get latest release if production deployment
-        if: ${{ inputs.environment == 'production'}}
-        id: getlatestrelease
-        uses: thebritican/fetch-latest-release@v2.0.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Checkout Latest release if Production deployment
-        if: ${{ inputs.environment == 'production'}}
-        uses: actions/checkout@v3.2.0
-        with: 
-          ref: ${{ steps.getlatestrelease.outputs.tag_name }}
-
-      - name: Extract Helm Values
+      - name: Extract Helm values
         id: setenvs
         shell: pwsh
         run: |
+          Install-Module -Name powershell-yaml -Confirm:$false -Force
           Function Get-Envs {
-            param (
-                [parameter(Mandatory = $true, ValueFromPipeline = $true)]
-                [string]$PathToYaml
-            )
-
-              #Check to see if powershell-yaml is installed
-              if (Get-Module -Name powershell-yaml) {
-                #It's installed, this would be if you are running locally.
-              }
-              else {
-                  Write-Host "Installing Powershell-Yaml."
-                  Install-Module -Name powershell-yaml -Confirm:$false -Force
-              }
-
+              param (
+                  [parameter(Mandatory = $true, ValueFromPipeline = $true)]
+                  [string]$PathToYaml
+              )
               Import-Module powershell-yaml
-
               Write-Host "Getting configuration from: $PathToYaml."
-
               $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
-
               return $Values
           }
-
-
-          $appEnvironment= "${{ inputs.environment }}"
+          
+          $appEnvironment = "${{ inputs.environment }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Envs -PathToYaml $valuesYamlPath
           $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
-          $chartConfig= Get-Envs -PathToYaml $chartYamlPath
-          $containerRegistry = $appConfig.image.repository
+          $chartConfig = Get-Envs -PathToYaml $chartYamlPath
+          
           $appName = $chartConfig.name
           $appVersion = $chartConfig.appVersion
           $appHealthCheck = $appconfig.deployment.healthCheckPath
           $configMap = $appConfig.deployment.configMap
           $configSecret = $appConfig.deployment.secret
           $imagePullSecret = "$appName-pull-secret"
-          $appDeployDate = Get-Date
+          $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
+          $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
-          $ingressWhitelist = $($appConfig.ingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
-          $adminIngressWhitelist = $($appConfig.adminingress.annotations)."nginx.ingress.kubernetes.io/whitelist-source-range"
-
-          if ($environmentIngress -eq "true") {
-            $ingress = "$appEnvironment.$ingress"
-            if ($hostName.Length -gt 0) {
-              $hostName = "$appEnvironment.$hostName"
-            }
-            else {
-              $hostName = "$appEnvironment"
-            }
+          $ingressWhitelist = $appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" ?? "${{ inputs.ingressWhitelist }}"
+          if ($appConfig.adminingress) {
+              $adminIngressWhitelist = $appConfig.adminingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" ?? "${{ inputs.adminIngressWhitelist }}"
+              if (![bool]($adminIngressWhitelist -match "^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?(,\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?)*$")) { 
+                  Write-Output "::warning file=$valuesYamlPath::Invalid value set for 'adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range'. Defaulting to ${{ inputs.adminIngressWhitelist }} Value: $adminIngressWhitelist"
+                  $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
+              }
           }
           else {
-            if ($hostName.Length -eq 0) {
-              $hostName = "www"
-            }
+              Write-Output "::notice file=$valuesYamlPath::adminingress values not defined. Skipping setting adminIngressWhitelist"
           }
           
-          $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)','$1'
-          $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
+          if ($environmentIngress -eq "true") {
+              $ingress = "$appEnvironment.$ingress"
+              if ($hostName.Length -gt 0) {
+                  $hostName = "$appEnvironment.$hostName"
+              }
+              else {
+                  $hostName = "$appEnvironment"
+              }
+          }
+          else {
+              if ($hostName.Length -eq 0) {
+                  $hostName = "www"
+              }
+          }
+          Write-Output "::notice file=$valuesYamlPath::This application's hostname is $hostName.$domainName"
+          
+          Write-Output "appName=$appName" >> $env:GITHUB_ENV
+          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
+          Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
+          Write-Output "configMap=$configMap" >> $env:GITHUB_ENV
+          Write-Output "configSecret=$configSecret" >> $env:GITHUB_ENV
+          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+          Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
+          Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
+          Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
+          Write-Output "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
+          Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
+          Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
+          Write-Output "release=$release" >> $env:GITHUB_ENV
 
-          echo "appName=$appName" >> $env:GITHUB_ENV
-          echo "appVersion=$appVersion" >> $env:GITHUB_ENV
-          echo "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
-          echo "configMap=$configMap" >> $env:GITHUB_ENV
-          echo "configSecret=$configSecret" >> $env:GITHUB_ENV
-          echo "ingress=$ingress" >> $env:GITHUB_ENV
-          echo "domainName=$domainName" >> $env:GITHUB_ENV
-          echo "hostName=$hostName" >> $env:GITHUB_ENV
-          echo "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
-          echo "containerRegistry=$containerRegistry" >> $env:GITHUB_ENV
-          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
-          echo "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
-          echo "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
+      - name: Generate .env file from Azure Key Vaults
+        uses: Andrews-McMeel-Universal/get-envs@v1.2
+        with:
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environment: ${{ inputs.environment }}
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
-
-      - name: Get Secrets from Key Vaults
-        id: getsecrets
-        uses: azure/powershell@v1.2.0
-        with:
-          inlineScript: |
-            Function Get-EnvSecrets {
-              param (
-                  $KeyVaultName
-              )
-                #$secretTable = @{}
-                $envSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'Env') -or ($_.ContentType -contains 'BuildArg Env')}).Name
-                $envSecrets | ForEach-Object {
-                    $envName = $_.ToUpper()
-                    $envName = $envName.Replace("-","_")
-                    $envSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                    $envFileContent = $envName + "=" + $envSecret
-                    Add-Content -Path ".env" -Value $envFileContent
-                }
-                return $kubernetesSecret
-              }
-            Function Get-BuildArgSecrets {
-              param (
-                  $KeyVaultName
-              )
-                $buildSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object {($_.ContentType -contains 'BuildArg') -or ($_.ContentType -contains 'BuildArg Env')}).Name
-                if ($buildSecrets.Count -gt 0) {
-                    $buildArgPredicate = ' --build-arg '
-                }
-                else {
-                    return
-                }
-                $buildSecrets | ForEach-Object {
-                    $argName = $_.ToUpper()
-                    $argName = $argName.Replace("-","_")
-                    $argSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                    $buildArgs = $buildArgs + $buildArgPredicate + $argName + "=" + $argSecret
-                }
-                return $buildArgs
-            }
-            Get-EnvSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
-            Write-Host $k8sSecret
-            $buildArguments = Get-BuildArgSecrets -KeyVaultName "${{ inputs.environmentKeyVault }}"
-
-            echo "buildArguments=$buildArguments" >> $env:GITHUB_OUTPUT
-          azPSVersion: 'latest'
-
-      - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1.0.1
-        with:
-          login-server: ${{ env.containerRegistry }}
-          username: ${{ secrets.registryUserName }}
-          password: ${{ secrets.registryPassword }}
 
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
@@ -283,62 +222,146 @@ jobs:
         shell: pwsh
         run: |
           if (kubectl get secret | Select-String "${{ env.configSecret }}") {
-            kubectl delete secret "${{ env.configSecret }}"
+              kubectl delete secret "${{ env.configSecret }}"
           }
           kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
-
+          
           if ( "${{ inputs.webAuthentication }}" -eq "true") {
-            if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
-              kubectl delete secret "${{ env.appName }}-basic-auth"
-            }
-            htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
-            kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
+              if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
+                  Write-Output "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
+                  exit 1
+              }
+          
+              if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
+                  kubectl delete secret "${{ env.appName }}-basic-auth"
+              }
+              htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
+              kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
           }
 
       - name: Create K8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4.0
         with:
-          container-registry-url: "${{ env.containerRegistry }}"
+          container-registry-url: ${{ inputs.registryHostName }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ env.imagePullSecret }}"
 
+    outputs:
+      appName: ${{ env.appName }}
+      appVersion: ${{ env.appVersion }}
+      appHealthCheck: ${{ env.appHealthCheck }}
+      configMap: ${{ env.configMap }}
+      configSecret: ${{ env.configSecret }}
+      ingress: ${{ env.ingress }}
+      domainName: ${{ env.domainName }}
+      hostName: ${{ env.hostName }}
+      imagePullSecret: ${{ env.imagePullSecret }}
+      date: ${{ env.date }}
+      ingressWhitelist: ${{ env.ingressWhitelist }}
+      adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
+      release: ${{ env.release }}
+
+  build:
+    name: "Build Docker Image"
+    runs-on: ubuntu-latest
+    needs: [setup]
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Generate .env file from Azure Key Vaults
+        uses: Andrews-McMeel-Universal/get-envs@v1.2
+        with:
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environment: ${{ inputs.environment }}
+
+      - name: Login via Az module
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
+
+      - name: Generate build args from Azure Key Vaults
+        uses: azure/powershell@v1.2.0
+        with:
+          inlineScript: |
+            if ("${{ inputs.environmentKeyVault }}") {
+                $KeyVaultName = "${{ inputs.environmentKeyVault }}"
+            }
+            else {
+                $KeyVaultName = (Get-AzKeyVault -Tag @{"environment" = "${{ env.environment }}" } | Get-AzKeyVault -Tag @{"repository-name" = "${{ github.event.repository.name }}" }).VaultName
+            }
+            [string]$KeyVaultName = $KeyVaultName.Replace(" ", "-")
+            $buildSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object { ($_.ContentType -contains 'BuildArg') -or ($_.ContentType -contains 'BuildArg Env') }).Name
+            if ($buildSecrets.Count -gt 0) {
+                $buildArgPredicate = ' --build-arg '
+            }
+            else {
+                return
+            }
+            $buildSecrets | ForEach-Object {
+                $argName = $_.ToUpper()
+                $argName = $argName.Replace("-", "_")
+                $argSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
+                $buildArguments = $buildArguments + $buildArgPredicate + $argName + "=" + $argSecret
+            }
+            
+            echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
+          azPSVersion: "latest"
+
+      - name: Login to Azure Container Registry
+        uses: Azure/docker-login@v1.0.1
+        with:
+          login-server: ${{ inputs.registryHostName }}
+          username: ${{ secrets.registryUserName }}
+          password: ${{ secrets.registryPassword }}
+
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ steps.getsecrets.outputs.buildArguments }} -t "${{ env.containerRegistry  }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          docker push "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker push "${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
-          INGRESS_WHITELIST_ENV="${{ env.ingressWhitelist }}"
-          ADMIN_INGRESS_WHITELIST_ENV="${{ env.adminIngressWhitelist }}"
-          if [[ -n "${INGRESS_WHITELIST_ENV}" ]] ; then
-            INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
-          else
-            INGRESS_WHITELIST="${{ inputs.ingressWhitelist }}"
-          fi
-
-          if [[ -n "${ADMIN_INGRESS_WHITELIST_ENV}" ]] ; then
-            ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
-          else
-            ADMIN_INGRESS_WHITELIST="${{ inputs.adminIngressWhitelist }}"
-          fi
-
+          INGRESS_WHITELIST="${{ needs.setup.outputs.ingressWhitelist }}"
+          ADMIN_INGRESS_WHITELIST="${{ needs.setup.outputs.adminIngressWhitelist }}"
+          echo "::debug::WEB_AUTHENTICATION=$WEB_AUTHENTICATION"
+          echo "::debug::INGRESS_WHITELIST=$INGRESS_WHITELIST"
+          echo "::debug::ADMIN_INGRESS_WHITELIST=$ADMIN_INGRESS_WHITELIST"
+          
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
+            if [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
+              echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST!=null"
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
-              nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
+              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.setup.outputs.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           adminingress:
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
-          elif [[ "${ADMIN_INGRESS_WHITELIST}" != "207.67.20.252" ]] || [[ "${INGRESS_WHITELIST}" != "0.0.0.0/0" ]]; then
+            else
+              echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST=null"
+          cat << EOF >> values-override.yaml
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
+              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
+              nginx.ingress.kubernetes.io/auth-type: "basic"
+              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.setup.outputs.appName }}-basic-auth"
+              nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+          EOF
+            fi
+          elif [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
+            echo "::debug::WEB_AUTHENTICATION=false,ADMIN_INGRESS_WHITELIST!=null"
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -349,6 +372,7 @@ jobs:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
           else
+            echo "::debug::WEB_AUTHENTICATION=false,ADMIN_INGRESS_WHITELIST=null"
           cat << EOF >> values-override.yaml
           ingress:
             annotations:
@@ -361,35 +385,83 @@ jobs:
         id: bake
         uses: azure/k8s-bake@v2.4
         with:
-          renderEngine: 'helm'
+          renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
-          releaseName: ${{ env.release }}
-          helm-version: 'latest'
+          releaseName: ${{ needs.setup.outputs.release }}
+          helm-version: "latest"
           overrideFiles: ./values-override.yaml
           overrides: |
-            image.repository:${{ env.containerRegistry }}/${{ inputs.dockerImageName }}
+            image.repository:${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ env.ingress }}
+            ingress.host:${{ needs.setup.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
+
+      - name: Upload bake-manifests-bundle artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: bake-manifests-bundle
+          path: ${{ steps.bake.outputs.manifestsBundle }}
+          retention-days: 1
+
+    outputs:
+      manifestsBundle: ${{ steps.bake.outputs.manifestsBundle }}
+
+  deploy:
+    name: "Deploy to AKS cluster"
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Download bake-manifests-bundle artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: bake-manifests-bundle
+          path: ${{ needs.build.outputs.manifestsBundle }}
+
+      - name: Login via Az module
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+
+      - name: Set target AKS cluster
+        uses: Azure/aks-set-context@v3.2
+        with:
+          cluster-name: ${{ inputs.clusterName }}
+          resource-group: ${{ inputs.clusterResourceGroup }}
 
       - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v4.9
         with:
           namespace: ${{ inputs.environment }}
-          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+          manifests: ${{ needs.build.outputs.manifestsBundle }}
           images: |
-            "${{ env.containerRegistry }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+            "${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
-            "${{ env.imagePullSecret }}"
+            "${{ needs.setup.outputs.imagePullSecret }}"
           pull-images: false
+
+  update-records:
+    name: Update deployment records
+    needs: [setup, build, deploy]
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Login via Az module
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
 
       - name: Create or Update Public DNS Record
         uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
-            $NewRecords = New-AzDnsRecordConfig -Cname ${{ inputs.aksIngressFqdn }};
-            New-AzDnsRecordSet -Name "${{ env.hostName }}" -RecordType CNAME -ZoneName "${{ env.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            $NewRecords = New-AzDnsRecordConfig -Cname "${{ inputs.clusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."
+            
+            New-AzDnsRecordSet -Name "${{ needs.setup.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.setup.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "latest"
 
       - name: Record deployment information in Azure Storage Table
@@ -398,7 +470,21 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ env.appName }} Version=${{ env.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ env.hostName }} DomainName=${{ env.domainName }} IngressFqdn=${{ env.ingress }} HealthCheckPath=${{ env.appHealthCheck }} AksIngress=${{ inputs.aksIngressFqdn }} Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{ env.configSecret }} ConfigMap=${{ env.configMap }} LastDeploy=${{ env.date }}"
-          if_exists: 'replace'
-          extra_args: ''
+          data: "ApplicationName=${{ needs.setup.outputs.appName }} Version=${{ needs.setup.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.setup.outputs.hostName }} DomainName=${{ needs.setup.outputs.domainName }} IngressFqdn=${{ needs.setup.outputs.ingress }} HealthCheckPath=${{ needs.setup.outputs.appHealthCheck }} AksIngress=${{ inputs.clusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.setup.outputs.configSecret }} ConfigMap=${{ needs.setup.outputs.configMap }} LastDeploy=${{ needs.setup.outputs.date }}"
+          if_exists: "replace"
+          extra_args: ""
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
+
+      - name: Create deployment summary
+        run: |
+          echo "### ${{ needs.setup.outputs.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Application Name**: ${{ needs.setup.outputs.appName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.setup.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Key Vault Name**: ${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **FQDN**: ${{ needs.setup.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cluster**: ${{ inputs.clusterName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **ConfigSecret**: ${{ needs.setup.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${{ needs.setup.outputs.configMap }}" ]] ; then
+            echo "- **ConfigMap**: ${{ needs.setup.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
+          fi
