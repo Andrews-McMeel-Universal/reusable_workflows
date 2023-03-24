@@ -46,6 +46,8 @@ on:
     secrets:
       AZURE_CREDENTIALS:
         required: true
+      PAT_ACTION_CI:
+        required: true
 
 env:
   BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION || '2.3.26' }}

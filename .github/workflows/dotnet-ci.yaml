@@ -16,7 +16,7 @@ on:
         description: Comma-separated list of linters to run
         default: 'all'
       APPLY_FIXES_MODE:
-        type: choice
+        type: string
         description: 'Create PR or commit directly to branch'
         default: 'commit'
       APPLY_FIXES_EVENT:
@@ -26,15 +26,8 @@ on:
     secrets:
       azureCredentials:
         required: true
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  pull-requests: write
-  contents: write
-  statuses: write
+      PAT_ACTION_CI:
+        required: true
 
 env:
   DOTNET_VERSION: ${{ inputs.dotnetVersion }}

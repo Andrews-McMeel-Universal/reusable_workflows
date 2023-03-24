@@ -1,47 +1,33 @@
 name: Docker CI
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main, development]
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.ps1'
-      - '**/Secrets.json*'
-      - '.*ignore'
-      - '.devcontainer/'
-      - '.vscode/'
-      - '.github/'
-      - '!.github/workflows/application-ci.yml'
-  workflow_dispatch:
+  workflow_call:
     inputs:
+      dotnetVersion:
+        required: true
+        type: string
+        description: '.NET SDK Version'
+      dotnetProjectFile:
+        required: true
+        type: string
+        description: 'Path to .NET Project File'    
       APPLY_FIXES:
         type: string
         description: Comma-separated list of linters to run
         default: 'all'
       APPLY_FIXES_MODE:
-        type: choice
+        type: string
         description: 'Create PR or commit directly to branch'
-        options:
-          - 'pull_request'
-          - 'commit'
+        default: 'commit'
       APPLY_FIXES_EVENT:
-        type: choice
+        type: string
         description: 'Create PR or commit directly to branch'
-        options:
-          - 'all'
-          - 'push'
-          - 'pull_request'
-          - 'none'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  pull-requests: write
-  contents: write
-  statuses: write
+        default: 'all'
+    secrets:
+      azureCredentials:
+        required: true
+      PAT_ACTION_CI:
+        required: true
 
 env:
   environment: development
