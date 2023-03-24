@@ -9,7 +9,7 @@ on:
       DOTNET_VERSION:
         required: true
         type: string
-        description: '.NET SDK Version'
+        description: ".NET SDK Version"
       APPLY_FIXES:
         type: string
         description: Comma-separated list of linters to run
@@ -122,8 +122,8 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.PAT_ACTION_CI  || secrets.GITHUB_TOKEN }}
-          commit-message: '[MegaLinter] Apply linters automatic fixes'
-          title: '[MegaLinter] Apply linters automatic fixes'
+          commit-message: "[MegaLinter] Apply linters automatic fixes"
+          title: "[MegaLinter] Apply linters automatic fixes"
           labels: bot
 
       # Commit fixes back into the raised PR branch

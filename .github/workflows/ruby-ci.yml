@@ -40,8 +40,8 @@ on:
         default: "all"
       APPLY_FIXES_MODE:
         type: string
-        description: 'Create PR or commit directly to branch'
-        default: 'commit'
+        description: "Create PR or commit directly to branch"
+        default: "commit"
       APPLY_FIXES_EVENT:
         type: string
         description: "Create PR or commit directly to branch"
@@ -158,8 +158,8 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.PAT_ACTION_CI || secrets.GITHUB_TOKEN }}
-          commit-message: '[MegaLinter] Apply linters automatic fixes'
-          title: '[MegaLinter] Apply linters automatic fixes'
+          commit-message: "[MegaLinter] Apply linters automatic fixes"
+          title: "[MegaLinter] Apply linters automatic fixes"
           labels: bot
 
       # Commit fixes back into the raised PR branch
