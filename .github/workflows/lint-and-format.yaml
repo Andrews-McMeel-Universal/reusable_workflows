@@ -67,7 +67,7 @@ jobs:
       # Run the MegaLinter Github Action
       - name: MegaLinter
         if: inputs.LINT_FLAVOR == 'cupcake'
-        id: ml
+        id: ml-cc
         uses: oxsecurity/megalinter/flavors/cupcake@v6.20.1
         env:
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
@@ -76,7 +76,7 @@ jobs:
       # Run the MegaLinter Github Action
       - name: MegaLinter
         if: inputs.LINT_FLAVOR == 'dotnet'
-        id: ml
+        id: ml-dn
         uses: oxsecurity/megalinter/flavors/dotnet@v6.20.1
         env:
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
@@ -97,7 +97,7 @@ jobs:
       # Create pull request if applicable (for now works only on PR from same repository, not from forks)
       - name: Create Pull Request with applied fixes
         id: cpr
-        if: steps.ml.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
+        if: steps.ml-cc.outputs.has_updated_sources == 1 || steps.ml-dn.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
         uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
