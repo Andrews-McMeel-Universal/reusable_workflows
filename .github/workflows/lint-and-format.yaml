@@ -20,6 +20,10 @@ on:
         default: "pull_request"
       NODE_ENV:
         type: string
+        default: "development"
+      LINT_FLAVOR:
+        type: string
+        default: "cupcake"
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -52,7 +56,7 @@ jobs:
       APPLY_FIXES: ${{ inputs.APPLY_FIXES }}
       APPLY_FIXES_MODE: ${{ inputs.APPLY_FIXES_MODE }}
       APPLY_FIXES_EVENT: ${{ inputs.APPLY_FIXES_EVENT }}
-      NODE_ENV: ${{ inputs.NODE_ENV || 'development' }}
+      NODE_ENV: ${{ inputs.NODE_ENV }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -63,7 +67,7 @@ jobs:
       # Run the MegaLinter Github Action
       - name: MegaLinter
         id: ml
-        uses: oxsecurity/megalinter/flavors/cupcake@v6.20.1
+        uses: oxsecurity/megalinter/flavors/${{ inputs.LINT_FLAVOR }}@v6.20.1
         env:
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
           GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
