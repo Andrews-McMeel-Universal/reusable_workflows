@@ -206,7 +206,7 @@ jobs:
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
         with:
-          cluster-name: ${{ inputs.azureClusterName }}
+          cluster-name: ${{ secrets.azureClusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
       - name: Switch to ${{ inputs.environment }} Namespace
@@ -427,7 +427,7 @@ jobs:
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
         with:
-          cluster-name: ${{ secrets.clusterName }}
+          cluster-name: ${{ secrets.azureClusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
       - name: Deploy to Azure Kubernetes Service
