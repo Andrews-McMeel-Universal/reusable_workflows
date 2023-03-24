@@ -3,6 +3,9 @@ name: Ruby on Rails CI
 on:
   workflow_call:
     inputs:
+      environment:
+        required: true
+        type: string
       BUNDLER_VERSION:
         required: false
         type: string
@@ -36,22 +39,22 @@ on:
         description: Comma-separated list of linters to run
         default: "all"
       APPLY_FIXES_MODE:
-        type: choice
-        description: "Create PR or commit directly to branch"
-        default: "commit"
+        type: string
+        description: 'Create PR or commit directly to branch'
+        default: 'commit'
       APPLY_FIXES_EVENT:
         type: string
         description: "Create PR or commit directly to branch"
         default: "all"
     secrets:
-      AZURE_CREDENTIALS:
+      azureCredentials:
         required: true
       PAT_ACTION_CI:
         required: true
 
 env:
   BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION || '2.3.26' }}
-  RAILS_ENV: ${{ inputs.RAILS_ENV || 'production' }}
+  RAILS_ENV: ${{ inputs.environment || 'production' }}
 
 jobs:
   # Sets up dependencies and initial cache
@@ -67,7 +70,7 @@ jobs:
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
-          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
 
       - uses: actions/setup-node@v3
@@ -108,7 +111,7 @@ jobs:
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
-          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
 
       - name: Setup Node
@@ -154,9 +157,9 @@ jobs:
         if: steps.ml.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
         uses: peter-evans/create-pull-request@v4
         with:
-          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
-          commit-message: "[MegaLinter] Apply linters automatic fixes"
-          title: "[MegaLinter] Apply linters automatic fixes"
+          token: ${{ secrets.PAT_ACTION_CI || secrets.GITHUB_TOKEN }}
+          commit-message: '[MegaLinter] Apply linters automatic fixes'
+          title: '[MegaLinter] Apply linters automatic fixes'
           labels: bot
 
       # Commit fixes back into the raised PR branch
@@ -202,7 +205,7 @@ jobs:
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
-          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
 
       - name: Boot Rails server
@@ -222,7 +225,7 @@ jobs:
   check-size:
     runs-on: ubuntu-latest
     name: Get File Sizes Limits
-    needs: [build]
+    needs: [install]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v3

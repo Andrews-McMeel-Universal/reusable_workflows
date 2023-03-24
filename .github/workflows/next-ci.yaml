@@ -3,6 +3,9 @@ name: Next.js CI
 on:
   workflow_call:
     inputs:
+      environment:
+        required: true
+        type: string
       APPLY_FIXES:
         type: string
         description: Comma-separated list of linters to run
@@ -37,7 +40,7 @@ jobs:
 
       - uses: ./.github/actions/use-build-args-cache
         with:
-          azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          azureCredentials: ${{ secrets.azureCredentials }}
 
       - uses: ./.github/actions/use-install-cache
 
@@ -90,9 +93,9 @@ jobs:
         if: steps.ml.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
         uses: peter-evans/create-pull-request@v4
         with:
-          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
-          commit-message: "[MegaLinter] Apply linters automatic fixes"
-          title: "[MegaLinter] Apply linters automatic fixes"
+          token: ${{ secrets.PAT_ACTION_CI  || secrets.GITHUB_TOKEN }}
+          commit-message: '[MegaLinter] Apply linters automatic fixes'
+          title: '[MegaLinter] Apply linters automatic fixes'
           labels: bot
 
       # Commit fixes back into the raised PR branch

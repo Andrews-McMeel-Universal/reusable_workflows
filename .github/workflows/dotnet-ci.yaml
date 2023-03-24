@@ -3,14 +3,13 @@ name: .NET CI
 on:
   workflow_call:
     inputs:
-      dotnetVersion:
+      environment:
         required: true
         type: string
-        description: ".NET SDK Version"
-      dotnetProjectFile:
+      DOTNET_VERSION:
         required: true
         type: string
-        description: "Path to .NET Project File"
+        description: '.NET SDK Version'
       APPLY_FIXES:
         type: string
         description: Comma-separated list of linters to run
@@ -30,7 +29,7 @@ on:
         required: true
 
 env:
-  DOTNET_VERSION: ${{ inputs.dotnetVersion }}
+  DOTNET_VERSION: ${{ inputs.DOTNET_VERSION }}
   environment: development
 
 jobs:
@@ -47,7 +46,7 @@ jobs:
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
-          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
 
       - name: .NET Install Cache Action
@@ -77,7 +76,7 @@ jobs:
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
-          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
 
       - name: Setup .NET Core
@@ -122,9 +121,9 @@ jobs:
         if: steps.ml.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
         uses: peter-evans/create-pull-request@v4
         with:
-          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
-          commit-message: "[MegaLinter] Apply linters automatic fixes"
-          title: "[MegaLinter] Apply linters automatic fixes"
+          token: ${{ secrets.PAT_ACTION_CI  || secrets.GITHUB_TOKEN }}
+          commit-message: '[MegaLinter] Apply linters automatic fixes'
+          title: '[MegaLinter] Apply linters automatic fixes'
           labels: bot
 
       # Commit fixes back into the raised PR branch
