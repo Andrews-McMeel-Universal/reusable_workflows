@@ -206,7 +206,7 @@ jobs:
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
         with:
-          cluster-name: ${{ inputs.clusterName }}
+          cluster-name: ${{ inputs.azureClusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
       - name: Switch to ${{ inputs.environment }} Namespace
@@ -242,7 +242,7 @@ jobs:
       - name: Create K8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4.0
         with:
-          container-registry-url: ${{ inputs.registryHostName }}
+          container-registry-url: ${{ secrets.registryHostName }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ env.imagePullSecret }}"
@@ -315,14 +315,14 @@ jobs:
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1.0.1
         with:
-          login-server: ${{ inputs.registryHostName }}
+          login-server: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          docker push "${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker push "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
 
       - name: Create values override file
         run: |
@@ -391,7 +391,7 @@ jobs:
           helm-version: "latest"
           overrideFiles: ./values-override.yaml
           overrides: |
-            image.repository:${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}
+            image.repository:${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ needs.setup.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
@@ -427,7 +427,7 @@ jobs:
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
         with:
-          cluster-name: ${{ inputs.clusterName }}
+          cluster-name: ${{ secrets.clusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
       - name: Deploy to Azure Kubernetes Service
@@ -437,7 +437,7 @@ jobs:
           namespace: ${{ inputs.environment }}
           manifests: ${{ needs.build.outputs.manifestsBundle }}
           images: |
-            "${{ inputs.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+            "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagePullSecrets: |
             "${{ needs.setup.outputs.imagePullSecret }}"
           pull-images: false
@@ -459,7 +459,7 @@ jobs:
         uses: azure/powershell@v1.2.0
         with:
           inlineScript: |
-            $NewRecords = New-AzDnsRecordConfig -Cname "${{ inputs.clusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."
+            $NewRecords = New-AzDnsRecordConfig -Cname "${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."
             
             New-AzDnsRecordSet -Name "${{ needs.setup.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.setup.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "latest"
@@ -470,7 +470,7 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.setup.outputs.appName }} Version=${{ needs.setup.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.setup.outputs.hostName }} DomainName=${{ needs.setup.outputs.domainName }} IngressFqdn=${{ needs.setup.outputs.ingress }} HealthCheckPath=${{ needs.setup.outputs.appHealthCheck }} AksIngress=${{ inputs.clusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ inputs.clusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.setup.outputs.configSecret }} ConfigMap=${{ needs.setup.outputs.configMap }} LastDeploy=${{ needs.setup.outputs.date }}"
+          data: "ApplicationName=${{ needs.setup.outputs.appName }} Version=${{ needs.setup.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.setup.outputs.hostName }} DomainName=${{ needs.setup.outputs.domainName }} IngressFqdn=${{ needs.setup.outputs.ingress }} HealthCheckPath=${{ needs.setup.outputs.appHealthCheck }} AksIngress=${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.setup.outputs.configSecret }} ConfigMap=${{ needs.setup.outputs.configMap }} LastDeploy=${{ needs.setup.outputs.date }}"
           if_exists: "replace"
           extra_args: ""
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
@@ -483,7 +483,7 @@ jobs:
           echo "- **Version**: ${{ needs.setup.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Key Vault Name**: ${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
           echo "- **FQDN**: ${{ needs.setup.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Cluster**: ${{ inputs.clusterName }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cluster**: ${{ secrets.azureClusterName }}" >> $GITHUB_STEP_SUMMARY
           echo "- **ConfigSecret**: ${{ needs.setup.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
           if [[ -n "${{ needs.setup.outputs.configMap }}" ]] ; then
             echo "- **ConfigMap**: ${{ needs.setup.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
