@@ -1,4 +1,4 @@
-name: .NET Application CI
+name: .NET CI
 
 on:
   workflow_call:
@@ -11,44 +11,185 @@ on:
         required: true
         type: string
         description: 'Path to .NET Project File'
+      APPLY_FIXES:
+        type: string
+        description: Comma-separated list of linters to run
+        default: 'all'
+      APPLY_FIXES_MODE:
+        type: choice
+        description: 'Create PR or commit directly to branch'
+        default: 'commit'
+      APPLY_FIXES_EVENT:
+        type: string
+        description: 'Create PR or commit directly to branch'
+        default: 'all'
     secrets:
       azureCredentials:
         required: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  contents: write
+  statuses: write
+
 env:
-  dotnetProjectFile: ${{ inputs.dotnetProjectFile }}
-  dotnetVersion: ${{ inputs.dotnetVersion }}
-  azureCredentials: ${{ secrets.azureCredentials }}
+  DOTNET_VERSION: ${{ inputs.dotnetVersion }}
+  environment: development
 
 jobs:
-  setup-and-build:
-    name: Build Application
+  # Sets up dependencies and initial cache
+  build:
+    name: Build App
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: .NET Install Cache Action
-      uses: ./.github/actions/use-dotnet-install-cache
+      - name: Use .env cache action
+        uses: Andrews-McMeel-Universal/get-envs@v1.2
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
 
-    - name: .NET Build Cache Action
-      uses: ./.github/actions/use-dotnet-build-cache
+      - name: .NET Install Cache Action
+        uses: ./.github/actions/use-dotnet-install-cache
 
-  integration-tests:
-    name: Test Application
+      - name: .NET Build Cache Action
+        uses: ./.github/actions/use-dotnet-build-cache
+  # Required status check
+  # Checks code quality
+  lint:
+    name: Run MegaLinter
+    needs: [build]
     runs-on: ubuntu-latest
+    env:
+      APPLY_FIXES: ${{ inputs.APPLY_FIXES || 'all' }}
+      APPLY_FIXES_MODE: ${{ inputs.APPLY_FIXES_MODE || 'commit' }}
+      APPLY_FIXES_EVENT: ${{ inputs.APPLY_FIXES_EVENT || 'pull_request' }}
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      # This uses the PAT_ACTION_CI token as the normal GITHUB_TOKEN
+      # doesn't have the permissions to trigger additional workflows
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+          fetch-depth: 0
 
-    - name: .NET Install Cache Action
-      uses: ./.github/actions/use-dotnet-install-cache
+      - name: Use .env cache action
+        uses: Andrews-McMeel-Universal/get-envs@v1.2
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
 
-    - name: .NET Build Cache Action
-      uses: ./.github/actions/use-dotnet-build-cache
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Fix HTTPS Certs
-      run: dotnet dev-certs https
+      - uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          # Look to see if there is a cache hit for the corresponding requirements file
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget
 
-    - name: Run tests
-      run: dotnet test "${{ env.dotnetProjectFile }}" --no-restore --verbosity normal
+      - name: Install dependencies
+        run: dotnet restore
+
+      # Run the MegaLinter Github Action
+      - name: MegaLinter
+        id: ml
+        uses: oxsecurity/megalinter/flavors/cupcake@v6.20.1
+        env:
+          VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
+          GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
+
+      # Creates archive artifact of linting reports
+      # Upload MegaLinter artifacts
+      - name: Archive production artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: MegaLinter reports
+          path: |
+            megalinter-reports
+            mega-linter.log
+          retention-days: 7
+
+      # Create pull request if applicable (for now works only on PR from same repository, not from forks)
+      - name: Create Pull Request with applied fixes
+        id: cpr
+        if: steps.ml.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
+          commit-message: '[MegaLinter] Apply linters automatic fixes'
+          title: '[MegaLinter] Apply linters automatic fixes'
+          labels: bot
+
+      # Commit fixes back into the raised PR branch
+      - name: Prepare Linting Fix Commit
+        if: steps.ml.outputs.has_updated_sources == 1 && github.ref != 'refs/heads/main' && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'commit'
+        run: sudo chown -Rc $UID .git/
+
+      - name: Commit and Push Linting Fixes
+        if: steps.ml.outputs.has_updated_sources == 1 && github.ref != 'refs/heads/main' && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'commit'
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_user_name: amutechtest
+          commit_user_email: amu_deploy@amuniversal.com
+          commit_message: '[MegaLinter] Apply prettier changes'
+
+  test-in-ci:
+    name: Run CI tests
+    runs-on: ubuntu-latest
+    needs: [lint]
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: .NET Install Cache Action
+        uses: ./.github/actions/use-dotnet-install-cache
+
+      - name: .NET Build Cache Action
+        uses: ./.github/actions/use-dotnet-build-cache
+
+  # Checks gzipped page sizes, uses caches from setup-and-build
+  check-size:
+    runs-on: ubuntu-latest
+    name: Get File Sizes Limits
+    needs: [build]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      - uses: ./.github/actions/use-build-args-cache
+
+      - uses: ./.github/actions/use-install-cache
+
+      - uses: ./.github/actions/use-build-cache
+
+      - uses: andresz1/size-limit-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # The size-limit-action tries to run a
+          # redundant yarn build
+          skip_step: build
+
+  required-checks:
+    name: Required Checks
+    runs-on: ubuntu-latest
+    needs: [test-in-ci]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
