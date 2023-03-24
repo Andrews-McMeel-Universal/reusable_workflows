@@ -20,7 +20,6 @@ on:
         default: "pull_request"
       NODE_ENV:
         type: string
-        default: "development"
       LINT_FLAVOR:
         type: string
         default: "cupcake"
@@ -52,7 +51,6 @@ env:
   APPLY_FIXES: ${{ inputs.APPLY_FIXES }}
   APPLY_FIXES_MODE: ${{ inputs.APPLY_FIXES_MODE }}
   APPLY_FIXES_EVENT: ${{ inputs.APPLY_FIXES_EVENT }}
-  NODE_ENV: ${{ inputs.NODE_ENV }}
 
 jobs:
   lint-cupcake:
@@ -65,6 +63,17 @@ jobs:
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
+
+      - name: Set up Node from NVM
+        if: inputs.NODE_ENV
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        if: inputs.NODE_ENV
+        run: yarn install --frozen-lockfile --prefer-offline
 
       # Run the MegaLinter Github Action
       - name: MegaLinter
