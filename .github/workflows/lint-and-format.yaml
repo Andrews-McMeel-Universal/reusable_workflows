@@ -1,9 +1,7 @@
 name: Lint and Format Code
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main]
+  push:
   workflow_call:
     secrets:
       PAT_ACTION_CI:
