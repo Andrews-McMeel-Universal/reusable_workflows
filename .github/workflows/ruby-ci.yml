@@ -7,42 +7,42 @@ on:
         required: false
         type: string
         default: 2.3.26
-        description: 'Bundler version'
+        description: "Bundler version"
       RAILS_ENV:
         required: false
         type: string
-        default: 'development'
-        description: 'Rails Environment'
-      RUBY_VERSION: 
+        default: "development"
+        description: "Rails Environment"
+      RUBY_VERSION:
         required: true
         type: string
-        description: 'Ruby version'
-      APT_PACKAGES: 
+        description: "Ruby version"
+      APT_PACKAGES:
         required: false
         type: string
-        default: 'curl'
-        description: 'Apt packages to install'
-      INSTALL_NODE: 
+        default: "curl"
+        description: "Apt packages to install"
+      INSTALL_NODE:
         required: true
         type: boolean
-        description: 'Whether to install Node.js or not'
-      NODE_VERSION: 
+        description: "Whether to install Node.js or not"
+      NODE_VERSION:
         required: false
         type: string
-        default: '14'
-        description: 'Node.js version to install'
+        default: "14"
+        description: "Node.js version to install"
       APPLY_FIXES:
         type: string
         description: Comma-separated list of linters to run
-        default: 'all'
+        default: "all"
       APPLY_FIXES_MODE:
         type: choice
-        description: 'Create PR or commit directly to branch'
-        default: 'commit'
+        description: "Create PR or commit directly to branch"
+        default: "commit"
       APPLY_FIXES_EVENT:
         type: string
-        description: 'Create PR or commit directly to branch'
-        default: 'all'
+        description: "Create PR or commit directly to branch"
+        default: "all"
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -155,8 +155,8 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
-          commit-message: '[MegaLinter] Apply linters automatic fixes'
-          title: '[MegaLinter] Apply linters automatic fixes'
+          commit-message: "[MegaLinter] Apply linters automatic fixes"
+          title: "[MegaLinter] Apply linters automatic fixes"
           labels: bot
 
       # Commit fixes back into the raised PR branch
@@ -170,7 +170,7 @@ jobs:
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
-          commit_message: '[MegaLinter] Apply prettier changes'
+          commit_message: "[MegaLinter] Apply prettier changes"
 
   # Required status check
   test-in-ci:

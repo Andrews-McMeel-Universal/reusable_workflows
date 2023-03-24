@@ -6,23 +6,23 @@ on:
       dotnetVersion:
         required: true
         type: string
-        description: '.NET SDK Version'
+        description: ".NET SDK Version"
       dotnetProjectFile:
         required: true
         type: string
-        description: 'Path to .NET Project File'
+        description: "Path to .NET Project File"
       APPLY_FIXES:
         type: string
         description: Comma-separated list of linters to run
-        default: 'all'
+        default: "all"
       APPLY_FIXES_MODE:
         type: string
-        description: 'Create PR or commit directly to branch'
-        default: 'commit'
+        description: "Create PR or commit directly to branch"
+        default: "commit"
       APPLY_FIXES_EVENT:
         type: string
-        description: 'Create PR or commit directly to branch'
-        default: 'all'
+        description: "Create PR or commit directly to branch"
+        default: "all"
     secrets:
       azureCredentials:
         required: true
@@ -123,8 +123,8 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
-          commit-message: '[MegaLinter] Apply linters automatic fixes'
-          title: '[MegaLinter] Apply linters automatic fixes'
+          commit-message: "[MegaLinter] Apply linters automatic fixes"
+          title: "[MegaLinter] Apply linters automatic fixes"
           labels: bot
 
       # Commit fixes back into the raised PR branch
@@ -138,7 +138,7 @@ jobs:
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
-          commit_message: '[MegaLinter] Apply prettier changes'
+          commit_message: "[MegaLinter] Apply prettier changes"
 
   test-in-ci:
     name: Run CI tests

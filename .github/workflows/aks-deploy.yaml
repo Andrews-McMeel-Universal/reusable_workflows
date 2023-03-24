@@ -129,14 +129,14 @@ jobs:
               $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
               return $Values
           }
-          
+
           $appEnvironment = "${{ inputs.environment }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Envs -PathToYaml $valuesYamlPath
           $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
           $chartConfig = Get-Envs -PathToYaml $chartYamlPath
-          
+
           $appName = $chartConfig.name
           $appVersion = $chartConfig.appVersion
           $appHealthCheck = $appconfig.deployment.healthCheckPath
@@ -160,7 +160,7 @@ jobs:
           else {
               Write-Output "::notice file=$valuesYamlPath::adminingress values not defined. Skipping setting adminIngressWhitelist"
           }
-          
+
           if ($environmentIngress -eq "true") {
               $ingress = "$appEnvironment.$ingress"
               if ($hostName.Length -gt 0) {
@@ -176,7 +176,7 @@ jobs:
               }
           }
           Write-Output "::notice file=$valuesYamlPath::This application's hostname is $hostName.$domainName"
-          
+
           Write-Output "appName=$appName" >> $env:GITHUB_ENV
           Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
           Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
@@ -225,13 +225,13 @@ jobs:
               kubectl delete secret "${{ env.configSecret }}"
           }
           kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
-          
+
           if ( "${{ inputs.webAuthentication }}" -eq "true") {
               if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
                   Write-Output "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
                   exit 1
               }
-          
+
               if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
                   kubectl delete secret "${{ env.appName }}-basic-auth"
               }
@@ -308,7 +308,7 @@ jobs:
                 $argSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
                 $buildArguments = $buildArguments + $buildArgPredicate + $argName + "=" + $argSecret
             }
-            
+
             echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
           azPSVersion: "latest"
 
@@ -332,7 +332,7 @@ jobs:
           echo "::debug::WEB_AUTHENTICATION=$WEB_AUTHENTICATION"
           echo "::debug::INGRESS_WHITELIST=$INGRESS_WHITELIST"
           echo "::debug::ADMIN_INGRESS_WHITELIST=$ADMIN_INGRESS_WHITELIST"
-          
+
           if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
             if [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
               echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST!=null"
@@ -460,7 +460,7 @@ jobs:
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname "${{ inputs.clusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."
-            
+
             New-AzDnsRecordSet -Name "${{ needs.setup.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.setup.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "latest"
 
