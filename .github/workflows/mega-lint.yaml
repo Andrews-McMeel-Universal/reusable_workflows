@@ -25,6 +25,13 @@ on:
         required: true
   workflow_dispatch:
     inputs:
+      NODE_ENV:
+        description: Next.js build arg [optional]
+        type: string
+      LINT_FLAVOR:
+        description: Mega Lint flavor
+        type: string
+        default: "cupcake"
       APPLY_FIXES:
         type: string
         description: "Comma-separated list of linters to run"
