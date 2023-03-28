@@ -20,7 +20,6 @@ on:
         type: string
       LINT_FLAVOR:
         type: string
-        default: "cupcake"
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -53,7 +52,7 @@ env:
 jobs:
   lint-cupcake:
     name: Run MegaLinter Cupcake
-    if: inputs.LINT_FLAVOR == 'cupcake'
+    if: ${{ inputs.LINT_FLAVOR == 'cupcake' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -63,14 +62,14 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node from NVM
-        if: inputs.NODE_ENV
+        if: ${{ inputs.NODE_ENV }}
         uses: actions/setup-node@v3
         with:
           node-version-file: ".nvmrc"
           cache: "yarn"
 
       - name: Install dependencies
-        if: inputs.NODE_ENV
+        if: ${{ inputs.NODE_ENV }}
         run: yarn install --frozen-lockfile --prefer-offline
 
       # Run the MegaLinter Github Action
@@ -99,7 +98,7 @@ jobs:
         if: steps.ml.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
         uses: peter-evans/create-pull-request@v4
         with:
-          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_ACTION_CI|| secrets.GITHUB_TOKEN }}
           commit-message: "[MegaLinter] Apply linters automatic fixes"
           title: "[MegaLinter] Apply linters automatic fixes"
           labels: bot
@@ -119,7 +118,7 @@ jobs:
 
   lint-dotnet:
     name: Run MegaLinter Dotnet
-    if: inputs.LINT_FLAVOR == 'dotnet'
+    if: ${{ inputs.LINT_FLAVOR == 'dotnet' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -154,7 +153,7 @@ jobs:
         if: steps.ml.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
         uses: peter-evans/create-pull-request@v4
         with:
-          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_ACTION_CI|| secrets.GITHUB_TOKEN }}
           commit-message: "[MegaLinter] Apply linters automatic fixes"
           title: "[MegaLinter] Apply linters automatic fixes"
           labels: bot
