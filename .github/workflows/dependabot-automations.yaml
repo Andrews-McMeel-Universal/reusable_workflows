@@ -3,18 +3,19 @@ name: Dependabot Automations
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
-    branches:
-      # Filter by Dependabot PRs
-      - "dependabot/**"
   workflow_call:
+    inputs:
+      autoApprove:
+        default: false
+        type: boolean
 
 jobs:
-  auto-merge-dependabot:
+  dependabot-automations:
     name: Automatically Update Dependencies
     runs-on: ubuntu-latest
     # Checking the actor will prevent your Action run failing on non-Dependabot
     # PRs but also ensures that it only does work for Dependabot PRs.
-    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+    if: ${{ inputs.autoApprove && github.actor == 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v3
         with:
