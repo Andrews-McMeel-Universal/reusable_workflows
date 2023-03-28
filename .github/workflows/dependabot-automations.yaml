@@ -19,6 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # This second step will fail if there's no metadata and so the approval
+      # will not occur.
+      - name: Dependabot metadata
+        id: dependabot-metadata
+        uses: dependabot/fetch-metadata@v1.3.1
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
       - name: Auto Approve Dependabot PRs
         uses: hmarr/auto-approve-action@v2.0.0
         if: ${{ github.actor == 'dependabot[bot]' || github.actor == 'dependabot-preview[bot]' }}
