@@ -3,6 +3,10 @@ name: Simple Linter and Formatter
 on:
   push:
   workflow_call:
+    input:
+      runPrettier:
+        default: true
+        type: boolean
     secrets:
       PAT_ACTION_CI:
         required: true
