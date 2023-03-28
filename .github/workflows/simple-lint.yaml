@@ -3,7 +3,7 @@ name: Simple Linter and Formatter
 on:
   push:
   workflow_call:
-    input:
+    inputs:
       runPrettier:
         default: true
         type: boolean
@@ -14,6 +14,7 @@ on:
 jobs:
   prettier:
     name: Prettier Check
+    if: inputs.runPrettier
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
