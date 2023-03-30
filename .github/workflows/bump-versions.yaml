@@ -9,7 +9,7 @@ on:
         description: Type of release
     secrets:
       PAT_ACTION_CI:
-        required: true
+        required: false
 
 jobs:
   bump-version:
