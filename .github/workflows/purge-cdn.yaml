@@ -67,7 +67,7 @@ jobs:
               $EndpointName = "${{ inputs.cdnEndpoint }}"
             }
             else {
-              $EndpointName = (Get-AzResource -ResourceType Microsoft.Cdn/profiles/endpoints -Tag @{"repository-name"="${{ github.event.repository.name }}"} | Where-Object { $_.Tags."environment" -contains "staging" }).Name -replace ("${ProfileName}/","")
+              $EndpointName = (Get-AzResource -ResourceType Microsoft.Cdn/profiles/endpoints -Tag @{"repository-name"="${{ github.event.repository.name }}"} | Where-Object { $_.Tags."environment" -contains "${{ inputs.environment }}" }).Name -replace ("${ProfileName}/","")
             }
 
             Clear-AzCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPath '/*'
