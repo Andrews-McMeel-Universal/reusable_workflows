@@ -1,6 +1,6 @@
 # Reusable Workflows
 
-Reusable workflows can be called from other GitHub Actions workflows within repositories to perform a variety of tasks. 
+Reusable workflows can be called from other GitHub Actions workflows within repositories to perform a variety of tasks.
 
 We use them to automate deployments, PR-related checks, update objects in Azure, and more.
 
@@ -31,9 +31,9 @@ jira-lint:
     JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
 ```
 
-When referencing workflows, you can specify either a tag or a branch from this repository. 
+When referencing workflows, you can specify either a tag or a branch from this repository.
 
-For example, to specify a release to get a static copy of the workflows at that point: 
+For example, to specify a release to get a static copy of the workflows at that point:
 
 ```YAML Example
 Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@2.2.3
@@ -170,7 +170,7 @@ jobs:
 **Workflow file: [update-azureapimanagement.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/update-azureapimanagement.yaml)**
 
 - Updates Azure API Management.
-   - Reads the Azure Storage Table for application information and then updates Azure API Management with the swagger.json Open API Spec.
+  - Reads the Azure Storage Table for application information and then updates Azure API Management with the swagger.json Open API Spec.
 
 ```YAML Example
 jobs:
@@ -324,8 +324,8 @@ jobs:
 
 **Workflow file: [bump-versions.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/bump-versions.yaml)**
 
-- This workflow automatically bumps the application's version in `Chart.yaml` and the `package.json` if it exists. 
-   - Use the `releaseType` input to change how the version is automatically incremented.
+- This workflow automatically bumps the application's version in `Chart.yaml` and the `package.json` if it exists.
+  - Use the `releaseType` input to change how the version is automatically incremented.
 
 ```YAML Example
 name: "Bump Version"
