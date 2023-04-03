@@ -1,6 +1,8 @@
 name: Run Jira Linter
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_call:
     inputs:
       fail-on-error:
@@ -41,5 +43,5 @@ jobs:
             Approved
             Resolved
           skip-branches: "^(main|development|staging|production|dev)$"
-          fail-on-error: ${{ inputs.fail-on-error }}
-          skip-comments: ${{ inputs.skip-comments }}
+          fail-on-error: ${{ inputs.fail-on-error || 'false' }}
+          skip-comments: ${{ inputs.skip-comments || 'true' }}

@@ -1,6 +1,8 @@
 name: Cleanup caches after PR is closed
 
 on:
+  pull_request:
+    types: [closed]
   workflow_call:
 
 jobs:
