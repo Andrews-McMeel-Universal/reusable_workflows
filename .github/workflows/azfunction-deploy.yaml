@@ -17,8 +17,8 @@ on:
       AZURE_FUNCTIONAPP_RESOURCEGROUP:
         type: string
         default: "AMU_Serverless_RG"
-      AZURE_FUNCTIONAPP_PACKAGE_PATH: 
-        default: "." 
+      AZURE_FUNCTIONAPP_PACKAGE_PATH:
+        default: "."
         description: "set this to the path to your web app project, defaults to the repository root"
         type: string
     secrets:
