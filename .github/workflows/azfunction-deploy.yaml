@@ -24,6 +24,8 @@ on:
     secrets:
       AZURE_CREDENTIALS:
         required: true
+      AZUREAPPSERVICE_PUBLISHPROFILE:
+        required: true
 
 jobs:
   build-and-deploy:
@@ -63,7 +65,7 @@ jobs:
               --action "Allow" \
               --ip-address 207.67.20.202/24 \
               --priority 100 \
-              --slot "${{ needs.vars.outputs.environment }}"
+              --slot "${{ inputs.environment }}"
 
       - name: Get GitHub Runner Public IP
         id: ip
@@ -82,14 +84,14 @@ jobs:
               --action "Allow" \
               --ip-address ${{ steps.ip.outputs.ipv4 }} \
               --priority 1001 \
-              --slot "${{ needs.vars.outputs.environment }}"
+              --slot "${{ inputs.environment }}"
             sleep 5
 
       - name: Deploy Azure Functions
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ inputs.AZURE_FUNCTIONAPP_NAME }}
-          slot-name: ${{ needs.vars.outputs.environment }}
+          slot-name: ${{ inputs.environment }}
           package: "${{ inputs.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
 
@@ -103,4 +105,4 @@ jobs:
               -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
               -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
               --rule-name "GitHubActionRunner" \
-              --slot "${{ needs.vars.outputs.environment }}"
+              --slot "${{ inputs.environment }}"
