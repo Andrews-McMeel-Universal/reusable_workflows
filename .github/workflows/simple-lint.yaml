@@ -1,7 +1,8 @@
 name: Simple Linter and Formatter
 
 on:
-  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_call:
     inputs:
       runPrettier:

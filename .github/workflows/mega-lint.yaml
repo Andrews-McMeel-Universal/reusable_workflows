@@ -1,28 +1,6 @@
 name: Lint and Format Code
 
 on:
-  push:
-  workflow_call:
-    inputs:
-      APPLY_FIXES:
-        type: string
-        description: "Comma-separated list of linters to run"
-        default: "all"
-      APPLY_FIXES_MODE:
-        type: string
-        description: "Create PR or commit directly to branch"
-        default: "commit"
-      APPLY_FIXES_EVENT:
-        type: string
-        description: "Apply fixes event"
-        default: "pull_request"
-      NODE_ENV:
-        type: string
-      LINT_FLAVOR:
-        type: string
-    secrets:
-      PAT_ACTION_CI:
-        required: true
   workflow_dispatch:
     inputs:
       NODE_ENV:
