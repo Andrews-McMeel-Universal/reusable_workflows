@@ -12,8 +12,8 @@ on:
         type: choice
         description: The major version to update
         options:
-          - "3"
           - "2"
+          - "1"
 
 jobs:
   tag:
