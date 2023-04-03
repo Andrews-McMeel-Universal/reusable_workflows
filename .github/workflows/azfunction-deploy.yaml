@@ -1,0 +1,108 @@
+name: Azure Function Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
+      DOTNET_VERSION:
+        default: "6.0.x"
+        type: string
+      AZURE_FUNCTIONAPP_NAME:
+        type: string
+        required: true
+        description: "set this to your application's name"
+      AZURE_FUNCTIONAPP_RESOURCEGROUP:
+        type: string
+        default: "AMU_Serverless_RG"
+      AZURE_FUNCTIONAPP_PACKAGE_PATH:
+        default: "."
+        description: "set this to the path to your web app project, defaults to the repository root"
+        type: string
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+      AZUREAPPSERVICE_PUBLISHPROFILE:
+        required: true
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitHub Action
+        uses: actions/checkout@v3
+
+      - name: Setup application platform
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ inputs.DOTNET_VERSION }}
+
+      - name: Install Dependencies
+        run: |
+          pushd './${{ inputs.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet build --configuration Release --output ./output
+          popd
+
+      - name: Login via Az module
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
+
+      - name: Whitelist Boley IPs
+        continue-on-error: true
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            set -eu
+            az functionapp config access-restriction add \
+              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+              --rule-name "BoleyIPs" \
+              --action "Allow" \
+              --ip-address 207.67.20.202/24 \
+              --priority 100 \
+              --slot "${{ inputs.environment }}"
+
+      - name: Get GitHub Runner Public IP
+        id: ip
+        run: |
+          echo "ipv4=$(curl https://ipecho.net/plain ; echo)" >> $GITHUB_OUTPUT
+
+      - name: Whitelist GitHub Runner IP
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            set -eu
+            az functionapp config access-restriction add \
+              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+              --rule-name "GitHubActionRunner" \
+              --action "Allow" \
+              --ip-address ${{ steps.ip.outputs.ipv4 }} \
+              --priority 1001 \
+              --slot "${{ inputs.environment }}"
+            sleep 5
+
+      - name: Deploy Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ inputs.AZURE_FUNCTIONAPP_NAME }}
+          slot-name: ${{ inputs.environment }}
+          package: "${{ inputs.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output"
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+
+      - name: Remove GitHub Runner IP from Whitelist
+        if: always()
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            set -eu
+            az functionapp config access-restriction remove  \
+              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+              --rule-name "GitHubActionRunner" \
+              --slot "${{ inputs.environment }}"
