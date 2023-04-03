@@ -2,47 +2,47 @@
 *                               @Andrews-McMeel-Universal/devops-engineers
 
 # Front-end Engineering
-*.html                          @Andrews-McMeel-Universal/front-end-engineers
-*.lock                          @Andrews-McMeel-Universal/front-end-engineers
-*.js                            @Andrews-McMeel-Universal/front-end-engineers
-*.jsx                           @Andrews-McMeel-Universal/front-end-engineers
-*.ts                            @Andrews-McMeel-Universal/front-end-engineers
-*.tsx                           @Andrews-McMeel-Universal/front-end-engineers
-*.css                           @Andrews-McMeel-Universal/front-end-engineers
-*.less                          @Andrews-McMeel-Universal/front-end-engineers
-*.scss                          @Andrews-McMeel-Universal/front-end-engineers
-*.sass                          @Andrews-McMeel-Universal/front-end-engineers
-*.otf                           @Andrews-McMeel-Universal/front-end-engineers
-*.eot                           @Andrews-McMeel-Universal/front-end-engineers
-*.ttf                           @Andrews-McMeel-Universal/front-end-engineers
-*.woff*                         @Andrews-McMeel-Universal/front-end-engineers
-*.svg                           @Andrews-McMeel-Universal/front-end-engineers
-*.jpg                           @Andrews-McMeel-Universal/front-end-engineers
-*.jpeg                          @Andrews-McMeel-Universal/front-end-engineers
-*.gif                           @Andrews-McMeel-Universal/front-end-engineers
-*.png                           @Andrews-McMeel-Universal/front-end-engineers
-*.ico                           @Andrews-McMeel-Universal/front-end-engineers
-public/**                       @Andrews-McMeel-Universal/front-end-engineers
-src/**                          @Andrews-McMeel-Universal/front-end-engineers
-.storybook/**                   @Andrews-McMeel-Universal/front-end-engineers
-.browserslistrc                 @Andrews-McMeel-Universal/front-end-engineers
-**eslint**                      @Andrews-McMeel-Universal/front-end-engineers
-**jest**                        @Andrews-McMeel-Universal/front-end-engineers
-**prettier**                    @Andrews-McMeel-Universal/front-end-engineers
-**stylelint**                   @Andrews-McMeel-Universal/front-end-engineers
-**/src/assets/**                @Andrews-McMeel-Universal/front-end-engineers
-**/src/src/**                   @Andrews-McMeel-Universal/front-end-engineers
-**/src/amu/**                   @Andrews-McMeel-Universal/front-end-engineers
+# *.html                          @Andrews-McMeel-Universal/front-end-engineers
+# *.lock                          @Andrews-McMeel-Universal/front-end-engineers
+# *.js                            @Andrews-McMeel-Universal/front-end-engineers
+# *.jsx                           @Andrews-McMeel-Universal/front-end-engineers
+# *.ts                            @Andrews-McMeel-Universal/front-end-engineers
+# *.tsx                           @Andrews-McMeel-Universal/front-end-engineers
+# *.css                           @Andrews-McMeel-Universal/front-end-engineers
+# *.less                          @Andrews-McMeel-Universal/front-end-engineers
+# *.scss                          @Andrews-McMeel-Universal/front-end-engineers
+# *.sass                          @Andrews-McMeel-Universal/front-end-engineers
+# *.otf                           @Andrews-McMeel-Universal/front-end-engineers
+# *.eot                           @Andrews-McMeel-Universal/front-end-engineers
+# *.ttf                           @Andrews-McMeel-Universal/front-end-engineers
+# *.woff*                         @Andrews-McMeel-Universal/front-end-engineers
+# *.svg                           @Andrews-McMeel-Universal/front-end-engineers
+# *.jpg                           @Andrews-McMeel-Universal/front-end-engineers
+# *.jpeg                          @Andrews-McMeel-Universal/front-end-engineers
+# *.gif                           @Andrews-McMeel-Universal/front-end-engineers
+# *.png                           @Andrews-McMeel-Universal/front-end-engineers
+# *.ico                           @Andrews-McMeel-Universal/front-end-engineers
+# public/**                       @Andrews-McMeel-Universal/front-end-engineers
+# src/**                          @Andrews-McMeel-Universal/front-end-engineers
+# .storybook/**                   @Andrews-McMeel-Universal/front-end-engineers
+# .browserslistrc                 @Andrews-McMeel-Universal/front-end-engineers
+# **eslint**                      @Andrews-McMeel-Universal/front-end-engineers
+# **jest**                        @Andrews-McMeel-Universal/front-end-engineers
+# **prettier**                    @Andrews-McMeel-Universal/front-end-engineers
+# **stylelint**                   @Andrews-McMeel-Universal/front-end-engineers
+# **/src/assets/**                @Andrews-McMeel-Universal/front-end-engineers
+# **/src/src/**                   @Andrews-McMeel-Universal/front-end-engineers
+# **/src/amu/**                   @Andrews-McMeel-Universal/front-end-engineers
 
 # Back-end Engineering
-**.cs                           @Andrews-McMeel-Universal/back-end-engineers
-**.csproj                       @Andrews-McMeel-Universal/back-end-engineers
-**.sln                          @Andrews-McMeel-Universal/back-end-engineers
-data/**                         @Andrews-McMeel-Universal/back-end-engineers
-*.Library/                      @Andrews-McMeel-Universal/back-end-engineers
-*.Tests/                        @Andrews-McMeel-Universal/back-end-engineers
-*.WebAPI/                       @Andrews-McMeel-Universal/back-end-engineers
-*.UnitTests/                    @Andrews-McMeel-Universal/back-end-engineers
+# **.cs                           @Andrews-McMeel-Universal/back-end-engineers
+# **.csproj                       @Andrews-McMeel-Universal/back-end-engineers
+# **.sln                          @Andrews-McMeel-Universal/back-end-engineers
+# data/**                         @Andrews-McMeel-Universal/back-end-engineers
+# *.Library/                      @Andrews-McMeel-Universal/back-end-engineers
+# *.Tests/                        @Andrews-McMeel-Universal/back-end-engineers
+# *.WebAPI/                       @Andrews-McMeel-Universal/back-end-engineers
+# *.UnitTests/                    @Andrews-McMeel-Universal/back-end-engineers
 
 # DevOps
 /.github/**                     @Andrews-McMeel-Universal/devops-engineers
