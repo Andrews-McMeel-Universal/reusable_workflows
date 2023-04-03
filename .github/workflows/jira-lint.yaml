@@ -40,5 +40,6 @@ jobs:
             In Development Env
             Approved
             Resolved
+          skip-branches: '^(main|development|staging|production|dev|*.*.*)$'
           fail-on-error: ${{ inputs.fail-on-error }}
           skip-comments: ${{ inputs.skip-comments }}
