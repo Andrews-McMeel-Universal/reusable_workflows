@@ -43,5 +43,5 @@ jobs:
             Approved
             Resolved
           skip-branches: "^(main|development|staging|production|dev)$"
-          fail-on-error: ${{ inputs.fail-on-error }}
-          skip-comments: ${{ inputs.skip-comments }}
+          fail-on-error: ${{ inputs.fail-on-error || 'false' }}
+          skip-comments: ${{ inputs.skip-comments || 'true' }}
