@@ -215,7 +215,7 @@ jobs:
 
 **Workflow file: [purge-cdn.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/purge-cdn.yaml)**
 
-Purges the Azure CDN cache for a specific CDN endpoint
+- Purges the Azure CDN cache for a specific CDN endpoint
 
 ```YAML Example
 jobs:
@@ -229,6 +229,24 @@ jobs:
       cdnEndpoint: appname-game  # Defaults to the resource with a "repository-name" tag matching the GitHub repository name.
     secrets:
       azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+```
+
+### Azure Function Deploy
+
+**Workflow file: [azfunction-deploy.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/azfunction-deploy.yaml)**
+
+- Deploys an Azure Function App
+
+```YAML Example
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/azfunction-deploy.yaml@2
+    with:
+      AZURE_FUNCTIONAPP_NAME: "pause-subscription-manager"
+      environment: development
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
 ---
