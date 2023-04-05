@@ -60,7 +60,7 @@ on:
       azureSubscription:
         required: false
       azureCredentials:
-        required: true
+        required: false
       storageAccountKey:
         required: true
 
