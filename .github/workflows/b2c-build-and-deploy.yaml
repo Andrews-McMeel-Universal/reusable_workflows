@@ -50,6 +50,7 @@ jobs:
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
+          environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Get Fresh Packages
         shell: pwsh
