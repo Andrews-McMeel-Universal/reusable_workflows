@@ -50,7 +50,7 @@ on:
         required: false
         type: string
         description: "Maximum number of replicas for the application HPA."
-        default: 30
+        default: "30"
       storageAccountName:
         required: false
         type: string
@@ -440,7 +440,7 @@ jobs:
           manifests: ${{ needs.build.outputs.manifestsBundle }}
           images: |
             "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          imagePullSecrets: |
+          imagepullsecrets: |
             "${{ needs.setup.outputs.imagePullSecret }}"
           pull-images: false
 
