@@ -292,7 +292,7 @@ jobs:
                 $KeyVaultName = "${{ inputs.environmentKeyVault }}"
             }
             else {
-                $KeyVaultName = (Get-AzKeyVault -Tag @{"environment" = "${{ env.environment }}" } | Get-AzKeyVault -Tag @{"repository-name" = "${{ github.event.repository.name }}" }).VaultName
+                $KeyVaultName = (Get-AzKeyVault -Tag @{"environment" = "${{ inputs.environment }}" } | Get-AzKeyVault -Tag @{"repository-name" = "${{ github.event.repository.name }}" }).VaultName
             }
             [string]$KeyVaultName = $KeyVaultName.Replace(" ", "-")
             $buildSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object { ($_.ContentType -contains 'BuildArg') -or ($_.ContentType -contains 'BuildArg Env') }).Name
