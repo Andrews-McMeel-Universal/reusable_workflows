@@ -34,16 +34,32 @@ on:
         required: true
 
 jobs:
+  vars:
+    name: Set Environment Variables
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set environment variables
+        run: |
+          if [[ "${{ inputs.environment }}" == "production" ]] ; then
+              echo "url=amub2c.b2clogin.com" >> $GITHUB_ENV
+          else
+              echo "url=${{ inputs.environment }}amub2c.b2clogin.com" >> $GITHUB_ENV
+          fi
+          echo "azureB2CClientId=${{ secrets.azureB2CClientId }}" >> $GITHUB_ENV
+    outputs:
+      url: ${{ env.url }}
+      azureB2CClientId: ${{ env.azureB2CClientId }}
+
   build:
     name: Build B2C Application
     runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.azureB2CProductName }}-${{ inputs.environment }}
-      url: ${{ inputs.azureB2CProductUrl }}
+      url: "https://${{ needs.vars.outputs.url }}/${{ inputs.azureB2CDomain }}/b2c_1a_gc_signinsignout_policies/oauth2/v2.0/authorize?client_id=${{ needs.vars.outputs.azureB2CClientId }}&scope=https%3A%2F%2F${{ inputs.azureB2CDomain }}%2Fapi%2Fdemo.read%20https%3A%2F%2F${{ inputs.azureB2CDomain }}%2Fapi%2Fdemo.write%20https%3A%2F%2F${{ inputs.azureB2CDomain }}%2Fapi%2Fuser_impersonation%20offline_access%20openid&response_type=code&redirect_uri=https%3A%2F%2F${{ inputs.azureB2CProductUrl }}%2Fapi%2Fauth%2Fcallback%2Fazureb2c"
     continue-on-error: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.2.0
+        uses: actions/checkout@v3
 
       - name: Login via Az module
         uses: azure/login@v1.4.7
