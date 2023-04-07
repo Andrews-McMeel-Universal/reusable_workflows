@@ -19,6 +19,10 @@ on:
         required: true
         type: string
         description: "Domain name of the B2C tenant."
+      azureB2CProductUrl:
+        required: false
+        type: string
+        description: "URL of the B2C Product."
     secrets:
       azureCredentials:
         required: true
@@ -33,7 +37,9 @@ jobs:
   build:
     name: Build B2C Application
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment:
+      name: ${{ inputs.azureB2CProductName }}-${{ inputs.environment }}
+      url: ${{ inputs.azureB2CProductUrl }}
     continue-on-error: false
     steps:
       - name: Checkout

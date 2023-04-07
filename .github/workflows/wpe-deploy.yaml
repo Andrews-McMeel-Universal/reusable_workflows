@@ -28,7 +28,9 @@ jobs:
     name: WP Engine Deployment
     runs-on: ubuntu-latest
     continue-on-error: false
-    environment: ${{ inputs.environment }}
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.WPE_ENV_NAME }}.wpengine.com
     steps:
       - name: Checkout
         uses: actions/checkout@v2
