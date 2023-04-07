@@ -411,7 +411,7 @@ jobs:
     needs: [setup, build]
     runs-on: ubuntu-latest
     continue-on-error: false
-    environment: 
+    environment:
       name: ${{ inputs.environment }}
       url: ${{ needs.setup.outputs.ingress }}
     steps:
