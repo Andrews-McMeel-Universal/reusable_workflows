@@ -15,7 +15,7 @@ on:
         required: false
         type: string
         description: "GitHub Repository Name."
-        default: ${{ github.event.repository.name }}
+        default: "${{ github.event.repository.name }}"
       clusterResourceGroup:
         required: false
         type: string
@@ -40,12 +40,12 @@ on:
         required: false
         type: string
         description: "Docker image name."
-        default: ${{ github.event.repository.name }}
+        default: "${{ github.event.repository.name }}"
       dockerImageTag:
         required: false
         type: string
         description: "Docker image tag."
-        default: ${{ github.sha }}
+        default: "${{ github.sha }}"
       maximumReplicas:
         required: false
         type: string
@@ -85,7 +85,7 @@ on:
         required: false
         type: string
         description: "Add the environment name to the front of the hostname (for DNS)"
-        default: true
+        default: "true"
     secrets:
       azureClusterName:
         required: true
@@ -190,18 +190,18 @@ jobs:
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
+      - name: Login via Az module
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
+
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
-
-      - name: Login via Az module
-        uses: azure/login@v1.4.7
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: true
 
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
@@ -271,18 +271,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Login via Az module
+        uses: azure/login@v1.4.7
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
+
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1.2
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
-
-      - name: Login via Az module
-        uses: azure/login@v1.4.7
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: true
 
       - name: Generate build args from Azure Key Vaults
         uses: azure/powershell@v1.2.0
