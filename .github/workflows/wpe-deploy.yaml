@@ -30,7 +30,7 @@ jobs:
     continue-on-error: false
     environment:
       name: ${{ inputs.environment }}
-      url: ${{ inputs.WPE_ENV_NAME }}.wpengine.com
+      url: https://${{ inputs.WPE_ENV_NAME }}.wpengine.com
     steps:
       - name: Checkout
         uses: actions/checkout@v2

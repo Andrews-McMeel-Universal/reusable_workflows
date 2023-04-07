@@ -29,24 +29,24 @@ on:
 
 jobs:
   vars:
-    name: "Get Environment Hostname"
+    name: Set Environment Variables
     runs-on: ubuntu-latest
     steps:
-      - name: Get environment URL
+      - name: Get environment hostname
         run: |
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
-              echo "url=${{ inputs.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net" >> $GITHUB_ENV
+              echo "hostname=${{ inputs.AZURE_FUNCTIONAPP_NAME }}" >> $GITHUB_ENV
           else
-              echo "url=${{ inputs.AZURE_FUNCTIONAPP_NAME }}-${{ inputs.environment }}.azurewebsites.net" >> $GITHUB_ENV
+              echo "hostname=${{ inputs.AZURE_FUNCTIONAPP_NAME }}-${{ inputs.environment }}" >> $GITHUB_ENV
           fi
     outputs:
-      url: ${{ env.url }}
+        hostname: ${{ env.hostname }}
 
   build-and-deploy:
     name: Build and Deploy
     environment:
       name: ${{ inputs.environment }}
-      url: ${{ needs.vars.outputs.url }}
+      url: https://${{ needs.vars.outputs.hostname }}.azurewebsites.net
     needs: [vars]
     runs-on: ubuntu-latest
     steps:
