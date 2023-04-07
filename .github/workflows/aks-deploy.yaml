@@ -411,7 +411,9 @@ jobs:
     needs: [setup, build]
     runs-on: ubuntu-latest
     continue-on-error: false
-    environment: ${{ inputs.environment }}
+    environment: 
+      name: ${{ inputs.environment }}
+      url: ${{ needs.setup.outputs.ingress }}
     steps:
       - name: Download bake-manifests-bundle artifact
         uses: actions/download-artifact@v3
