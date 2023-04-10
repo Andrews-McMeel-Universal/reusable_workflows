@@ -53,6 +53,10 @@ capybara-*.html
 /spec/tmp
 *.orig
 rerun.txt
+tfs-sw.js
+tfs-sw.js.map
+workbox-*.js
+workbox-*.js.map
 
 # Comment out this rule if you are OK with secrets being uploaded to the repo
 config/initializers/secret_token.rb

@@ -19,8 +19,9 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     ignore:
-      - dependency-name: "node"
-      - dependency-name: "ruby"
+      - dependency-name: node
+      - dependency-name: ruby
+      - dependency-name: dotnet/sdk
     schedule:
       interval: "monthly"
       day: "monday"
@@ -49,10 +50,12 @@ updates:
   - package-ecosystem: bundler
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
     ignore:
-      - dependency-name: "nokogiri"
+      - dependency-name: nokogiri
+        versions:
+          - "> 1.12.0"
     labels:
       - "dependencies"
     target-branch: staging
