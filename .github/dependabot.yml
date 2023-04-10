@@ -20,7 +20,6 @@ updates:
     directory: "/"
     ignore:
       - dependency-name: "node"
-      - dependency-name: "ruby"
     schedule:
       interval: "monthly"
       day: "monday"
@@ -45,21 +44,6 @@ updates:
     commit-message:
       # Prefix all commit messages with 'npm'
       prefix: "npm"
-
-  - package-ecosystem: bundler
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    ignore:
-      - dependency-name: "nokogiri"
-    labels:
-      - "dependencies"
-    target-branch: staging
-    open-pull-requests-limit: 10
-    commit-message:
-      # Prefix all commit messages with 'bundler'
-      prefix: "bundler"
 
   - package-ecosystem: "nuget"
     directory: "/"
