@@ -20,7 +20,7 @@ jobs:
           REPO=${{ github.repository }}
 
           echo "Fetching list of cache keys"
-          if [[ "${{ github.event.pull_request }}" == 'true' ]]; then
+          if [[ "${{ github.event.pull_request }}" ]]; then
             BRANCH="refs/pull/${{ github.event.pull_request.number }}/merge"
             cacheKeys=$(gh actions-cache list -R $REPO -B $BRANCH | cut -f 1 )
           else
