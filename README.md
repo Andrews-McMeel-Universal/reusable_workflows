@@ -36,7 +36,7 @@ When referencing workflows, you can specify either a tag or a branch from this r
 For example, to specify a release to get a static copy of the workflows at that point:
 
 ```YAML Example
-Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@2.2.3
+Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@2
 ```
 
 To specify a branch:
