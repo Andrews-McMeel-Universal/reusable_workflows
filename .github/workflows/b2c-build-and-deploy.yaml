@@ -106,7 +106,3 @@ jobs:
             $DistPath = Join-Path $BasePath "dist"
             ./deployments/scripts/Deploy-B2C_Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath -ProductPath "${{ inputs.azureB2CProductName }}"
           azPSVersion: "latest"
-
-      - name: Purge CDN Cache
-        run: |
-          az cdn endpoint purge --resource-group 'Site_Assets' --profile-name 'amuauthassets' --name 'amuauthassets' --content-paths '/*'
