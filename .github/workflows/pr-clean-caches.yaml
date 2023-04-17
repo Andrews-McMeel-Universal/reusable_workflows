@@ -16,23 +16,21 @@ jobs:
       - name: Cleanup
         run: |
           gh extension install actions/gh-actions-cache
-
-          REPO=${{ github.repository }}
-
+          REPO="${{ github.repository }}"
+          PR_EVENT="${{ github.event.pull_request }}"
           echo "Fetching list of cache keys"
-          if [[ "${{ github.event.pull_request }}" ]]; then
-            BRANCH="refs/pull/${{ github.event.pull_request.number }}/merge"
-            cacheKeys=$(gh actions-cache list -R $REPO -B $BRANCH | cut -f 1 )
+          if [[ "${PR_EVENT}" ]]; then
+            PR="${{ github.event.pull_request.number }}"
+            BRANCH="refs/pull/${PR}/merge"
+            cacheKeys=$(gh actions-cache list -R "$REPO" -B "$BRANCH" | cut -f 1 )
           else
-            cacheKeys=$(gh actions-cache list -R $REPO | cut -f 1 )
+            cacheKeys=$(gh actions-cache list -R "$REPO" | cut -f 1 )
           fi
-
           ## Setting this to not fail the workflow while deleting cache keys. 
           set +e
-
           echo "Deleting caches..."
           for cacheKey in $cacheKeys; do
-              gh actions-cache delete $cacheKey -R $REPO --confirm
+              gh actions-cache delete "$cacheKey" -R "$REPO" --confirm
           done
           echo "Done"
         env:
