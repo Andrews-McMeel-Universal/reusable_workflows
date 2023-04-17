@@ -40,7 +40,7 @@ jobs:
               echo "hostname=${{ inputs.AZURE_FUNCTIONAPP_NAME }}-${{ inputs.environment }}" >> $GITHUB_ENV
           fi
     outputs:
-        hostname: ${{ env.hostname }}
+      hostname: ${{ env.hostname }}
 
   build-and-deploy:
     name: Build and Deploy

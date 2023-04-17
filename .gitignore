@@ -24,6 +24,8 @@
 # logfiles and tempfiles
 /log/*
 /tmp/*
+**/tmp/pids/
+**/tmp/cache/
 !/log/.keep
 !/tmp/.keep
 logs
@@ -317,7 +319,6 @@ x86/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
 bld/
-[Bb]in/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
@@ -712,6 +713,10 @@ FodyWeavers.xsd
 /.pnp
 .pnp.js
 
+# generated during build
+robots.txt
+sitemap*.xml
+
 # misc
 .DS_Store
 
@@ -724,17 +729,11 @@ debug.log
 # local env files
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
 
 # Sentry
 .sentryclirc
 .sentry.properties
-
-# Sitemap
-public/sitemap.xml
-public/robots.txt
 
 # Key Vaults
 Secrets.json
