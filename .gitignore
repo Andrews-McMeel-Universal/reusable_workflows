@@ -261,6 +261,10 @@ jscpd-report.json
 .yarn-integrity
 yarn-error.log
 
+# Configs
+configFile.json
+levelFile.json
+
 ###################
 
 # SCSS/Sass

@@ -58,7 +58,6 @@ updates:
           - "> 1.12.0"
     labels:
       - "dependencies"
-    target-branch: staging
     open-pull-requests-limit: 10
     commit-message:
       # Prefix all commit messages with 'bundler'
