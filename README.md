@@ -246,7 +246,7 @@ jobs:
       AZURE_FUNCTIONAPP_NAME: "pause-subscription-manager"
       environment: development
     secrets:
-      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
 ---
