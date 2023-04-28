@@ -62,8 +62,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Hash azureCredentials secret
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
+        with:
+          input: ${{ secrets.azureCredentials }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.Azure
+            ${{ github.workspace }}/.Azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
+
       - name: Login via Az module
-        uses: azure/login@v1.4.7
+        if: steps.azure-cache.outputs.cache-hit != 'true'
+        uses: azure/login@v1
         with:
           creds: ${{ secrets.azureCredentials }}
           enable-AzPSSession: true
