@@ -22,9 +22,9 @@ on:
         description: "set this to the path to your web app project, defaults to the repository root"
         type: string
     secrets:
-      azureCredentials:
+      AZURE_CREDENTIALS:
         required: true
-      azureAppServicePublishProfile:
+      AZUREAPPSERVICE_PUBLISHPROFILE:
         required: true
 
 jobs:
@@ -64,11 +64,11 @@ jobs:
           dotnet build --configuration Release --output ./output
           popd
 
-      - name: Hash azureCredentials secret
+      - name: Hash AZURE_CREDENTIALS secret
         uses: pplanel/hash-calculator-action@v1.3.1
         id: hash
         with:
-          input: ${{ secrets.azureCredentials }}
+          input: ${{ secrets.AZURE_CREDENTIALS }}
           method: MD5
 
       - name: Cache Azure credentials
@@ -82,7 +82,7 @@ jobs:
         if: steps.azure-cache.outputs.cache-hit != 'true'
         uses: azure/login@v1
         with:
-          creds: "${{ secrets.azureCredentials }}"
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Whitelist Boley IPs
         continue-on-error: true
