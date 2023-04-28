@@ -73,7 +73,9 @@ jobs:
         id: azure-cache
         uses: actions/cache@v3
         with:
-          path: ~/.azure
+          path: |
+            ~/.Azure
+            ${{ github.workspace }}/.Azure
           key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
 
       - name: Login via Az module
