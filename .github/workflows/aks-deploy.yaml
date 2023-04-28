@@ -105,10 +105,9 @@ on:
         required: false
 
 jobs:
-  setup:
-    name: "Prepare for build"
+  build:
+    name: Build Docker Image
     runs-on: ubuntu-latest
-    continue-on-error: false
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -190,87 +189,6 @@ jobs:
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
-      - name: Login via Az module
-        uses: azure/login@v1.4.7
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: true
-
-      - name: Generate .env file from Azure Key Vaults
-        uses: Andrews-McMeel-Universal/get-envs@v1
-        with:
-          azurecredentials: ${{ secrets.azureCredentials }}
-          environment: ${{ inputs.environment }}
-          environmentKeyVault: ${{ inputs.environmentKeyVault }}
-
-      - name: Set target AKS cluster
-        uses: Azure/aks-set-context@v3.2
-        with:
-          cluster-name: ${{ secrets.azureClusterName }}
-          resource-group: ${{ inputs.clusterResourceGroup }}
-
-      - name: Switch to ${{ inputs.environment }} Namespace
-        run: kubectl config set-context --current --namespace="${{ inputs.environment }}"
-
-      - name: Apply configMap if it exists
-        if: ${{ env.configMap != null }}
-        uses: swdotcom/update-and-apply-kubernetes-configs@v1.2.0
-        with:
-          k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
-
-      - name: Add GitHub secrets to k8s
-        shell: pwsh
-        run: |
-          if (kubectl get secret | Select-String "${{ env.configSecret }}") {
-              kubectl delete secret "${{ env.configSecret }}"
-          }
-          kubectl create secret generic "${{ env.configSecret }}" --from-env-file .env
-
-          if ( "${{ inputs.webAuthentication }}" -eq "true") {
-              if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
-                  Write-Output "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
-                  exit 1
-              }
-
-              if (kubectl get secret | Select-String "${{ env.appName }}-basic-auth") {
-                  kubectl delete secret "${{ env.appName }}-basic-auth"
-              }
-              htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
-              kubectl create secret generic "${{ env.appName }}-basic-auth" --from-file=auth
-          }
-
-      - name: Create K8s Image Pull Secret
-        uses: Azure/k8s-create-secret@v4.0
-        with:
-          container-registry-url: ${{ secrets.registryHostName }}
-          container-registry-username: ${{ secrets.registryUserName  }}
-          container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: "${{ env.imagePullSecret }}"
-
-    outputs:
-      appName: ${{ env.appName }}
-      appVersion: ${{ env.appVersion }}
-      appHealthCheck: ${{ env.appHealthCheck }}
-      configMap: ${{ env.configMap }}
-      configSecret: ${{ env.configSecret }}
-      ingress: ${{ env.ingress }}
-      domainName: ${{ env.domainName }}
-      hostName: ${{ env.hostName }}
-      imagePullSecret: ${{ env.imagePullSecret }}
-      date: ${{ env.date }}
-      ingressWhitelist: ${{ env.ingressWhitelist }}
-      adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
-      release: ${{ env.release }}
-
-  build:
-    name: "Build Docker Image"
-    runs-on: ubuntu-latest
-    needs: [setup]
-    continue-on-error: false
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
       - name: Hash azureCredentials secret
         uses: pplanel/hash-calculator-action@v1.3.1
         id: hash
@@ -344,8 +262,8 @@ jobs:
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
-          INGRESS_WHITELIST="${{ needs.setup.outputs.ingressWhitelist }}"
-          ADMIN_INGRESS_WHITELIST="${{ needs.setup.outputs.adminIngressWhitelist }}"
+          INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
+          ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
           echo "::debug::WEB_AUTHENTICATION=$WEB_AUTHENTICATION"
           echo "::debug::INGRESS_WHITELIST=$INGRESS_WHITELIST"
           echo "::debug::ADMIN_INGRESS_WHITELIST=$ADMIN_INGRESS_WHITELIST"
@@ -359,7 +277,7 @@ jobs:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
-              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.setup.outputs.appName }}-basic-auth"
+              nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           adminingress:
             annotations:
@@ -373,7 +291,7 @@ jobs:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
-              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.setup.outputs.appName }}-basic-auth"
+              nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           EOF
             fi
@@ -404,13 +322,13 @@ jobs:
         with:
           renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
-          releaseName: ${{ needs.setup.outputs.release }}
+          releaseName: ${{ env.release }}
           helm-version: "latest"
           overrideFiles: ./values-override.yaml
           overrides: |
             image.repository:${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}
             image.tag:${{ inputs.dockerImageTag }}
-            ingress.host:${{ needs.setup.outputs.ingress }}
+            ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
 
       - name: Upload bake-manifests-bundle artifact
@@ -422,15 +340,28 @@ jobs:
 
     outputs:
       manifestsBundle: ${{ steps.bake.outputs.manifestsBundle }}
+      appName: ${{ env.appName }}
+      appVersion: ${{ env.appVersion }}
+      appHealthCheck: ${{ env.appHealthCheck }}
+      configMap: ${{ env.configMap }}
+      configSecret: ${{ env.configSecret }}
+      ingress: ${{ env.ingress }}
+      domainName: ${{ env.domainName }}
+      hostName: ${{ env.hostName }}
+      imagePullSecret: ${{ env.imagePullSecret }}
+      date: ${{ env.date }}
+      ingressWhitelist: ${{ env.ingressWhitelist }}
+      adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
+      release: ${{ env.release }}
 
   deploy:
-    name: "Deploy to AKS cluster"
-    needs: [setup, build]
+    name: AKS Deploy
+    needs: [build]
     runs-on: ubuntu-latest
     continue-on-error: false
     environment:
       name: ${{ inputs.environment }}
-      url: https://${{ needs.setup.outputs.ingress }}
+      url: https://${{ needs.build.outputs.ingress }}
     steps:
       - name: Download bake-manifests-bundle artifact
         uses: actions/download-artifact@v3
@@ -439,15 +370,61 @@ jobs:
           path: ${{ needs.build.outputs.manifestsBundle }}
 
       - name: Login via Az module
-        uses: azure/login@v1.4.7
+        uses: azure/login@v1
         with:
           creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
+
+      - name: Generate .env file from Azure Key Vaults
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environment: ${{ inputs.environment }}
+          environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Set target AKS cluster
         uses: Azure/aks-set-context@v3.2
         with:
           cluster-name: ${{ secrets.azureClusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
+
+      - name: Switch to ${{ inputs.environment }} Namespace
+        run: kubectl config set-context --current --namespace="${{ inputs.environment }}"
+
+      - name: Apply configMap if it exists
+        if: ${{ needs.build.outputs.configMap != null }}
+        uses: swdotcom/update-and-apply-kubernetes-configs@v1.2.0
+        with:
+          k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
+
+      - name: Add GitHub secrets to k8s
+        shell: pwsh
+        run: |
+          if (kubectl get secret | Select-String "${{ needs.build.outputs.configSecret }}") {
+              kubectl delete secret "${{ needs.build.outputs.configSecret }}"
+          }
+          kubectl create secret generic "${{ needs.build.outputs.configSecret }}" --from-env-file .env
+
+          if ( "${{ inputs.webAuthentication }}" -eq "true") {
+              if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
+                  Write-Output "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
+                  exit 1
+              }
+
+              if (kubectl get secret | Select-String "${{ needs.build.outputs.appName }}-basic-auth") {
+                  kubectl delete secret "${{ needs.build.outputs.appName }}-basic-auth"
+              }
+              htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
+              kubectl create secret generic "${{ needs.build.outputs.appName }}-basic-auth" --from-file=auth
+          }
+
+      - name: Create K8s Image Pull Secret
+        uses: Azure/k8s-create-secret@v4.0
+        with:
+          container-registry-url: ${{ secrets.registryHostName }}
+          container-registry-username: ${{ secrets.registryUserName  }}
+          container-registry-password: ${{ secrets.registryPassword  }}
+          secret-name: "${{ needs.build.outputs.imagePullSecret }}"
 
       - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
@@ -458,12 +435,12 @@ jobs:
           images: |
             "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           imagepullsecrets: |
-            "${{ needs.setup.outputs.imagePullSecret }}"
+            "${{ needs.build.outputs.imagePullSecret }}"
           pull-images: false
 
   update-records:
     name: Update deployment records
-    needs: [setup, build, deploy]
+    needs: [build, deploy]
     runs-on: ubuntu-latest
     continue-on-error: false
     steps:
@@ -496,7 +473,7 @@ jobs:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname "${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."
 
-            New-AzDnsRecordSet -Name "${{ needs.setup.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.setup.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+            New-AzDnsRecordSet -Name "${{ needs.build.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.build.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
           azPSVersion: "latest"
 
       - name: Record deployment information in Azure Storage Table
@@ -505,21 +482,21 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.setup.outputs.appName }} Version=${{ needs.setup.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.setup.outputs.hostName }} DomainName=${{ needs.setup.outputs.domainName }} IngressFqdn=${{ needs.setup.outputs.ingress }} HealthCheckPath=${{ needs.setup.outputs.appHealthCheck }} AksIngress=${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.setup.outputs.configSecret }} ConfigMap=${{ needs.setup.outputs.configMap }} LastDeploy=${{ needs.setup.outputs.date }}"
+          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
           if_exists: "replace"
           extra_args: ""
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
 
       - name: Create deployment summary
         run: |
-          echo "### ${{ needs.setup.outputs.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
-          echo "- **Application Name**: ${{ needs.setup.outputs.appName }}" >> $GITHUB_STEP_SUMMARY
+          echo "### ${{ needs.build.outputs.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Application Name**: ${{ needs.build.outputs.appName }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${{ needs.setup.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.build.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Key Vault Name**: ${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **FQDN**: ${{ needs.setup.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **FQDN**: ${{ needs.build.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Cluster**: ${{ secrets.azureClusterName }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **ConfigSecret**: ${{ needs.setup.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
-          if [[ -n "${{ needs.setup.outputs.configMap }}" ]] ; then
-            echo "- **ConfigMap**: ${{ needs.setup.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **ConfigSecret**: ${{ needs.build.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${{ needs.build.outputs.configMap }}" ]] ; then
+            echo "- **ConfigMap**: ${{ needs.build.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
           fi
