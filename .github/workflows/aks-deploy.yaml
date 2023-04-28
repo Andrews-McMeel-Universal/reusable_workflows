@@ -190,8 +190,23 @@ jobs:
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
+      - name: Hash azureCredentials secret
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
+        with:
+          input: ${{ secrets.azureCredentials }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
+
       - name: Login via Az module
-        uses: azure/login@v1.4.7
+        if: steps.azure-cache.outputs.cache-hit != 'true'
+        uses: azure/login@v1
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
@@ -271,8 +286,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Hash azureCredentials secret
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
+        with:
+          input: ${{ secrets.azureCredentials }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
+
       - name: Login via Az module
-        uses: azure/login@v1.4.7
+        if: steps.azure-cache.outputs.cache-hit != 'true'
+        uses: azure/login@v1
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
@@ -421,8 +451,23 @@ jobs:
           name: bake-manifests-bundle
           path: ${{ needs.build.outputs.manifestsBundle }}
 
+      - name: Hash azureCredentials secret
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
+        with:
+          input: ${{ secrets.azureCredentials }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
+
       - name: Login via Az module
-        uses: azure/login@v1.4.7
+        if: steps.azure-cache.outputs.cache-hit != 'true'
+        uses: azure/login@v1
         with:
           creds: "${{ secrets.azureCredentials }}"
 
@@ -450,8 +495,23 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: false
     steps:
+      - name: Hash azureCredentials secret
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
+        with:
+          input: ${{ secrets.azureCredentials }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
+
       - name: Login via Az module
-        uses: azure/login@v1.4.7
+        if: steps.azure-cache.outputs.cache-hit != 'true'
+        uses: azure/login@v1
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true

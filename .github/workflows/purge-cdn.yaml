@@ -38,10 +38,25 @@ jobs:
               exit 1
             }
 
-      - name: Login via Az module
-        uses: azure/login@v1.4.7
+      - name: Hash azureCredentials secret
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
         with:
-          creds: "${{ secrets.azureCredentials }}"
+          input: ${{ secrets.azureCredentials }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
+
+      - name: Login via Az module
+        if: steps.azure-cache.outputs.cache-hit != 'true'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.azureCredentials }}
           enable-AzPSSession: true
 
       - name: Purge CDN cache
