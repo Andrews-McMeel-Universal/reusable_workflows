@@ -22,9 +22,9 @@ on:
         description: "set this to the path to your web app project, defaults to the repository root"
         type: string
     secrets:
-      AZURE_CREDENTIALS:
+      azureCredentials:
         required: true
-      AZUREAPPSERVICE_PUBLISHPROFILE:
+      azureAppServicePublishProfile:
         required: true
 
 jobs:
@@ -82,7 +82,7 @@ jobs:
         if: steps.azure-cache.outputs.cache-hit != 'true'
         uses: azure/login@v1
         with:
-          creds: "${{ secrets.AZURE_CREDENTIALS }}"
+          creds: "${{ secrets.azureCredentials }}"
 
       - name: Whitelist Boley IPs
         continue-on-error: true
