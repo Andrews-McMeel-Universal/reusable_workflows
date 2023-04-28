@@ -23,6 +23,7 @@ wp-content/
 *Game/
 
 # Dotnet
+*Service/
 *.Library/
 *.Tests/
 *.WebAPI/
