@@ -15,7 +15,7 @@ on:
 jobs:
   prettier:
     name: Prettier Check
-    if: ${{ inputs.runPrettier || 'true' }}
+    if: ${{ inputs.runPrettier }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
