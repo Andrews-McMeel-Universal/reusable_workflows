@@ -1,4 +1,4 @@
-name: Next.js CI
+name: Next.js Application CI
 
 on:
   workflow_call:
@@ -6,145 +6,90 @@ on:
       environment:
         required: true
         type: string
-      APPLY_FIXES:
-        type: string
-        description: Comma-separated list of linters to run
-        default: "all"
-      APPLY_FIXES_MODE:
-        type: string
-        description: "Create PR or commit directly to branch"
-        default: "commit"
-      APPLY_FIXES_EVENT:
-        type: string
-        description: "Create PR or commit directly to branch"
-        default: "all"
     secrets:
-      azureCredentials:
+      AZURE_CREDENTIALS:
         required: true
       PAT_ACTION_CI:
         required: true
 
-env:
-  environment: development
-
 jobs:
-  # Sets up dependencies and initial cache
-  install:
-    name: Set up dependencies
+  build:
+    name: Build App
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - uses: ./.github/actions/use-build-args-cache
-        with:
-          azureCredentials: ${{ secrets.azureCredentials }}
-
-      - uses: ./.github/actions/use-install-cache
-
-  # Required status check
-  # Checks code quality
-  lint:
-    name: Run MegaLinter
-    needs: [install]
-    runs-on: ubuntu-latest
-    env:
-      APPLY_FIXES: ${{ inputs.APPLY_FIXES || 'all' }}
-      APPLY_FIXES_MODE: ${{ inputs.APPLY_FIXES_MODE || 'commit' }}
-      APPLY_FIXES_EVENT: ${{ inputs.APPLY_FIXES_EVENT || 'pull_request' }}
-    steps:
-      # This uses the PAT_ACTION_CI token as the normal GITHUB_TOKEN
-      # doesn't have the permissions to trigger additional workflows
       - name: Checkout
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
 
-      - uses: ./.github/actions/use-build-args-cache
-
       - uses: ./.github/actions/use-install-cache
 
-      # Run the MegaLinter Github Action
-      - name: MegaLinter
-        id: ml
-        uses: oxsecurity/megalinter/flavors/cupcake@v6.20.1
-        env:
-          VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
-          GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
+      - name: Lint javascript
+        run: yarn lint:js
 
-      # Creates archive artifact of linting reports
-      # Upload MegaLinter artifacts
-      - name: Archive production artifacts
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: MegaLinter reports
-          path: |
-            megalinter-reports
-            mega-linter.log
-          retention-days: 7
+      - name: Lint scss
+        run: yarn lint:styles
 
-      # Create pull request if applicable (for now works only on PR from same repository, not from forks)
-      - name: Create Pull Request with applied fixes
-        id: cpr
-        if: steps.ml.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
-        uses: peter-evans/create-pull-request@v4
-        with:
-          token: ${{ secrets.PAT_ACTION_CI  || secrets.GITHUB_TOKEN }}
-          commit-message: "[MegaLinter] Apply linters automatic fixes"
-          title: "[MegaLinter] Apply linters automatic fixes"
-          labels: bot
-
-      # Commit fixes back into the raised PR branch
-      - name: Prepare Linting Fix Commit
-        if: steps.ml.outputs.has_updated_sources == 1 && github.ref != 'refs/heads/main' && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'commit'
-        run: sudo chown -Rc $UID .git/
-
-      - name: Commit and Push Linting Fixes
-        if: steps.ml.outputs.has_updated_sources == 1 && github.ref != 'refs/heads/main' && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'commit'
+      - name: Push Linting Fixes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
-          commit_message: "[MegaLinter] Apply prettier changes"
+          commit_message: '[Formatter] Apply prettier changes'
 
-  # Required status check
-  # Build the app and cache it
-  build:
-    name: Build application
-    runs-on: ubuntu-latest
-    needs: [lint]
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: ./.github/actions/use-build-args-cache
-
-      - uses: ./.github/actions/use-install-cache
+      - name: Use .env cache action
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
 
       - uses: ./.github/actions/use-build-cache
 
   # Required status check
-  test-in-ci:
-    name: Run CI tests
-    runs-on: ubuntu-latest
+  unit-tests:
+    name: Unit Tests
     needs: [build]
-    timeout-minutes: 10
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: ./.github/actions/use-build-args-cache
-
       - uses: ./.github/actions/use-install-cache
+
+      - name: Use .env cache action
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
 
       - uses: ./.github/actions/use-build-cache
 
       - name: Run Jest tests
         run: yarn test:unit:ci
+
+  # Required status check
+  integration-tests:
+    name: Integration Tests
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: ./.github/actions/use-install-cache
+
+      - name: Install Playwright Browsers
+        run: yarn pretest:integration:ci
+
+      - name: Use .env cache action
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
+
+      - uses: ./.github/actions/use-build-cache
 
       - name: Run Playwright tests
         run: yarn test:integration:ci
@@ -156,15 +101,21 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-  check-links:
-    name: Check Application Links
+  # Required status check
+  # Checks gzipped page sizes and application links
+  check-app:
+    name: Check Links and Size Limit
     runs-on: ubuntu-latest
     needs: [build]
-    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - uses: ./.github/actions/use-build-args-cache
+      - name: Use .env cache action
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
 
       - uses: ./.github/actions/use-install-cache
 
@@ -173,26 +124,11 @@ jobs:
       - name: Run Broken Link Checker
         id: link-checker-report
         continue-on-error: true
-        run: yarn postbuild && yarn test:links
+        run: yarn test:links
 
       - name: Link Checker Results
         if: ${{ failure() }}
         run: echo "::warning ${{steps.link-checker-report.outputs.result}}"
-
-  # Checks gzipped page sizes, uses caches from setup-and-build
-  check-size:
-    runs-on: ubuntu-latest
-    name: Get File Sizes Limits
-    needs: [build]
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: ./.github/actions/use-build-args-cache
-
-      - uses: ./.github/actions/use-install-cache
-
-      - uses: ./.github/actions/use-build-cache
 
       - uses: andresz1/size-limit-action@v1
         with:
@@ -204,7 +140,7 @@ jobs:
   required-checks:
     name: Required Checks
     runs-on: ubuntu-latest
-    needs: [test-in-ci]
+    needs: [unit-tests, integration-tests]
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3

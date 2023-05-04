@@ -1,4 +1,4 @@
-name: Ruby on Rails CI
+name: Ruby on Rails Application CI
 
 on:
   workflow_call:
@@ -9,13 +9,8 @@ on:
       BUNDLER_VERSION:
         required: false
         type: string
-        default: 2.3.26
         description: "Bundler version"
-      RAILS_ENV:
-        required: false
-        type: string
-        default: "development"
-        description: "Rails Environment"
+        default: 2.3.26
       RUBY_VERSION:
         required: true
         type: string
@@ -26,59 +21,44 @@ on:
         default: "curl"
         description: "Apt packages to install"
       INSTALL_NODE:
-        required: true
+        required: false
         type: boolean
         description: "Whether to install Node.js or not"
+        default: false
       NODE_VERSION:
         required: false
         type: string
-        default: "14"
         description: "Node.js version to install"
-      APPLY_FIXES:
-        type: string
-        description: Comma-separated list of linters to run
-        default: "all"
-      APPLY_FIXES_MODE:
-        type: string
-        description: "Create PR or commit directly to branch"
-        default: "commit"
-      APPLY_FIXES_EVENT:
-        type: string
-        description: "Create PR or commit directly to branch"
-        default: "all"
+        default: "14"
     secrets:
-      azureCredentials:
-        required: true
-      PAT_ACTION_CI:
+      AZURE_CREDENTIALS:
         required: true
 
 env:
-  BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION || '2.3.26' }}
-  RAILS_ENV: ${{ inputs.environment || 'production' }}
+  BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
+  RAILS_ENV: ${{ inputs.environment }}
 
 jobs:
-  # Sets up dependencies and initial cache
-  install:
-    name: Setup Dependencies
+  build:
+    name: Build App
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-20.04
-    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - name: Use .env cache action
-        uses: Andrews-McMeel-Universal/get-envs@v1.2
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
-          azurecredentials: ${{ secrets.azureCredentials }}
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
 
       - uses: actions/setup-node@v3
-        if: inputs.INSTALL_NODE == true
+        if: env.INSTALL_NODE == true
         with:
           node-version: ${{ inputs.NODE_VERSION }}
 
-      - uses: awalsh128/cache-apt-pkgs-action@v1.2.4
+      - uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: ${{ inputs.APT_PACKAGES }}
           version: 1.0
@@ -88,125 +68,6 @@ jobs:
         with:
           ruby-version: ${{ inputs.RUBY_VERSION }}
           bundler-cache: true
-
-  # Required status check
-  # Checks code quality
-  lint:
-    name: Run MegaLinter
-    needs: [install]
-    runs-on: ubuntu-latest
-    env:
-      APPLY_FIXES: ${{ inputs.APPLY_FIXES || 'all' }}
-      APPLY_FIXES_MODE: ${{ inputs.APPLY_FIXES_MODE || 'commit' }}
-      APPLY_FIXES_EVENT: ${{ inputs.APPLY_FIXES_EVENT || 'pull_request' }}
-    steps:
-      # This uses the PAT_ACTION_CI token as the normal GITHUB_TOKEN
-      # doesn't have the permissions to trigger additional workflows
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.PAT_ACTION_CI }}
-          fetch-depth: 0
-
-      - name: Use .env cache action
-        uses: Andrews-McMeel-Universal/get-envs@v1.2
-        with:
-          azurecredentials: ${{ secrets.azureCredentials }}
-          environment: ${{ inputs.environment }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        if: inputs.INSTALL_NODE == true
-        with:
-          node-version: ${{ inputs.NODE_VERSION }}
-
-      - uses: awalsh128/cache-apt-pkgs-action@v1.2.4
-        with:
-          packages: ${{ inputs.APT_PACKAGES }}
-          version: 1.0
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1.136.0
-        with:
-          ruby-version: ${{ inputs.RUBY_VERSION }}
-          bundler-cache: true
-
-      # Run the MegaLinter Github Action
-      - name: MegaLinter
-        id: ml
-        uses: oxsecurity/megalinter/flavors/cupcake@v6.20.1
-        env:
-          VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
-          GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
-
-      # Creates archive artifact of linting reports
-      # Upload MegaLinter artifacts
-      - name: Archive production artifacts
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: MegaLinter reports
-          path: |
-            megalinter-reports
-            mega-linter.log
-          retention-days: 7
-
-      # Create pull request if applicable (for now works only on PR from same repository, not from forks)
-      - name: Create Pull Request with applied fixes
-        id: cpr
-        if: steps.ml.outputs.has_updated_sources == 1 && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'pull_request'
-        uses: peter-evans/create-pull-request@v4
-        with:
-          token: ${{ secrets.PAT_ACTION_CI || secrets.GITHUB_TOKEN }}
-          commit-message: "[MegaLinter] Apply linters automatic fixes"
-          title: "[MegaLinter] Apply linters automatic fixes"
-          labels: bot
-
-      # Commit fixes back into the raised PR branch
-      - name: Prepare Linting Fix Commit
-        if: steps.ml.outputs.has_updated_sources == 1 && github.ref != 'refs/heads/main' && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'commit'
-        run: sudo chown -Rc $UID .git/
-
-      - name: Commit and Push Linting Fixes
-        if: steps.ml.outputs.has_updated_sources == 1 && github.ref != 'refs/heads/main' && (env.APPLY_FIXES_EVENT == 'all' || env.APPLY_FIXES_EVENT == github.event_name) && env.APPLY_FIXES_MODE == 'commit'
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_user_name: amutechtest
-          commit_user_email: amu_deploy@amuniversal.com
-          commit_message: "[MegaLinter] Apply prettier changes"
-
-  # Required status check
-  test-in-ci:
-    name: Run CI tests
-    runs-on: ubuntu-20.04
-    needs: [lint]
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        if: inputs.INSTALL_NODE == true
-        with:
-          node-version: ${{ inputs.NODE_VERSION }}
-
-      - uses: awalsh128/cache-apt-pkgs-action@v1.2.4
-        with:
-          packages: ${{ inputs.APT_PACKAGES }}
-          version: 1.0
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1.136.0
-        with:
-          ruby-version: ${{ inputs.RUBY_VERSION }}
-          bundler-cache: true
-
-      - name: Use .env cache action
-        uses: Andrews-McMeel-Universal/get-envs@v1.2
-        with:
-          azurecredentials: ${{ secrets.azureCredentials }}
-          environment: ${{ inputs.environment }}
 
       - name: Boot Rails server
         run: |
@@ -221,33 +82,9 @@ jobs:
             exit 1
           fi
 
-  # Checks gzipped page sizes, uses caches from setup-and-build
-  check-size:
-    runs-on: ubuntu-latest
-    name: Get File Sizes Limits
-    needs: [install]
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.head_ref }}
-
-      - uses: ./.github/actions/use-build-args-cache
-
-      - uses: ./.github/actions/use-install-cache
-
-      - uses: ./.github/actions/use-build-cache
-
-      - uses: andresz1/size-limit-action@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # The size-limit-action tries to run a
-          # redundant yarn build
-          skip_step: build
-
   required-checks:
     name: Required Checks
-    needs: [test-in-ci]
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
