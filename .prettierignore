@@ -1,0 +1,33 @@
+# General
+.cache/
+.git/
+storybook-static
+src/helpers/utilities/tokens/_design_tokens.js
+
+# Helm
+deployments/**/templates/
+
+# Docker
+docker-compose.yml
+
+# Node.js
+.next
+build/
+**.js.map
+**.bundle.js
+
+# WordPress
+wp-content/
+
+# Games
+*Game/
+
+# Dotnet
+*Service/
+*.Library/
+*.Tests/
+*.WebAPI/
+*.sln
+*.csproj
+*.lutconfig
+.editorconfig

@@ -1,21 +1,35 @@
-aks-deploy:
+deployments:
   - ".github/workflows/aks-deploy.yaml"
-
-b2c-build-and-deploy:
+  - ".github/workflows/wpe-deploy.yaml"
   - ".github/workflows/b2c-build-and-deploy.yaml"
-
-purge-cdn:
-  - ".github/workflows/purge-cdn.yaml"
-
-update-addns:
-  - ".github/workflows/update-addns.yaml"
-
-update-azureapimanagement.yaml:
   - ".github/workflows/update-azureapimanagement.yaml"
-
-tests:
-  - ".github/workflows/workflow-linter.yaml"
-  - ".github/actionlint.yaml"
+  - ".github/workflows/update-addns.yaml"
 
 documentation:
   - "README.md"
+
+pr-checks:
+  - ".github/workflows/pr-labels.yaml"
+  - ".github/workflows/simple-lint.yaml"
+  - ".github/workflows/jira-lint.yaml"
+  - ".github/workflows/dependabot-automations.yaml"
+  - ".github/workflows/codeowners-validation.yaml"
+  - ".github/workflows/pr-clean-caches.yaml"
+
+linters:
+  - ".github/workflows/simple-lint.yaml"
+  - ".github/workflows/mega-lint.yaml"
+  - ".github/workflows/jira-lint.yaml"
+
+tools:
+  - ".github/workflows/bump-versions.yaml"
+  - ".github/workflows/update-major-release.yaml"
+
+devops:
+  - ".github/**"
+  - "deployments/**"
+  - "*.ps1"
+  - "Secrets.json*"
+  - "docker-compose.yml"
+  - "Dockerfile"
+  - ".*ignore"

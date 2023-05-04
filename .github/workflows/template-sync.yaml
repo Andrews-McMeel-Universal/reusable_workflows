@@ -1,0 +1,35 @@
+name: 🔄 Sync with .github repository
+
+on:
+  schedule:
+    - cron: 0 9 1 * *
+  workflow_dispatch:
+    inputs:
+      isdryrun:
+        type: boolean
+        description: Dry run
+        default: false
+
+jobs:
+  repo-sync:
+    name: Repository Sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch or tag
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+
+      - name: actions-template-sync
+        uses: AndreasAugustin/actions-template-sync@v0.8.0
+        with:
+          github_token: ${{ secrets.PAT_ACTION_CI }}
+          source_repo_path: Andrews-McMeel-Universal/.github
+          upstream_branch: main
+          pr_labels: maintenance
+          pr_commit_msg: 🔄 Synchronize with @Andrews-McMeel-Universal/.github
+          pr_title: 🔄 Sync with @Andrews-McMeel-Universal/.github
+          pr_branch_name_prefix: sync/dotgithub/
+          is_dry_run: ${{ inputs.isdryrun || 'false' }}
+          git_user_name: amutechtest
+          git_user_email: amu_deploy@amuniversal.com

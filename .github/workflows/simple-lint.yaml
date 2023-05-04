@@ -1,8 +1,13 @@
-name: Lint and Format Code
+name: Simple Linter and Formatter
 
 on:
-  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_call:
+    inputs:
+      runPrettier:
+        default: true
+        type: boolean
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -10,6 +15,7 @@ on:
 jobs:
   prettier:
     name: Prettier Check
+    if: ${{ inputs.runPrettier }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

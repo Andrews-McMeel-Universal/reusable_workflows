@@ -60,7 +60,7 @@ on:
       azureSubscription:
         required: false
       azureCredentials:
-        required: true
+        required: false
       storageAccountKey:
         required: true
 
@@ -73,11 +73,29 @@ jobs:
       azurePassword: ${{ secrets.azurePassword }}
       azureSubscription: ${{ secrets.azureSubscription }}
     steps:
-      - name: Login via Az module
+      - name: Hash azureCredentials secret
         if: ${{ env.azureCredentials }}
-        uses: azure/login@v1.4.7
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
         with:
-          creds: "${{ secrets.azureCredentials }}"
+          input: ${{ secrets.azureCredentials }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        if: ${{ env.azureCredentials }}
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.Azure
+            ${{ github.workspace }}/.Azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
+
+      - name: Login via Az module
+        if: ${{ steps.azure-cache.outputs.cache-hit != 'true' && env.azureCredentials }}
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.azureCredentials }}
           enable-AzPSSession: true
 
       - name: Login via PowerShell

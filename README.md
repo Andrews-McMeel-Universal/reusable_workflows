@@ -1,14 +1,49 @@
 # Reusable Workflows
 
-Reusable workflows can be called from other workflows within repositories to perform a variety of tasks. We use them to automate deployments, PR-related checks, update APIs, etc.
+Reusable workflows can be called from other GitHub Actions workflows within repositories to perform a variety of tasks.
+
+We use them to automate deployments, PR-related checks, update objects in Azure, and more.
 
 ---
 
 ## Getting Started
 
-Whenever calling the reusable workflows, you need to make sure the `uses:` option contains the path to the reusable workflow repo, `Andrews-McMeel-Universal/reusable_workflows/.github/workflows/` along with the workflow name. If the workflow requires any inputs to be passed in, make sure to include those under either the `with:` and `secrets:` sections.
+To call a reusable workflow, you need to use the `uses:` option contains the path to the reusable workflow repo, `Andrews-McMeel-Universal/reusable_workflows/.github/workflows/` along with the workflow name.
 
-When referencing workflows, you can specify either a tag or a branch from this repository. For example, you can use the `2.2.3` release to get a static copy of the workflows at that point, `Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@2.2.3` or to specify a branch, `Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@DEVOPS-fix-aks-deploy-bug`
+```YAML Example
+codeowners-validation:
+  if: ${{ github.actor != 'dependabot[bot]' }}
+  name: Codeowners File Validation
+  uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/codeowners-validation.yaml@2
+```
+
+If the workflow requires any inputs to be passed in, make sure to include those under either the `with:` and `secrets:` sections.
+
+```YAML Example
+jira-lint:
+  if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'amutechtest' && github.ref != 'refs/heads/development' && github.ref != 'refs/heads/main' }}
+  name: Jira PR Linter
+  uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/jira-lint.yaml@2
+  with:
+    fail-on-error: true
+    skip-comments: false
+  secrets:
+    JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+```
+
+When referencing workflows, you can specify either a tag or a branch from this repository.
+
+For example, to specify a release to get a static copy of the workflows at that point:
+
+```YAML Example
+Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@2
+```
+
+To specify a branch:
+
+```YAML Example
+Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@DEVOPS-fix-aks-deploy-bug
+```
 
 > NOTE: You can call multiple reusable workflows within a single workflow file.
 
@@ -23,13 +58,26 @@ git clone https://github.com/Andrews-McMeel-Universal/reusable_workflows.git
 We primarily test workflows with the [reusable_workflows-test](https://github.com/Andrews-McMeel-Universal/reusable_workflows-test) repository. You can test and link the respective workflow tests with PRs by doing the following:
 
 1. Create a branch in the `reusable_workflows` repository
-2. Create a branch that matches the name of the branch in the `reusable_workflows` repository in the `reusable_workflows-test` repository.
-3. Create or update the workflow in the `reusable_workflows-test` repository to reference the branch name.
-4. Push your changes to the branch and trigger (through whatever workflow triggers you have set up) the workflow's GitHub action.
-5. Click on the workflow's GitHub action tab on the left side of the "Actions" page.
-6. Click the ellipsis button at the top right of the workflow's GitHub action page and click "Create status badge"
-7. Specify the branch you've set up in the repository and copy the markdown URL.
-8. Once you've successfully run the workflow, paste the markdown URL in the reusable_workflows PR for merging in the workflow changes. The end result should look something like this PR: https://github.com/Andrews-McMeel-Universal/reusable_workflows/pull/18
+1. Create a branch that matches the name of the branch in the `reusable_workflows` repository in the `reusable_workflows-test` repository.
+1. Create or update the workflow in the `reusable_workflows-test` repository to reference the branch name.
+1. Push your changes to the branch and trigger (through whatever workflow triggers you have set up) the workflow's GitHub action.
+1. Click on the workflow's GitHub action tab on the left side of the "Actions" page.
+1. Click the ellipsis button at the top right of the workflow's GitHub action page and click "Create status badge"
+1. Specify the branch you've set up in the repository and copy the markdown URL.
+1. Once you've successfully run the workflow, paste the markdown URL in the reusable_workflows PR for merging in the workflow changes. The end result should look something like this PR: https://github.com/Andrews-McMeel-Universal/reusable_workflows/pull/18
+
+---
+
+## New Releases
+
+This repository is using the `update-major-release.yaml` to automatically create major release tags based off the most latest/stable version.
+
+To run this workflow:
+
+1. Go to this repository's [Update Major Release](https://github.com/Andrews-McMeel-Universal/reusable_workflows/actions/workflows/update-major-release.yaml) workflow
+1. Press "Click workflow" on the right-hand side of the page.
+1. Specify the tag to create a major release for and what the major release will be.
+1. Click "Run workflow"
 
 ---
 
@@ -39,30 +87,31 @@ Depending on the app, you will want to use a combination of different workflows.
 
 To get an idea of what workflows a specific application might need, you can reference the template repository that is closely related to the app. For example, for a Kubernetes-based Ruby on Rails application, you can reference [k8sapp_ruby_template](https://github.com/Andrews-McMeel-Universal/k8sapp_ruby_template)
 
+---
+
+## Deployment Workflows
+
 ### Azure Kubernetes Service Deploy
 
-Workflow file: `aks-deploy.yaml`
+**Workflow file: [aks-deploy.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/aks-deploy.yaml)**
 
-AKS deployment workflow.
+- AKS deployment workflow.
+  - Checks the code out
+  - Parses the charts.yaml and values.yaml in the application's helm charts for information about the application
+  - Reads the specified Azure KeyVaults for secrets and build arguments for the application
+  - Creates public DNS records for the application
+  - Creates any K8s secrets or Configmaps specified for the application
+  - Builds docker image for the application
+  - Pushes the docker image to Azure's container repository
+  - Bakes the application's helm charts
+  - Deploys the application to Azure Kubernetes
+  - Upon a successful deployment, the workflow records the deployment information in Azure Storage Tables for use by subsequent workflows.
 
-- Checks the code out
-- Parses the charts.yaml and values.yaml in the application's helm charts for information about the application
-- Reads the specified Azure KeyVaults for secrets and build arguments for the application
-- Creates public DNS records for the application
-- Creates any K8s secrets or Configmaps specified for the application
-- Builds docker image for the application
-- Pushes the docker image to Azure's container repository
-- Bakes the application's helm charts
-- Deploys the application to Azure Kubernetes
-- Upon a successful deployment, the workflow records the deployment information in Azure Storage Tables for use by subsequent workflows.
-
-Example:
-
-```YAML
+```YAML Example
 jobs:
   deploy:
     name: AKS Deployment
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@x.x.x
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/aks-deploy.yaml@2
     with:
       environment: development
       environmentIngress: true|false # If set to true, the environment name will be prepended to the application hostname.
@@ -77,17 +126,15 @@ jobs:
 
 ### WordPress Site Deploy
 
-Workflow file: `wpe-deploy.yaml`
+**Workflow file: [wpe-deploy.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/wpe-deploy.yaml)**
 
-Deploys the WordPress site to WPEngine
+- Deploys the WordPress site to WPEngine
 
-Example:
-
-```YAML
+```YAML Example
 jobs:
   deploy:
     name: WP Engine Deployment
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/wpe-deploy.yaml@x.x.x
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/wpe-deploy.yaml@2
     with:
       WPE_ENV_NAME: appnamedev
       SOURCE_PATH: "wp-content/themes/appname"
@@ -99,21 +146,18 @@ jobs:
 
 ### Update Boley DNS
 
-Workflow file: `update-addns.yaml`
+**Workflow file: [update-addns.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/update-addns.yaml)**
 
-Updates internal Active Directory DNS.
-
+- Updates internal Active Directory DNS.
 - Reads the Azure Storage Table for application information and then updates Active Directory DNS.
 
 > NOTE: This workflow runs on a self hosted runner.
 
-Example:
-
-```YAML
+```YAML Example
 jobs:
   update-boley-dns:
     name: Update Boley DNS
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/update-addns.yaml@x.x.x
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/update-addns.yaml@2
     with:
       environment: staging
     secrets:
@@ -123,21 +167,16 @@ jobs:
 
 ### Update Azure API Management
 
-Workflow file: `update-azureapimanagement.yaml`
+**Workflow file: [update-azureapimanagement.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/update-azureapimanagement.yaml)**
 
-Updates Azure API Management.
+- Updates Azure API Management.
+  - Reads the Azure Storage Table for application information and then updates Azure API Management with the swagger.json Open API Spec.
 
-- Reads the Azure Storage Table for application information and then updates Azure API Management with the swagger.json Open API Spec.
-
-> NOTE: This workflow should only be used for backend services, not a UI as a UI won't have an API.
-
-Example:
-
-```YAML
+```YAML Example
 jobs:
   update-azure-api-management:
     name: Update Azure API Management
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/update-azureapimanagement.yaml@x.x.x
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/update-azureapimanagement.yaml@2
     with:
       environment: development  # This is required
       apiId: gocomics-user-info-service-api  # Defaults to "[REPOSITORY_NAME]-api"
@@ -150,19 +189,39 @@ jobs:
       storageAccountKey: ${{ secrets.STORAGEACCOUNT_KEY }}
 ```
 
+### B2C Build and Deploy
+
+**Workflow file: [b2c-build-and-deploy.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/b2c-build-and-deploy.yaml)**
+
+- Builds the B2C assets
+- Uploads the B2C assets
+
+```YAML Example
+jobs:
+  b2c-build-and-deploy:
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/b2c-build-and-deploy.yaml@2
+    with:
+      environment: development
+      azureB2CProductName: appname
+      azureB2CDomain: developmentamub2c.onmicrosoft.com
+    secrets:
+      azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+      storageAccountKey: ${{ secrets.STORAGEACCOUNT_KEY }}
+      azureB2CClientId: ${{ secrets.B2C_CLIENT_ID }}
+      azureB2CClientSecret: ${{ secrets.B2C_CLIENT_SECRET }}
+```
+
 ### Purge CDN
 
-Workflow file: `purge-cdn.yaml`
+**Workflow file: [purge-cdn.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/purge-cdn.yaml)**
 
-Purges the Azure CDN cache for a specific CDN endpoint
+- Purges the Azure CDN cache for a specific CDN endpoint
 
-Example:
-
-```YAML
+```YAML Example
 jobs:
   purge-cdn:
     name: Purge CDN
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/purge-cdn.yaml@x.x.x
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/purge-cdn.yaml@2
     with:
       environment: staging  # This is required
       cdnResourceGroup: AMU_Games_RG  # Defaults to the resource with a "environment" tag matching the environment input set above.
@@ -172,32 +231,121 @@ jobs:
       azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
 ```
 
+### Azure Function Deploy
+
+**Workflow file: [azfunction-deploy.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/azfunction-deploy.yaml)**
+
+- Deploys an Azure Function App
+
+```YAML Example
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/azfunction-deploy.yaml@2
+    with:
+      AZURE_FUNCTIONAPP_NAME: "pause-subscription-manager"
+      environment: development
+    secrets:
+      azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+```
+
+---
+
+## PR Checks Workflows
+
 ### Validate Codeowners File
 
-Workflow file: `codeowners-validation.yaml`
+**Workflow file: [codeowners-validation.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/codeowners-validation.yaml)**
 
-Validates the syntax in the CODEOWNERS file.
+- Validates the syntax in the CODEOWNERS file.
 
-> NOTE: It is recommended to use this workflow with the `pr-labels.yaml` and `lint-and-format.yaml` workflows.
-
-Example:
-
-```YAML
+```YAML Example
 jobs:
   codeowners-validation:
     name: Validate CODEOWNERS file
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/codeowners-validation.yaml@x.x.x
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/codeowners-validation.yaml@2
 ```
+
+### Lint and Format
+
+**Workflow file: [lint-and-format.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/lint-and-format.yaml)**
+
+- Runs prettier on all files. Ignores files listed in `.prettierignore`
+- Runs workflow linter on all workflow files in `.github/` by default.
+
+```YAML Example
+jobs:
+  lint-and-format:
+    name: Lint and Format
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/lint-and-format.yaml@2
+```
+
+### PR Labels
+
+**Workflow file: [pr-labels.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/pr-labels.yaml)**
+
+```YAML Example
+jobs:
+  pr-labels:
+    name: Adds PR Labels
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/pr-labels.yaml@2
+    secrets:
+      PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
+```
+
+### Jira Lint
+
+**Workflow file: [jira-lint.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/jira-lint.yaml)**
+
+```YAML Example
+jobs:
+  jira-lint:
+    name: Jira PR Linter
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/jira-lint.yaml@2
+```
+
+### Clear PR Caches
+
+**Workflow file: [pr-clean-caches.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/pr-clean-caches.yaml)**
+
+```YAML Example
+name: Cleanup caches after PR is closed
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  pr-clean-caches:
+    name: Clear PR Caches
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/pr-clean-caches.yaml@2
+```
+
+### Dependabot Automations
+
+**Workflow file: [dependabot-automations.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/dependabot-automations.yaml)**
+
+- Auto-approves and auto-merges in dependabot PRs.
+
+```YAML Example
+jobs:
+  dependabot-automations:
+    name: Dependabot Automations
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/dependabot-automations.yaml@2
+```
+
+---
+
+## Tool Workflows
 
 ### Bump Version
 
-Workflow file: `bump-versions.yaml`
+**Workflow file: [bump-versions.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/bump-versions.yaml)**
 
-This workflow automatically bumps the application's version in `Chart.yaml` and the `package.json` if it exists. Use the `releaseType` input to change how the version is automatically incremented.
+- This workflow automatically bumps the application's version in `Chart.yaml` and the `package.json` if it exists.
+  - Use the `releaseType` input to change how the version is automatically incremented.
 
-Example:
-
-```YAML
+```YAML Example
 name: "Bump Version"
 
 on:
@@ -214,177 +362,44 @@ on:
 jobs:
   bump-versions:
     name: Bump Versions
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/bump-versions.yaml@x.x.x
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/bump-versions.yaml@2
     with:
       releaseType: ${{ inputs.releaseType }}
 ```
-
-### B2C Build and Deploy
-
-Workflow file: `b2c-build-and-deploy.yaml`
-
-- Builds the B2C assets
-- Uploads the B2C assets
-
-Example:
-
-```YAML
-jobs:
-  b2c-build-and-deploy:
-   uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/b2c-build-and-deploy.yaml@x.x.x
-   with:
-      environment: development
-      azureB2CProductName: appname
-      azureB2CDomain: developmentamub2c.onmicrosoft.com
-   secrets:
-    azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
-    storageAccountKey: ${{ secrets.STORAGEACCOUNT_KEY }}
-    azureB2CClientId: ${{ secrets.B2C_CLIENT_ID }}
-    azureB2CClientSecret: ${{ secrets.B2C_CLIENT_SECRET }}
-```
-
-### Lint and Format
-
-Workflow file: `lint-and-format.yaml`
-
-- Runs prettier on all files. Ignores files listed in `.prettierignore`
-- Runs workflow linter on all workflow files in `.github/` by default.
-
-> NOTE: It is recommended to use this workflow with the `pr-labels.yaml` and `codeowners-validation.yaml` workflows.
-
-Example:
-
-```YAML
-jobs:
-  lint-and-format:
-    name: Lint and Format
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/lint-and-format.yaml@x.x.x
-```
-
-### PR Labels
-
-Workflow file: `pr-labels.yaml`
-
-> NOTE: It is recommended to use this workflow with the `codeowners-validation.yaml` and `lint-and-format.yaml` workflows.
-
-Example:
-
-```YAML
-jobs:
-  pr-labels:
-    name: Adds PR Labels
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/pr-labels.yaml@x.x.x
-    secrets:
-      PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
-```
-
-### Jira Lint
-
-Workflow file: `jira-lint.yaml`
-
-> NOTE: It is recommended to use this workflow with the `codeowners-validation.yaml`, `lint-and-format.yaml`, and `pr-labels.yaml` workflows.
-
-Example:
-
-```YAML
-jobs:
-  jira-lint:
-    name: Jira PR Linter
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/jira-lint.yaml@x.x.x
-```
-
-### Clear PR Caches
-
-Workflow file: `pr-clean-caches.yaml`
-
-Example:
-
-```YAML
-name: Cleanup caches after PR is closed
-
-on:
-  pull_request:
-    types: [closed]
-
-jobs:
-  pr-clean-caches:
-    name: Clear PR Caches
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/pr-clean-caches.yaml@x.x.x
-```
-
-### Dependabot Automations
-
-Workflow file: `dependabot-automations.yaml`
-
-Auto-approves and auto-merges in dependabot PRs.
-
-```YAML
-jobs:
-  dependabot-automations:
-    name: Dependabot Automations
-    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/dependabot-automations.yaml@x.x.x
-```
-
----
-
-## Repository Synchronization
-
-This repository is not currently set up to synchronize with any other repositories due to its very specific repository structure.
 
 ---
 
 ## Contributing
 
-### Issue per Branch
-
-For any code changes in this repo, we ask that you create a branch per Jira Issue. This is a general best practice and promotes smaller/incremental changes that are easily deployed and debugged. Our default branch naming pattern for this is the following:
-
-```
-jiraIssueType/AMUPRODUCT-1234/hyphenated-issue-summary
-```
-
-To illustrate this, if a simple copy change was raised by the product owner in JIRA. The issueType would be "maintenance" and we will use the example issue key: CAN-1234
+New branches should always be associated with a Jira ticket. The branch should be prefixed with the issue key and a short description, like so: `jiraIssueType/DEVOPS-1234/hyphenated-issue-summary`.
 
 ### Jira Smart Commits
 
-Our projects are managed in Jira, and we use [smart commits](https://confluence.atlassian.com/fisheye/using-smart-commits-960155400.html) to link actions in GitHub to the relevant ticket in Jira, triggering automations that update ticket statuses.
+In scenarios where creating a separate branch for each Jira ticket is not exactly feasible, you can still trigger our automation by using what are called [smart commits](https://confluence.atlassian.com/fisheye/using-smart-commits-960155400.html).
 
-Smart commits are created by referencing the Jira issue key, such as `JIRA-1234`, in a commit, branch name, or PR description. If needed, multiple smart commits can be referenced at once.
+To use Jira smart commits, you would include the Jira issue key for each commit like so: `[DEVOPS-1234], [DEVOPS-1235] Knocked out the 4 copy edits needed`
 
-### Branches
+### Creating Pull Requests
 
-For any code changes in this repo, we prefer a single branch per Jira issue. This is a general best practice and promotes incremental changes that are easily deployed and debugged.
+Once you have committed your effort in a separate branch, you will need to raise a pull request in Github. While filling out the Pull Request, **Please** follow the pull request template format and write a brief description of any technical details and Jira tickets that are related to the PR.
 
-Our branch naming pattern is `jiraIssueType/JIRA-1234/hyphenated-issue-summary`.
+The recommended title for the pull request is typically just the branch name. Again, if a single issue per branch is not feasible, including a brief title of the effort is acceptable.
 
-### Pull Requests
+You do not need to fill in the reviewers or assignees. Our CODEOWNERS automation takes care of who will need to review it. As long as a AMU software engineer reviews it and the other checks pass, they will take care of merging the pull request into staging and production.
 
-Open a pull request when your changes are ready to merge into staging. Follow the PR template and write a brief description, and add relevant links, including the Jira issue key.
+> NOTE: On every PR, we do run tests and automatically format the code with Prettier.
 
-You do not need to fill in the reviewers or assignees. Our CODEOWNERS automation takes care of who will need to review it. An AMU software engineer will review it and handle merging it once it's ready.
+> NOTE: A PR will not be able to be merged until at least 1 reviewer with write access has approved it and all tests are passing. If a PR is updated with a new commit, stale reviews will be dismissed.
 
 ---
 
-## Deployment & Releases
-
-Detailed information about how to prepare an app to deploy to K8s is here: (https://amuniversal.atlassian.net/l/c/AV1H0Sbf)
-
-### Reviewers and Supportive information
-
-You do not need to fill in the reviewers or assignees. Our CODEOWNERS automation takes care of who will need to review it. As long as a AMU software engineer reviews it and the other checks pass, we will take care of merging the pull request into staging and production.
-
-### Relevant Links
-
-Jira Release: <https://amuniversal.atlassian.net/projects/AMUPRODUCTJIRAKEY/versions/12711/tab/release-report-all-issues>
-
-### Creating an Official Release
+### Creating a new Release
 
 Once a pull request is merged into _main_, it passes all CI checks and passes QA, it will be ready for being released to staging and production.
 
-> The AMU software engineer **must** create a tagged version.
+1. Navigate to the [Releases](https://github.com/Andrews-McMeel-Universal/reusable_workflows/releases) tab
+1. Click the button for "Draft a New Release" and then click "Auto-generated Release Notes".
+1. If this is for a staging deployment, check `Set as a pre-release` option and make sure to add `-rc` to the end of the tag name. Otherwise, just set it to the release version.
+1. Click "Publish Release"
 
-1. Navigate to the [product releases in github](https://github.com/Andrews-McMeel-Universal/AMUPRODUCTJIRAKEY/releases)
-2. Click the button for "Draft a New Release" and then click "Auto-generated Release Notes".
-   > NOTE: We do not use the `vx.x.x` pattern for version naming. We simply have the semantic release version number like this: `x.x.x`
-3. If this is for a staging deployment, check `Set as a pre-release` option and make sure to add `-rc` to the end of the tag name/
-4. Click "Publish Release"
+> NOTE: We do not use the v2 pattern for version naming. We simply have the semantic release version number like this: 2

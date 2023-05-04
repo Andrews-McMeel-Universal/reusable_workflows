@@ -1,6 +1,8 @@
 name: Cleanup caches after PR is closed
 
 on:
+  pull_request:
+    types: [closed]
   workflow_call:
 
 jobs:
@@ -14,19 +16,21 @@ jobs:
       - name: Cleanup
         run: |
           gh extension install actions/gh-actions-cache
-
-          REPO=${{ github.repository }}
-          BRANCH="refs/pull/${{ github.event.pull_request.number }}/merge"
-
-          echo "Fetching list of cache key"
-          cacheKeysForPR=$(gh actions-cache list -R $REPO -B $BRANCH | cut -f 1 )
-
+          REPO="${{ github.repository }}"
+          PR_EVENT="${{ github.event.pull_request }}"
+          echo "Fetching list of cache keys"
+          if [[ "${PR_EVENT}" ]]; then
+            PR="${{ github.event.pull_request.number }}"
+            BRANCH="refs/pull/${PR}/merge"
+            cacheKeys=$(gh actions-cache list -R "$REPO" -B "$BRANCH" | cut -f 1 )
+          else
+            cacheKeys=$(gh actions-cache list -R "$REPO" | cut -f 1 )
+          fi
           ## Setting this to not fail the workflow while deleting cache keys. 
           set +e
           echo "Deleting caches..."
-          for cacheKey in $cacheKeysForPR
-          do
-              gh actions-cache delete $cacheKey -R $REPO -B $BRANCH --confirm
+          for cacheKey in $cacheKeys; do
+              gh actions-cache delete "$cacheKey" -R "$REPO" --confirm
           done
           echo "Done"
         env:
@@ -35,5 +39,5 @@ jobs:
       - name: Remove old artifacts
         uses: c-hive/gha-remove-artifacts@v1.2.0
         with:
-          age: "1 day"
+          age: "7 days"
           skip-recent: 1

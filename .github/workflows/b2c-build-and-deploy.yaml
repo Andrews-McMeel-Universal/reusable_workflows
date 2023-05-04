@@ -19,6 +19,10 @@ on:
         required: true
         type: string
         description: "Domain name of the B2C tenant."
+      azureB2CProductUrl:
+        required: false
+        type: string
+        description: "URL of the B2C Product."
     secrets:
       azureCredentials:
         required: true
@@ -30,26 +34,63 @@ on:
         required: true
 
 jobs:
+  vars:
+    name: Set Environment Variables
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set environment variables
+        run: |
+          if [[ "${{ inputs.environment }}" == "production" ]] ; then
+              echo "url=amub2c.b2clogin.com" >> $GITHUB_ENV
+          else
+              echo "url=${{ inputs.environment }}amub2c.b2clogin.com" >> $GITHUB_ENV
+          fi
+          echo "azureB2CClientId=${{ secrets.azureB2CClientId }}" >> $GITHUB_ENV
+    outputs:
+      url: ${{ env.url }}
+      azureB2CClientId: ${{ env.azureB2CClientId }}
+
   build:
     name: Build B2C Application
+    needs: [vars]
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment:
+      name: ${{ inputs.azureB2CProductName }}-${{ inputs.environment }}
+      url: "https://${{ needs.vars.outputs.url }}/${{ inputs.azureB2CDomain }}/b2c_1a_gc_signinsignout_policies/oauth2/v2.0/authorize?client_id=${{ needs.vars.outputs.azureB2CClientId }}&scope=https%3A%2F%2F${{ inputs.azureB2CDomain }}%2Fapi%2Fdemo.read%20https%3A%2F%2F${{ inputs.azureB2CDomain }}%2Fapi%2Fdemo.write%20https%3A%2F%2F${{ inputs.azureB2CDomain }}%2Fapi%2Fuser_impersonation%20offline_access%20openid&response_type=code&redirect_uri=https%3A%2F%2F${{ inputs.azureB2CProductUrl }}%2Fapi%2Fauth%2Fcallback%2Fazureb2c"
     continue-on-error: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.2.0
+        uses: actions/checkout@v3
+
+      - name: Hash azureCredentials secret
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
+        with:
+          input: ${{ secrets.azureCredentials }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.Azure
+            ${{ github.workspace }}/.Azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
 
       - name: Login via Az module
-        uses: azure/login@v1.4.7
+        if: steps.azure-cache.outputs.cache-hit != 'true'
+        uses: azure/login@v1
         with:
           creds: ${{ secrets.azureCredentials }}
           enable-AzPSSession: true
 
       - name: Generate .env file from Azure Key Vaults
-        uses: Andrews-McMeel-Universal/get-envs@v1.2
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
+          environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Get Fresh Packages
         shell: pwsh
@@ -82,7 +123,3 @@ jobs:
             $DistPath = Join-Path $BasePath "dist"
             ./deployments/scripts/Deploy-B2C_Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath -ProductPath "${{ inputs.azureB2CProductName }}"
           azPSVersion: "latest"
-
-      - name: Purge CDN Cache
-        run: |
-          az cdn endpoint purge --resource-group 'Site_Assets' --profile-name 'amuauthassets' --name 'amuauthassets' --content-paths '/*'
