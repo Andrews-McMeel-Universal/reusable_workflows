@@ -251,6 +251,83 @@ jobs:
 
 ---
 
+## Application CI workflows
+
+### Ruby on Rails Application CI
+
+**Workflow file: [ruby-ci.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/ruby-ci.yaml)**
+
+- Builds and tests a Ruby on Rails application
+
+```YAML Example
+jobs:
+  ruby-ci:
+    name: Ruby Application CI
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/ruby-ci.yaml@2
+    with:
+      environment: development
+      RUBY_VERSION: 2.6.10
+      APT_PACKAGES: nodejs
+      INSTALL_NODE: true
+      NODE_VERSION: 16
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+```
+
+### Docker Application CI
+
+**Workflow file: [docker-ci.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/docker-ci.yaml)**
+
+- Builds and tests a Docker-based application
+
+```YAML Example
+jobs:
+  docker-ci:
+    name: Docker Application CI
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/docker-ci.yaml@2
+    with:
+      NODE_ENV: development
+```
+
+### Next.js Application CI
+
+**Workflow file: [next-ci.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/next-ci.yaml)**
+
+- Builds and tests a Next.js application
+
+```YAML Example
+jobs:
+  next-ci:
+    name: Next.js Application CI
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/next-ci.yaml@2
+    with:
+      environment: development
+    secrets:
+      PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+```
+
+### Dotnet Application CI
+
+**Workflow file: [dotnet-ci.yaml](https://github.com/Andrews-McMeel-Universal/reusable_workflows/blob/main/.github/workflows/dotnet-ci.yaml)**
+
+- Builds and tests a .NET application
+
+```YAML Example
+jobs:
+  dotnet-ci:
+    name: Dotnet Application CI
+    uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/dotnet-ci.yaml@2
+    with:
+      environment: development
+      DOTNET_VERSION: 6.0.x
+    secrets:
+      PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+```
+
+---
+
 ## PR Checks Workflows
 
 ### Validate Codeowners File
@@ -366,30 +443,6 @@ jobs:
     with:
       releaseType: ${{ inputs.releaseType }}
 ```
-
----
-
-## Contributing
-
-New branches should always be associated with a Jira ticket. The branch should be prefixed with the issue key and a short description, like so: `jiraIssueType/DEVOPS-1234/hyphenated-issue-summary`.
-
-### Jira Smart Commits
-
-In scenarios where creating a separate branch for each Jira ticket is not exactly feasible, you can still trigger our automation by using what are called [smart commits](https://confluence.atlassian.com/fisheye/using-smart-commits-960155400.html).
-
-To use Jira smart commits, you would include the Jira issue key for each commit like so: `[DEVOPS-1234], [DEVOPS-1235] Knocked out the 4 copy edits needed`
-
-### Creating Pull Requests
-
-Once you have committed your effort in a separate branch, you will need to raise a pull request in Github. While filling out the Pull Request, **Please** follow the pull request template format and write a brief description of any technical details and Jira tickets that are related to the PR.
-
-The recommended title for the pull request is typically just the branch name. Again, if a single issue per branch is not feasible, including a brief title of the effort is acceptable.
-
-You do not need to fill in the reviewers or assignees. Our CODEOWNERS automation takes care of who will need to review it. As long as a AMU software engineer reviews it and the other checks pass, they will take care of merging the pull request into staging and production.
-
-> NOTE: On every PR, we do run tests and automatically format the code with Prettier.
-
-> NOTE: A PR will not be able to be merged until at least 1 reviewer with write access has approved it and all tests are passing. If a PR is updated with a new commit, stale reviews will be dismissed.
 
 ---
 
