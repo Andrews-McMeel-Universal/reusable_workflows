@@ -81,11 +81,3 @@ jobs:
             echo "App failed to start."
             exit 1
           fi
-
-  required-checks:
-    name: Required Checks
-    needs: [build]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3

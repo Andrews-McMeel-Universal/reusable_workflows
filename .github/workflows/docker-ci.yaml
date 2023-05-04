@@ -54,11 +54,3 @@ jobs:
             else
               exit 1
             fi
-
-  required-checks:
-    name: Required Checks
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
