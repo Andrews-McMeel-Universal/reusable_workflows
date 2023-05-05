@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       STORAGE_ACCOUNT_CONTAINER:
-        default: game-config-production
+        default: game-config-${{ inputs.environment }}
         type: string
     secrets:
       DB_CONNECTION_STRING:
