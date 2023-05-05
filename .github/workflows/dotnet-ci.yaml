@@ -1,0 +1,66 @@
+name: Dotnet Application CI
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      DOTNET_VERSION:
+        required: true
+        type: string
+        description: ".NET SDK Version"
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+      PAT_ACTION_CI:
+        required: true
+
+env:
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  build:
+    name: Build App
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Use .env cache action
+        uses: Andrews-McMeel-Universal/get-envs@v1.2
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
+
+      - name: Setup application platform
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ inputs.DOTNET_VERSION }}
+
+      - name: Add AMU GitHub Packages nuget source
+        run: |
+          dotnet nuget add source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --name "AMU GitHub Packages" --username "amu_deploy@amuniversal.com" --password "${{ secrets.PAT_ACTION_CI }}" --store-password-in-clear-text
+
+      # Installs dependencies if the cache was broken
+      - name: Cache dependencies
+        id: install-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ github.workspace }}/.nuget/packages
+            **/project.assets.json
+          # Look to see if there is a cache hit for the corresponding requirements file
+          key: install-${{ hashFiles('**/*.csproj','**/project.assets.json') }}
+
+      - name: Install dependencies
+        if: steps.install-cache.outputs.cache-hit != 'true'
+        run: dotnet restore
+
+      # Builds the app if the cache was broken
+      - name: Build app
+        run: dotnet build -c Release --no-restore
+
+      - name: Run tests
+        run: dotnet test --no-restore --verbosity normal
