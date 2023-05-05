@@ -1,0 +1,31 @@
+name: Update Game Configs
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      STORAGE_ACCOUNT_CONTAINER:
+        default: game-config-${{ inputs.environment }}
+        type: string
+    secrets:
+      DB_CONNECTION_STRING:
+        required: true
+      STORAGE_ACCOUNT_KEY:
+        required: true
+
+jobs:
+  update:
+    name: Update Game Configs
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Update Game Configs
+        shell: pwsh
+        run: |
+          ./deployments/scripts/Update-CloudGameConfigs.ps1 -DBConnectionString ${{ secrets.DB_CONNECTION_STRING }} `
+            -StorageAccountKey ${{ secrets.STORAGE_ACCOUNT_KEY }} -ContainerName ${{ inputs.STORAGE_ACCOUNT_CONTAINER }} -UpdatedBy 'GitHub Actions'
