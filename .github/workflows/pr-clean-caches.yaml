@@ -35,9 +35,3 @@ jobs:
           echo "Done"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Remove old artifacts
-        uses: c-hive/gha-remove-artifacts@v1.2.0
-        with:
-          age: "7 days"
-          skip-recent: 1
