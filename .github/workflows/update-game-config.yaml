@@ -6,13 +6,8 @@ on:
       environment:
         required: true
         type: string
-      STORAGE_ACCOUNT_CONTAINER:
-        default: game-config-${{ inputs.environment }}
-        type: string
     secrets:
-      DB_CONNECTION_STRING:
-        required: true
-      STORAGE_ACCOUNT_KEY:
+      AZURE_CREDENTIALS:
         required: true
 
 jobs:
@@ -24,8 +19,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Hash AZURE_CREDENTIALS secret
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
+        with:
+          input: ${{ secrets.AZURE_CREDENTIALS }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.Azure
+            ${{ github.workspace }}/.Azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
+
+      - name: Login via Az module
+        if: steps.azure-cache.outputs.cache-hit != 'true'
+        uses: azure/login@v1
+        with:
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
+          enable-AzPSSession: true
+
+      - name: Generate .env file from Azure Key Vaults
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
+
       - name: Update Game Configs
         shell: pwsh
         run: |
-          ./deployments/scripts/Update-CloudGameConfigs.ps1 -DBConnectionString ${{ secrets.DB_CONNECTION_STRING }} `
-            -StorageAccountKey ${{ secrets.STORAGE_ACCOUNT_KEY }} -ContainerName ${{ inputs.STORAGE_ACCOUNT_CONTAINER }} -UpdatedBy 'GitHub Actions'
+          ./deployments/scripts/Update-CloudGameConfigs.ps1 -DBConnectionString ${{ env.DB_CONNECTION_STRING }} -StorageAccountKey ${{ env.STORAGE_ACCOUNT_KEY }} -ContainerName ${{ env.STORAGE_ACCOUNT_CONTAINER }} -UpdatedBy 'GitHub Actions'
