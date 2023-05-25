@@ -4,8 +4,14 @@
 storybook-static
 src/helpers/utilities/tokens/_design_tokens.js
 
+# GitHub Actions Workflows
+.github/dependabot.yml
+.github/labeler.yml
+.github/workflows/aks*.yml
+
 # Helm
 deployments/**/templates/
+**/values.yaml
 
 # Docker
 docker-compose.yml

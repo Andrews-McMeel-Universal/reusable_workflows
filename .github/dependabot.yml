@@ -22,6 +22,8 @@ updates:
       - dependency-name: node
       - dependency-name: ruby
       - dependency-name: dotnet/sdk
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: "monthly"
       day: "monday"
@@ -56,6 +58,8 @@ updates:
       - dependency-name: nokogiri
         versions:
           - "> 1.12.0"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major","version-update:semver-minor"]
     labels:
       - "dependencies"
     open-pull-requests-limit: 10
@@ -68,6 +72,9 @@ updates:
     schedule:
       interval: "monthly"
       day: "monday"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     labels:
       - "back-end"
       - "dependencies"

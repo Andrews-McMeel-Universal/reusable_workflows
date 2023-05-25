@@ -45,11 +45,9 @@
 # *.UnitTests/                    @Andrews-McMeel-Universal/back-end-engineers
 
 # DevOps
-/.github/**                     @Andrews-McMeel-Universal/devops-engineers
-/deployments/**                 @Andrews-McMeel-Universal/devops-engineers
-*.ps1                           @Andrews-McMeel-Universal/devops-engineers
+.github/                        @Andrews-McMeel-Universal/devops-engineers
+deployments/                    @Andrews-McMeel-Universal/devops-engineers
+*-Secrets.ps1                   @Andrews-McMeel-Universal/devops-engineers
 Dockerfile                      @Andrews-McMeel-Universal/devops-engineers
 docker-compose.yml              @Andrews-McMeel-Universal/devops-engineers
-.*ignore                        @Andrews-McMeel-Universal/devops-engineers
-Secrets.json*                   @Andrews-McMeel-Universal/devops-engineers
 .nvmrc*                         @Andrews-McMeel-Universal/devops-engineers

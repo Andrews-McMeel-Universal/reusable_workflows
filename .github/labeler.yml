@@ -1,29 +1,72 @@
-deployments:
-  - ".github/workflows/aks-deploy.yaml"
-  - ".github/workflows/wpe-deploy.yaml"
-  - ".github/workflows/b2c-build-and-deploy.yaml"
-  - ".github/workflows/update-azureapimanagement.yaml"
-  - ".github/workflows/update-addns.yaml"
+dependencies:
+  - yarn.lock
+  - package.json
+  - "**/package-lock.json"
+  - Gemfile.lock
+  - Gemfile
+  - ".ruby-version"
+  - "**/*.csproj"
+  - "**/pnpm-lock.yaml"
 
 documentation:
-  - "README.md"
+  - "**/*.md"
 
-pr-checks:
-  - ".github/workflows/pr-labels.yaml"
-  - ".github/workflows/simple-lint.yaml"
-  - ".github/workflows/jira-lint.yaml"
-  - ".github/workflows/dependabot-automations.yaml"
-  - ".github/workflows/codeowners-validation.yaml"
-  - ".github/workflows/pr-clean-caches.yaml"
+front-end:
+  - "**/*.js"
+  - "**/*.js.html"
+  - "**/*.json"
+  - "**/*.jsx"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.html"
+  - "**/*.css"
+  - "**/*.less"
+  - "**/*.scss"
+  - "**/*.sass"
+  - "**/*.otf"
+  - "**/*.eot"
+  - "**/*.ttf"
+  - "**/*.woff*"
+  - "**/*.svg"
+  - "**/*.jpg"
+  - "**/*.jpeg"
+  - "**/*.gif"
+  - "**/*.png"
+  - "**/*.ico"
+  - "public/**"
+  - "src/**"
+  - .storybook/**
+  - package.json
+  - wp-content/
+  - "!**/Secrets.json*"
+  - "!/.vscode"
+  - "!**/*.test.js"
+  - "!.github/**"
 
-linters:
-  - ".github/workflows/simple-lint.yaml"
-  - ".github/workflows/mega-lint.yaml"
-  - ".github/workflows/jira-lint.yaml"
+back-end:
+  - "**/*.cs"
+  - "**/*.csproj"
+  - "**/*.sln"
+  - "**/**.json"
+  - "bin/"
+  - "**/*.rb"
+  - "Rakefile"
+  - "**/*.yml"
+  - "**/*.ru"
+  - "!**/Secrets.json*"
+  - "!.github/**"
 
 tools:
-  - ".github/workflows/bump-versions.yaml"
-  - ".github/workflows/update-major-release.yaml"
+  - "/.vscode"
+  - "/.devcontainer"
+
+tests:
+  - "playwright/**"
+  - "cypress/**"
+  - "**/.spec.*"
+  - "**/*.test.js"
+  - ".github/workflows/workflow-linter.yaml"
+  - ".github/actionlint.yaml"
 
 devops:
   - ".github/**"
