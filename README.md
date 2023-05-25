@@ -68,19 +68,6 @@ We primarily test workflows with the [reusable_workflows-test](https://github.co
 
 ---
 
-## New Releases
-
-This repository is using the `update-major-release.yaml` to automatically create major release tags based off the most latest/stable version.
-
-To run this workflow:
-
-1. Go to this repository's [Update Major Release](https://github.com/Andrews-McMeel-Universal/reusable_workflows/actions/workflows/update-major-release.yaml) workflow
-1. Press "Click workflow" on the right-hand side of the page.
-1. Specify the tag to create a major release for and what the major release will be.
-1. Click "Run workflow"
-
----
-
 ## Available workflows
 
 Depending on the app, you will want to use a combination of different workflows. For example, for a Kubernetes-based application, you would want to use the `aks-deploy.yaml` to deploy the application to the Azure Kubernetes Service cluster along with a few PR checking workflows like, `codeowners-validation.yaml`, `pr-labels.yaml`, and `lint-and-format.yaml`.
@@ -446,13 +433,15 @@ jobs:
 
 ---
 
-### Creating a new Release
+## Reusable Workflow Integration
 
-Once a pull request is merged into _main_, it passes all CI checks and passes QA, it will be ready for being released to staging and production.
+Once a pull request is merged into _main_, you can create a new release to use it as a reusable workflow. To create a new release, follow the instructions in this guide: [Creating a Release](https://amuniversal.atlassian.net/wiki/spaces/TD/pages/3452043300/Creating+a+new+GitHub+Release#Creating-a-release)
 
-1. Navigate to the [Releases](https://github.com/Andrews-McMeel-Universal/reusable_workflows/releases) tab
-1. Click the button for "Draft a New Release" and then click "Auto-generated Release Notes".
-1. If this is for a staging deployment, check `Set as a pre-release` option and make sure to add `-rc` to the end of the tag name. Otherwise, just set it to the release version.
-1. Click "Publish Release"
+### Update Major Release
 
-> NOTE: We do not use the v2 pattern for version naming. We simply have the semantic release version number like this: 2
+Once you've created a new release, you can use the [Update Major Release Workflow](https://github.com/Andrews-McMeel-Universal/reusable_workflows/actions/workflows/update-major-release.yaml) to automatically update the major release tag for the repository.
+
+1. Navigate to the [Update Major Release](https://github.com/Andrews-McMeel-Universal/reusable_workflows/actions/workflows/update-major-release.yaml) workflow.
+1. Press "Run workflow" on the right-hand side of the page.
+1. Specify the tag to create a major release for and what the major release will be.
+1. Click "Run workflow"
