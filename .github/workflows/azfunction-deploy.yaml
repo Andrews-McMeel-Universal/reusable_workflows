@@ -45,7 +45,7 @@ jobs:
       hostname: ${{ env.hostname }}
 
   build-and-deploy:
-    name: Build and Deploy
+    name: Deploy to ${{ inputs.environment }}
     environment:
       name: ${{ inputs.environment }}
       url: https://${{ needs.vars.outputs.hostname }}.azurewebsites.net
