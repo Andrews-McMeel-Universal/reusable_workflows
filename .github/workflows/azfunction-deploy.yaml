@@ -79,19 +79,33 @@ jobs:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Whitelist Boley IPs
-        continue-on-error: true
         uses: azure/CLI@v1
         with:
           inlineScript: |
             set -eu
-            az functionapp config access-restriction add \
-              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-              --rule-name "BoleyIPs" \
-              --action "Allow" \
-              --ip-address 207.67.20.202/24 \
-              --priority 100 \
-              --slot "${{ inputs.environment }}"
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+                RESULT=$(az functionapp config access-restriction add \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --rule-name "BoleyIPs" \
+                  --action "Allow" \
+                  --ip-address 207.67.20.0/24 \
+                  --priority 100 | tee )
+            else
+                RESULT=$(az functionapp config access-restriction add \
+                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                --rule-name "BoleyIPs" \
+                --action "Allow" \
+                --ip-address 207.67.20.0/24 \
+                --priority 100 \
+                --slot "${{ inputs.environment }}" | tee )
+            fi
+            if [[ "$RESULT" =~ "already exists" ]] || [[ ! "$RESULT" =~ "ERROR" ]]; then 
+                exit 0
+            else
+                exit 1
+            fi
 
       - name: Get GitHub Runner Public IP
         id: ip
@@ -103,14 +117,29 @@ jobs:
         with:
           inlineScript: |
             set -eu
-            az functionapp config access-restriction add \
-              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-              --rule-name "GitHubActionRunner" \
-              --action "Allow" \
-              --ip-address ${{ steps.ip.outputs.ipv4 }} \
-              --priority 1001 \
-              --slot "${{ inputs.environment }}"
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+                RESULT=$(az functionapp config access-restriction add \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --rule-name "GitHubActionRunner" \
+                  --action "Allow" \
+                  --ip-address ${{ steps.ip.outputs.ipv4 }} \
+                  --priority 1001 | tee )
+            else
+                RESULT=$(az functionapp config access-restriction add \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --rule-name "GitHubActionRunner" \
+                  --action "Allow" \
+                  --ip-address ${{ steps.ip.outputs.ipv4 }} \
+                  --priority 1001 \
+                  --slot "${{ inputs.environment }}" | tee )
+            fi
+            if [[ "$RESULT" =~ "already exists" ]] || [[ ! "$RESULT" =~ "ERROR" ]]; then 
+                exit 0
+            else
+                exit 1
+            fi
             sleep 5
 
       - name: Deploy Azure Functions
@@ -127,8 +156,20 @@ jobs:
         with:
           inlineScript: |
             set -eu
-            az functionapp config access-restriction remove  \
-              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-              --rule-name "GitHubActionRunner" \
-              --slot "${{ inputs.environment }}"
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+                RESULT=$(az functionapp config access-restriction remove  \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --rule-name "GitHubActionRunner" | tee )
+            else
+                RESULT=$(az functionapp config access-restriction remove  \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --rule-name "GitHubActionRunner" \
+                  --slot "${{ inputs.environment }}" | tee )
+            fi
+            if [[ "$RESULT" =~ "already exists" ]] || [[ ! "$RESULT" =~ "ERROR" ]]; then 
+                exit 0
+            else
+                exit 1
+            fi
