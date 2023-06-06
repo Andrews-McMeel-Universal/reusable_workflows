@@ -6,15 +6,6 @@ on:
       environment:
         required: true
         type: string
-      BUNDLER_VERSION:
-        required: false
-        type: string
-        description: "Bundler version"
-        default: 2.3.26
-      RUBY_VERSION:
-        required: true
-        type: string
-        description: "Ruby version"
       APT_PACKAGES:
         required: false
         type: string
@@ -35,14 +26,13 @@ on:
         required: true
 
 env:
-  BUNDLER_VERSION: ${{ inputs.BUNDLER_VERSION }}
   RAILS_ENV: ${{ inputs.environment }}
 
 jobs:
   build:
-    name: Build App
+    name: Build and Test
     if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -53,20 +43,21 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
 
-      - uses: actions/setup-node@v3
-        if: env.INSTALL_NODE == true
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        if: ${{ inputs.INSTALL_NODE == true }}
         with:
           node-version: ${{ inputs.NODE_VERSION }}
 
-      - uses: awalsh128/cache-apt-pkgs-action@v1
+      - name: Install APT Dependencies
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: ${{ inputs.APT_PACKAGES }}
           version: 1.0
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1.136.0
+        uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ inputs.RUBY_VERSION }}
           bundler-cache: true
 
       - name: Boot Rails server
