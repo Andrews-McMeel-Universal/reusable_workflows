@@ -51,4 +51,4 @@ jobs:
       - name: Update Game Configs
         shell: pwsh
         run: |
-          ./deployments/scripts/Update-CloudGameConfigs.ps1 -DBConnectionString ${{ env.DB_CONNECTION_STRING }} -StorageAccountKey ${{ env.STORAGE_ACCOUNT_KEY }} -ContainerName ${{ env.STORAGE_ACCOUNT_CONTAINER }} -UpdatedBy 'GitHub Actions'
+          ./deployments/scripts/Update-CloudGameConfigs.ps1 -DBConnectionString "${{ env.DB_CONNECTION_STRING }}" -StorageAccountKey "${{ env.STORAGE_ACCOUNT_KEY }}" -ContainerName "${{ env.STORAGE_ACCOUNT_CONTAINER }}" -UpdatedBy 'GitHub Actions'
