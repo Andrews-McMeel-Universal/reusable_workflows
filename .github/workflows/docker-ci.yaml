@@ -35,15 +35,17 @@ jobs:
         run: |
           dockerContainerPort=$(docker image inspect docker-ci:latest -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp')
           dockerCmd=$(docker image inspect docker-ci:latest -f "{{json .Config.Cmd }}" | tr -d '][' | tr "," " ")
+          dockerWorkingDir=$(docker image inspect docker-ci:latest -f "{{json .Config.WorkingDir }}" | tr -d '"')
 
           echo "dockerContainerPort=$dockerContainerPort" >> $GITHUB_ENV
           echo "dockerCmd=$dockerCmd" >> $GITHUB_ENV
+          echo "dockerWorkingDir=$dockerWorkingDir" >> $GITHUB_ENV
 
       - name: Run tests in Docker Container
         uses: addnab/docker-run-action@v3
         with:
           image: docker-ci:latest
-          options: -v ${{ github.workspace }}:/app
+          options: -v ${{ github.workspace }}:${{ env.dockerWorkingDir }}
           run: |
             ${{ env.dockerCmd }} &
             sleep 15
