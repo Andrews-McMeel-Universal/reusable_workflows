@@ -43,7 +43,6 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: docker-ci:latest
-          options: -v ${{ github.workspace }}:/app
           run: |
             ${{ env.dockerCmd }} &
             sleep 15
