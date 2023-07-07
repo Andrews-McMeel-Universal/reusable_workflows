@@ -24,7 +24,8 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
 
-      - uses: ./.github/actions/use-install-cache
+      - name: Use cache-next-install action
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
 
       - name: Lint javascript
         run: yarn lint:js
@@ -56,7 +57,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: ./.github/actions/use-install-cache
+      - name: Use cache-next-install action
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -78,7 +80,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: ./.github/actions/use-install-cache
+      - name: Use cache-next-install action
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
 
       - name: Install Playwright Browsers
         run: yarn pretest:integration:ci
@@ -117,7 +120,8 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
 
-      - uses: ./.github/actions/use-install-cache
+      - name: Use cache-next-install action
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
 
       - uses: ./.github/actions/use-build-cache
 
