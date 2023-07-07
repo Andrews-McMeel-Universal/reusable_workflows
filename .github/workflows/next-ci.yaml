@@ -24,7 +24,8 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
 
-      - uses: ./.github/actions/use-install-cache
+      - name: Use cache-next-install action
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
 
       - name: Lint javascript
         run: yarn lint:js
@@ -45,7 +46,8 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Use cache-next-build action
+        uses: Andrews-McMeel-Universal/cache-next-build@v1
 
   # Required status check
   unit-tests:
@@ -56,7 +58,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: ./.github/actions/use-install-cache
+      - name: Use cache-next-install action
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -64,7 +67,8 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Use cache-next-build action
+        uses: Andrews-McMeel-Universal/cache-next-build@v1
 
       - name: Run Jest tests
         run: yarn test:unit:ci
@@ -78,7 +82,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: ./.github/actions/use-install-cache
+      - name: Use cache-next-install action
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
 
       - name: Install Playwright Browsers
         run: yarn pretest:integration:ci
@@ -89,7 +94,8 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Use cache-next-build action
+        uses: Andrews-McMeel-Universal/cache-next-build@v1
 
       - name: Run Playwright tests
         run: yarn test:integration:ci
@@ -117,9 +123,11 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
 
-      - uses: ./.github/actions/use-install-cache
+      - name: Use cache-next-install action
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
 
-      - uses: ./.github/actions/use-build-cache
+      - name: Use cache-next-build action
+        uses: Andrews-McMeel-Universal/cache-next-build@v1
 
       - name: Run Broken Link Checker
         id: link-checker-report
