@@ -11,10 +11,10 @@ on:
         required: false
         type: string
         description: "AKS Key vault."
-      azureB2CProductName:
+      azureB2CProductShortName:
         required: true
         type: string
-        description: "Name of the B2C product."
+        description: "Short name of the B2C product."
       azureB2CDomain:
         required: true
         type: string
@@ -27,6 +27,10 @@ on:
         required: true
         type: string
         description: "ID of the B2C product."
+      azureB2CProductName:
+        required: true
+        type: string
+        description: "Name of the B2C product."
     secrets:
       azureCredentials:
         required: true
@@ -121,5 +125,5 @@ jobs:
           inlineScript: |
             $BasePath = Get-Location
             $DistPath = Join-Path $BasePath "dist"
-            ./deployments/scripts/Deploy-B2C_Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath -ProductPath "${{ inputs.azureB2CProductName }}"
+            ./deployments/scripts/Deploy-B2C_Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath -ProductPath "${{ inputs.azureB2CProductShortName }}"
           azPSVersion: "latest"
