@@ -59,7 +59,7 @@ jobs:
     needs: [vars]
     runs-on: ubuntu-latest
     environment:
-      name: ${{ inputs.azureB2CProductName }}-${{ inputs.environment }}
+      name: ${{ inputs.environment }}
       url: "https://${{ needs.vars.outputs.url }}/${{ inputs.azureB2CDomain }}/b2c_1a_gc_signinsignout_policies/oauth2/v2.0/authorize?client_id=${{ needs.vars.outputs.azureB2CClientId }}&scope=https%3A%2F%2F${{ inputs.azureB2CDomain }}%2Fapi%2Fdemo.read%20https%3A%2F%2F${{ inputs.azureB2CDomain }}%2Fapi%2Fdemo.write%20https%3A%2F%2F${{ inputs.azureB2CDomain }}%2Fapi%2Fuser_impersonation%20offline_access%20openid&response_type=code&redirect_uri=https%3A%2F%2F${{ inputs.azureB2CProductUrl }}%2Fapi%2Fauth%2Fcallback%2Fazureb2c"
     continue-on-error: false
     steps:
