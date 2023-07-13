@@ -111,7 +111,7 @@ jobs:
           yarn build:${{ inputs.environment }}
 
       - name: Upload TrustFrameworkBase Policy
-        uses: azure-ad-b2c/deploy-trustframework-policy@v5.3
+        uses: Andrews-McMeel-Universal/deploy-trustframework-policy@v5
         with:
           folder: "./dist/${{ inputs.azureB2CProductName }}/custom-policies"
           files: "B2C_1A_${{ inputs.azureB2CProductId }}_SIGNINSIGNOUT_BASE.xml,B2C_1A_${{ inputs.azureB2CProductId }}_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_${{ inputs.azureB2CProductId }}_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_${{ inputs.azureB2CProductId }}_IMPERSONATION.xml"
