@@ -185,17 +185,20 @@ jobs:
 
 ```YAML Example
 jobs:
-  b2c-build-and-deploy:
+  deploy:
+    name: B2C Deploy
     uses: Andrews-McMeel-Universal/reusable_workflows/.github/workflows/b2c-build-and-deploy.yaml@2
     with:
       environment: development
-      azureB2CProductName: appname
+      environmentKeyVault: ${{ vars.AZURE_KEYVAULT_PREFIX }}-development
       azureB2CDomain: developmentamub2c.onmicrosoft.com
+      azureB2CProductURL: development.appname.com
+      azureB2CProductId: APPID
     secrets:
       azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
-      storageAccountKey: ${{ secrets.STORAGEACCOUNT_KEY }}
-      azureB2CClientId: ${{ secrets.B2C_CLIENT_ID }}
-      azureB2CClientSecret: ${{ secrets.B2C_CLIENT_SECRET }}
+      storageAccountKey: ${{ secrets.AZURE_B2C_STORAGE_ACCOUNT_KEY }}
+      azureB2CClientId: ${{ secrets.AZURE_B2C_CLIENT_ID }}
+      azureB2CClientSecret: ${{ secrets.AZURE_B2C_CLIENT_SECRET }}
 ```
 
 ### Purge CDN
