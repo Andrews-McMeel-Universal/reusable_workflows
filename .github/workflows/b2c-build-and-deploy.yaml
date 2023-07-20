@@ -101,14 +101,14 @@ jobs:
           yarn generate
 
       - name: Upload TrustFrameworkBase Policy
-        uses: azure-ad-b2c/deploy-trustframework-policy@v5.3
+        uses: Andrews-McMeel-Universal/deploy-trustframework-policy@v5
         with:
           folder: "./dist/custom-policies"
           files: "B2C_1A_${{ inputs.azureB2CProductId }}_SIGNINSIGNOUT_BASE.xml,B2C_1A_${{ inputs.azureB2CProductId }}_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_${{ inputs.azureB2CProductId }}_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_${{ inputs.azureB2CProductId }}_IMPERSONATION.xml"
-          tenant: ${{ inputs.azureB2CDomain }}
+          tenantDomain: ${{ inputs.azureB2CDomain }}
+          tenantId: ${{ inputs.azureB2CTenantId }}
           clientId: ${{ secrets.azureB2CClientId }}
           clientSecret: ${{ secrets.azureB2CClientSecret }}
-          verbose: ${{ secrets.ACTIONS_STEP_DEBUG || vars.ACTIONS_STEP_DEBUG || env.ACTIONS_STEP_DEBUG || 'false' }}
 
       - name: Upload Auth Assets
         uses: azure/powershell@v1
