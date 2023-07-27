@@ -62,7 +62,7 @@ jobs:
                 $RedisHostname = $_.HostName
                 $RedisPort = $_.Port
                 $RedisName = $_.Name
-                $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName "$ResourceGroupName").PrimaryKey
+                $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName "${{ inputs.resourceGroupName }}").PrimaryKey
 
                 # Authenticate using Redis key and flush cache database
                 $RedisCommands = "AUTH $RedisKey
