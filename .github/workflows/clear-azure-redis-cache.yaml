@@ -1,0 +1,77 @@
+name: Clear Azure Redis Cache
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "Environment to clear caches for."
+    secrets:
+      azureCredentials:
+       required: true
+
+jobs:
+  clear_cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Hash azureCredentials secret
+        uses: pplanel/hash-calculator-action@v1.3.1
+        id: hash
+        with:
+          input: ${{ secrets.azureCredentials }}
+          method: MD5
+
+      - name: Cache Azure credentials
+        id: azure-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.Azure
+            ${{ github.workspace }}/.Azure
+          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
+
+      - name: Login via Az module
+        if: steps.azure-cache.outputs.cache-hit != 'true'
+        uses: azure/login@v1
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
+
+      # Script is adapted from https://github.com/Andrews-McMeel-Universal/azure-content-management_tool/blob/main/Scripts/rundeck/Flush-RedisCache.ps1
+      - name: Clear Redis Cache
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            # Check to see if Azure Redis Cache PowerShell Module is installed
+            Install-Module -Name Az.RedisCache -Confirm:$false
+
+            # Get list of Redis instances using tags
+            $Redis = Get-AzRedisCache -ResourceGroupName "$ResourceGroupName" -Name "$RedisCacheName" | Where-Object { $_.Tag.Values -eq "${{ inputs.environment }}" }
+
+            # Loop through Redis instances
+            $Redis | ForEach-Object {
+                $RedisHostname = $_.HostName
+                $RedisPort = $_.Port
+                $RedisName = $_.Name
+                $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName "$ResourceGroupName").PrimaryKey
+
+                # Authenticate using Redis key and flush cache database
+                $RedisCommands = "AUTH $RedisKey
+                SELECT 0
+                FLUSHDB"
+                $RedisResult = $RedisCommands | redis-cli -h "$RedisHostname" -p "$RedisPort"
+
+                # Check if output from cache clearing command has correct status message
+                if ($RedisResult -match 'OK') {
+                    Write-Host "Successfully flushed cache for $RedisHostname" -ForegroundColor Green
+                }
+                else {
+                    Write-Error "Failed to clear cache for $RedisHostname"
+                }
+            }
+          azPSVersion: "latest"
+
