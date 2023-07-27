@@ -7,12 +7,17 @@ on:
         required: true
         type: string
         description: "Environment to clear caches for."
+      resourceGroupName:
+        default: "AMU_DevOps_RG"
+        type: string
+        description: "Name of Resource Group that the Azure Redis Instance is in."
     secrets:
       azureCredentials:
        required: true
 
 jobs:
-  clear_cache:
+  clear-redis-cache:
+    name: Clear Azure Redis Cache
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,10 +52,10 @@ jobs:
         with:
           inlineScript: |
             # Check to see if Azure Redis Cache PowerShell Module is installed
-            Install-Module -Name Az.RedisCache -Confirm:$false
+            Install-Module -Name Az.RedisCache -Confirm:$false -Force
 
             # Get list of Redis instances using tags
-            $Redis = Get-AzRedisCache -ResourceGroupName "$ResourceGroupName" -Name "$RedisCacheName" | Where-Object { $_.Tag.Values -eq "${{ inputs.environment }}" }
+            $Redis = Get-AzRedisCache -ResourceGroupName "${{ inputs.resourceGroupName }}" | Where-Object { $_.Tag.Values -eq "${{ inputs.environment }}" }
 
             # Loop through Redis instances
             $Redis | ForEach-Object {
