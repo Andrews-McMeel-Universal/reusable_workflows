@@ -220,7 +220,7 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Generate build args from Azure Key Vaults
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           inlineScript: |
             if ("${{ inputs.environmentKeyVault }}") {
@@ -468,7 +468,7 @@ jobs:
           enable-AzPSSession: true
 
       - name: Create or Update Public DNS Record
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname "${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."
