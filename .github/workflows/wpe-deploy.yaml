@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Deploy to WP Engine
-        uses: wpengine/github-action-wpe-site-deploy@v3.2.2
+        uses: wpengine/github-action-wpe-site-deploy@v3
         with:
           # Deploy vars
           WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPENGINE_ED25514 }}
