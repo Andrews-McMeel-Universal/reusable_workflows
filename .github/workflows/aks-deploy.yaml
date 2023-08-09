@@ -220,7 +220,7 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Generate build args from Azure Key Vaults
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           inlineScript: |
             if ("${{ inputs.environmentKeyVault }}") {
@@ -248,7 +248,7 @@ jobs:
           azPSVersion: "latest"
 
       - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1.0.1
+        uses: Azure/docker-login@v1
         with:
           login-server: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
@@ -318,7 +318,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v2.4
+        uses: azure/k8s-bake@v2
         with:
           renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
@@ -393,7 +393,7 @@ jobs:
 
       - name: Apply configMap if it exists
         if: ${{ needs.build.outputs.configMap != null }}
-        uses: swdotcom/update-and-apply-kubernetes-configs@v1.2.0
+        uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
@@ -419,7 +419,7 @@ jobs:
           }
 
       - name: Create K8s Image Pull Secret
-        uses: Azure/k8s-create-secret@v4.0
+        uses: Azure/k8s-create-secret@v4
         with:
           container-registry-url: ${{ secrets.registryHostName }}
           container-registry-username: ${{ secrets.registryUserName  }}
@@ -428,7 +428,7 @@ jobs:
 
       - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
-        uses: Azure/k8s-deploy@v4.9
+        uses: Azure/k8s-deploy@v4
         with:
           namespace: ${{ inputs.environment }}
           manifests: ${{ needs.build.outputs.manifestsBundle }}
@@ -468,7 +468,7 @@ jobs:
           enable-AzPSSession: true
 
       - name: Create or Update Public DNS Record
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname "${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."

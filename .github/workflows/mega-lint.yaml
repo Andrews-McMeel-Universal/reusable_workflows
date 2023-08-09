@@ -60,7 +60,7 @@ jobs:
       # Run the MegaLinter Github Action
       - name: MegaLinter
         id: ml
-        uses: oxsecurity/megalinter/flavors/cupcake@v6.20.1
+        uses: oxsecurity/megalinter/flavors/cupcake@v7
         env:
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
           GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
@@ -115,7 +115,7 @@ jobs:
       # Run the MegaLinter Github Action
       - name: MegaLinter
         id: ml
-        uses: oxsecurity/megalinter/flavors/dotnet@v6.20.1
+        uses: oxsecurity/megalinter/flavors/dotnet@v7
         env:
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
           GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
