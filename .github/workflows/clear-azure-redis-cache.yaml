@@ -1,0 +1,70 @@
+name: Clear Azure Redis Cache
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "Environment to clear caches for."
+      resourceGroupName:
+        default: "AMU_DevOps_RG"
+        type: string
+        description: "Name of Resource Group that the Azure Redis Instance is in."
+    secrets:
+      azureCredentials:
+       required: true
+
+jobs:
+  clear-redis-cache:
+    name: Clear Azure Redis Cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+        with:
+          azureCredentials: "${{ secrets.azureCredentials }}"
+
+      - name: Install Dependencies
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: redis-tools
+          version: 1.0
+
+      # Script is adapted from https://github.com/Andrews-McMeel-Universal/azure-content-management_tool/blob/main/Scripts/rundeck/Flush-RedisCache.ps1
+      - name: Clear Redis Cache
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            # Check to see if Azure Redis Cache PowerShell Module is installed
+            Install-Module -Name Az.RedisCache -Confirm:$false -Force
+
+            # Get list of Redis instances using tags
+            $Redis = Get-AzRedisCache -ResourceGroupName "${{ inputs.resourceGroupName }}" | Where-Object { $_.Tag.Values -eq "${{ inputs.environment }}" }
+
+            # Loop through Redis instances
+            $Redis | ForEach-Object {
+                $RedisHostname = $_.HostName
+                $RedisPort = $_.Port
+                $RedisName = $_.Name
+                $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName "${{ inputs.resourceGroupName }}").PrimaryKey
+
+                # Authenticate using Redis key and flush cache database
+                $RedisCommands = "AUTH $RedisKey
+                SELECT 0
+                FLUSHDB"
+                $RedisResult = $RedisCommands | redis-cli -h "$RedisHostname" -p "$RedisPort"
+
+                # Check if output from cache clearing command has correct status message
+                if ($RedisResult -match 'OK') {
+                    Write-Host "Successfully flushed cache for $RedisHostname" -ForegroundColor Green
+                }
+                else {
+                    Write-Error "Failed to clear cache for $RedisHostname"
+                }
+            }
+          azPSVersion: "latest"
+

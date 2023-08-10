@@ -1,0 +1,17 @@
+changelog:
+  categories:
+    - title: General Changes
+      labels:
+        - "*"
+      exclude:
+        authors:
+          - dependabot
+    - title: DevOps Changes
+      labels:
+        - devops
+      exclude:
+        labels:
+          - dependencies
+    - title: Dependencies
+      labels:
+        - dependencies

@@ -1,8 +1,7 @@
 # General
 .cache/
 .git/
-storybook-static
-src/helpers/utilities/tokens/_design_tokens.js
+
 
 # GitHub Actions Workflows
 .github/dependabot.yml
@@ -19,8 +18,13 @@ docker-compose.yml
 # Node.js
 .next
 build/
+coverage/
+playwright-report/
+test-results/
 **.js.map
 **.bundle.js
+storybook-static
+src/helpers/utilities/tokens/_design_tokens.js
 
 # WordPress
 wp-content/

@@ -80,7 +80,7 @@ jobs:
 
       - name: Login via PowerShell
         if: ${{ inputs.azureUser && env.azurePassword && env.azureSubscription }}
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           azPSVersion: "latest"
           inlineScript: |
@@ -94,7 +94,7 @@ jobs:
 
       - name: Retrieve Application information
         id: getappinfo
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           azPSVersion: "latest"
           inlineScript: |
@@ -135,7 +135,7 @@ jobs:
             echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
 
       - name: Update Azure API Management
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           azPSVersion: "latest"
           inlineScript: |

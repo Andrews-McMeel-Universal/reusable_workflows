@@ -255,6 +255,8 @@ megalinter-reports/*
 jscpd-report.json
 
 # Automated Testing
+/coverage/integration
+/test-results/
 /playwright/storage-states/
 /playwright/.cache/
 /playwright-report/
@@ -754,3 +756,7 @@ Secrets.json
 ./history/
 *.history
 .setup_done
+
+# Azure B2C
+/**/src/custom-policies/B2C_1A_*_*_SIGNINSIGNOUT_*.xml
+/custom-policies/**/B2C_1A_*_*_SIGNINSIGNOUT_*.xml
