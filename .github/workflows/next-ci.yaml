@@ -43,7 +43,7 @@ jobs:
       - name: Login to Azure
         uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
-          azureCredentials: "${{ secrets.azureCredentials }}"
+          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -69,7 +69,7 @@ jobs:
       - name: Login to Azure
         uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
-          azureCredentials: "${{ secrets.azureCredentials }}"
+          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -101,7 +101,7 @@ jobs:
       - name: Login to Azure
         uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
-          azureCredentials: "${{ secrets.azureCredentials }}"
+          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -135,7 +135,7 @@ jobs:
       - name: Login to Azure
         uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
-          azureCredentials: "${{ secrets.azureCredentials }}"
+          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
