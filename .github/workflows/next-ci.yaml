@@ -40,6 +40,11 @@ jobs:
           commit_user_email: amu_deploy@amuniversal.com
           commit_message: "[Formatter] Apply prettier changes"
 
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+        with:
+          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
+
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
@@ -60,6 +65,11 @@ jobs:
 
       - name: Use cache-next-install action
         uses: Andrews-McMeel-Universal/cache-next-install@v1
+
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+        with:
+          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -87,6 +97,11 @@ jobs:
 
       - name: Install Playwright Browsers
         run: yarn pretest:integration:ci
+
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+        with:
+          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -116,6 +131,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+        with:
+          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1

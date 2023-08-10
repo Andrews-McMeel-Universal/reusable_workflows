@@ -73,10 +73,10 @@ jobs:
           dotnet build --configuration Release --output ./output
           popd
 
-      - name: Login via Az module
-        uses: azure/login@v1
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
-          creds: "${{ secrets.AZURE_CREDENTIALS }}"
+          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Whitelist Boley IPs
         uses: azure/CLI@v1
