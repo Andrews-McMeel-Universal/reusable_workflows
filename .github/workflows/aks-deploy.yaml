@@ -351,10 +351,11 @@ jobs:
           name: bake-manifests-bundle
           path: ${{ needs.build.outputs.manifestsBundle }}
 
-      - name: Login to Azure
-        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+      - name: Azure Login
+        uses: azure/login@v1
         with:
-          azureCredentials: "${{ secrets.azureCredentials }}"
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
