@@ -238,8 +238,12 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
           docker push "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          if [[ "${{ inputs.dockerImageName }}" == "${{ github.event.release.tag_name }}" ]]; then
+            MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
+            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${MAJOR_RELEASE}"
+          fi
 
       - name: Create values override file
         run: |
