@@ -45,7 +45,7 @@ on:
         required: false
         type: string
         description: "Docker image tag."
-        default: "${{ github.sha }}"
+        default: "${{ github.event.release.tag_name || github.sha }}"
       maximumReplicas:
         required: false
         type: string
