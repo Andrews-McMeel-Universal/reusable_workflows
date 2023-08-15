@@ -45,7 +45,7 @@ on:
         required: false
         type: string
         description: "Docker image tag."
-        default: "${{ github.sha }}"
+        default: "${{ github.event.release.tag_name || github.sha }}"
       maximumReplicas:
         required: false
         type: string
@@ -238,8 +238,12 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          docker push "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
+          if [[ "${{ inputs.dockerImageTag }}" == "${{ github.event.release.tag_name }}" ]]; then
+            MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
+            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${MAJOR_RELEASE}"
+          fi
+          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Create values override file
         run: |
