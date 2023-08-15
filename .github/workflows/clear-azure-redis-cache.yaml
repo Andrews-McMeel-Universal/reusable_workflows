@@ -11,6 +11,10 @@ on:
         default: "AMU_DevOps_RG"
         type: string
         description: "Name of Resource Group that the Azure Redis Instance is in."
+      applicationCacheKey:
+        default: "*"
+        type: string
+        description: "Cache key for the application"
     secrets:
       azureCredentials:
        required: true
@@ -39,31 +43,40 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlineScript: |
+            $CacheKey = "${{ inputs.applicationCacheKey }}"
+            $ResourceGroupName = "${{ inputs.resourceGroupName }}"
+            $Environment = "${{ inputs.environment }}"
+
             # Check to see if Azure Redis Cache PowerShell Module is installed
-            Install-Module -Name Az.RedisCache -Confirm:$false -Force
+            Install-Module -Name Az.RedisCache -Confirm:$false
 
             # Get list of Redis instances using tags
-            $Redis = Get-AzRedisCache -ResourceGroupName "${{ inputs.resourceGroupName }}" | Where-Object { $_.Tag.Values -eq "${{ inputs.environment }}" }
+            $Redis = Get-AzRedisCache -ResourceGroupName "$ResourceGroupName" | Where-Object { $_.Tag.Values -eq "$Environment" }
 
             # Loop through Redis instances
             $Redis | ForEach-Object {
                 $RedisHostname = $_.HostName
                 $RedisPort = $_.Port
                 $RedisName = $_.Name
-                $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName "${{ inputs.resourceGroupName }}").PrimaryKey
+                $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName $ResourceGroupName).PrimaryKey
 
-                # Authenticate using Redis key and flush cache database
+                Write-Host "Authenticating to $RedisHostname..." -ForegroundColor DarkGray
                 $RedisCommands = "AUTH $RedisKey
                 SELECT 0
-                FLUSHDB"
-                $RedisResult = $RedisCommands | redis-cli -h "$RedisHostname" -p "$RedisPort"
+                EVAL 'return redis.call(\'del\', unpack(redis.call(\'keys\', ARGV[1])))' 0 $CacheKey"
+                Write-Host "Clearing cache key: $CacheKey" -ForegroundColor DarkGray
+                $RedisResult = $RedisCommands | redis-cli -h $RedisHostname -p $RedisPort
 
                 # Check if output from cache clearing command has correct status message
-                if ($RedisResult -match 'OK') {
+                if ($RedisResult -match '^\d+$') {
                     Write-Host "Successfully flushed cache for $RedisHostname" -ForegroundColor Green
                 }
+                elseif ($RedisResult -match 'Wrong number of args calling Redis command From Lua script') {
+                    Write-Host "Cache key $CacheKey missing in $RedisHostname" -ForegroundColor Yellow
+                }
                 else {
-                    Write-Error "Failed to clear cache for $RedisHostname"
+                    Write-Host "Cache key $CacheKey status unknown in $RedisHostname" -ForegroundColor Red
+                    Write-Host "Full output: $RedisResult"
                 }
             }
           azPSVersion: "latest"
