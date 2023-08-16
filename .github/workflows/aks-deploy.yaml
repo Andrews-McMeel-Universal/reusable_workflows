@@ -45,7 +45,7 @@ on:
         required: false
         type: string
         description: "Docker image tag."
-        default: "${{ github.sha }}"
+        default: "${{ github.event.release.tag_name || github.sha }}"
       maximumReplicas:
         required: false
         type: string
@@ -189,28 +189,10 @@ jobs:
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
-      - name: Hash azureCredentials secret
-        uses: pplanel/hash-calculator-action@v1.3.1
-        id: hash
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
-          input: ${{ secrets.azureCredentials }}
-          method: MD5
-
-      - name: Cache Azure credentials
-        id: azure-cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.Azure
-            ${{ github.workspace }}/.Azure
-          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
-
-      - name: Login via Az module
-        if: steps.azure-cache.outputs.cache-hit != 'true'
-        uses: azure/login@v1
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: true
+          azureCredentials: "${{ secrets.azureCredentials }}"
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -220,7 +202,7 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Generate build args from Azure Key Vaults
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           inlineScript: |
             if ("${{ inputs.environmentKeyVault }}") {
@@ -248,7 +230,7 @@ jobs:
           azPSVersion: "latest"
 
       - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1.0.1
+        uses: Azure/docker-login@v1
         with:
           login-server: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
@@ -256,8 +238,12 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
-          docker push "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
+          if [[ "${{ inputs.dockerImageTag }}" == "${{ github.event.release.tag_name }}" ]]; then
+            MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
+            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${MAJOR_RELEASE}"
+          fi
+          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Create values override file
         run: |
@@ -318,7 +304,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v2.4
+        uses: azure/k8s-bake@v2
         with:
           renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
@@ -369,7 +355,7 @@ jobs:
           name: bake-manifests-bundle
           path: ${{ needs.build.outputs.manifestsBundle }}
 
-      - name: Login via Az module
+      - name: Azure Login
         uses: azure/login@v1
         with:
           creds: "${{ secrets.azureCredentials }}"
@@ -393,7 +379,7 @@ jobs:
 
       - name: Apply configMap if it exists
         if: ${{ needs.build.outputs.configMap != null }}
-        uses: swdotcom/update-and-apply-kubernetes-configs@v1.2.0
+        uses: swdotcom/update-and-apply-kubernetes-configs@v1
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
@@ -419,7 +405,7 @@ jobs:
           }
 
       - name: Create K8s Image Pull Secret
-        uses: Azure/k8s-create-secret@v4.0
+        uses: Azure/k8s-create-secret@v4
         with:
           container-registry-url: ${{ secrets.registryHostName }}
           container-registry-username: ${{ secrets.registryUserName  }}
@@ -428,7 +414,7 @@ jobs:
 
       - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
-        uses: Azure/k8s-deploy@v4.9
+        uses: Azure/k8s-deploy@v4
         with:
           namespace: ${{ inputs.environment }}
           manifests: ${{ needs.build.outputs.manifestsBundle }}
@@ -444,31 +430,13 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: false
     steps:
-      - name: Hash azureCredentials secret
-        uses: pplanel/hash-calculator-action@v1.3.1
-        id: hash
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
-          input: ${{ secrets.azureCredentials }}
-          method: MD5
-
-      - name: Cache Azure credentials
-        id: azure-cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.Azure
-            ${{ github.workspace }}/.Azure
-          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
-
-      - name: Login via Az module
-        if: steps.azure-cache.outputs.cache-hit != 'true'
-        uses: azure/login@v1
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: true
+          azureCredentials: "${{ secrets.azureCredentials }}"
 
       - name: Create or Update Public DNS Record
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           inlineScript: |
             $NewRecords = New-AzDnsRecordConfig -Cname "${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."

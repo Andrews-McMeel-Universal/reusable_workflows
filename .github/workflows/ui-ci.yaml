@@ -24,8 +24,8 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
 
-      - name: Use cache-next-install action
-        uses: Andrews-McMeel-Universal/cache-next-install@v1
+      - name: Use cache-yarn-install action
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
 
       - name: Lint javascript
         run: yarn lint:js
@@ -54,7 +54,6 @@ jobs:
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1
 
-  # Required status check
   unit-tests:
     name: Unit Tests
     needs: [build]
@@ -63,8 +62,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Use cache-next-install action
-        uses: Andrews-McMeel-Universal/cache-next-install@v1
+      - name: Use cache-yarn-install action
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
 
       - name: Login to Azure
         uses: Andrews-McMeel-Universal/cache-azure-login@v1
@@ -83,7 +82,6 @@ jobs:
       - name: Run Jest tests
         run: yarn test:unit:ci
 
-  # Required status check
   integration-tests:
     name: Integration Tests
     needs: [build]
@@ -92,8 +90,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Use cache-next-install action
-        uses: Andrews-McMeel-Universal/cache-next-install@v1
+      - name: Use cache-yarn-install action
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
 
       - name: Install Playwright Browsers
         run: yarn pretest:integration:ci
@@ -143,8 +141,8 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
 
-      - name: Use cache-next-install action
-        uses: Andrews-McMeel-Universal/cache-next-install@v1
+      - name: Use cache-yarn-install action
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
 
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1

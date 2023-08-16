@@ -73,34 +73,14 @@ jobs:
       azurePassword: ${{ secrets.azurePassword }}
       azureSubscription: ${{ secrets.azureSubscription }}
     steps:
-      - name: Hash azureCredentials secret
-        if: ${{ env.azureCredentials }}
-        uses: pplanel/hash-calculator-action@v1.3.1
-        id: hash
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
-          input: ${{ secrets.azureCredentials }}
-          method: MD5
-
-      - name: Cache Azure credentials
-        if: ${{ env.azureCredentials }}
-        id: azure-cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.Azure
-            ${{ github.workspace }}/.Azure
-          key: ${{ runner.os }}-azurecreds-${{ steps.hash.outputs.digest }}
-
-      - name: Login via Az module
-        if: ${{ steps.azure-cache.outputs.cache-hit != 'true' && env.azureCredentials }}
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.azureCredentials }}
-          enable-AzPSSession: true
+          azureCredentials: "${{ secrets.azureCredentials }}"
 
       - name: Login via PowerShell
         if: ${{ inputs.azureUser && env.azurePassword && env.azureSubscription }}
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           azPSVersion: "latest"
           inlineScript: |
@@ -114,7 +94,7 @@ jobs:
 
       - name: Retrieve Application information
         id: getappinfo
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           azPSVersion: "latest"
           inlineScript: |
@@ -155,7 +135,7 @@ jobs:
             echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
 
       - name: Update Azure API Management
-        uses: azure/powershell@v1.2.0
+        uses: azure/powershell@v1
         with:
           azPSVersion: "latest"
           inlineScript: |
