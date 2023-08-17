@@ -23,10 +23,6 @@ on:
         required: false
         type: string
         description: "URL of the B2C Product."
-      azureB2CProductId:
-        required: true
-        type: string
-        description: "ID of the B2C product."
     secrets:
       azureCredentials:
         required: true
@@ -87,14 +83,14 @@ jobs:
           yarn generate
 
       - name: Upload TrustFrameworkBase Policy
-        uses: Andrews-McMeel-Universal/deploy-trustframework-policy@v5
+        uses: Andrews-McMeel-Universal/deploy-trustframework-policy@devops/DEVOPS-XXX/convert-to-composite-action
         with:
           folder: "./dist/custom-policies"
-          files: "B2C_1A_${{ inputs.azureB2CProductId }}_SIGNINSIGNOUT_BASE.xml,B2C_1A_${{ inputs.azureB2CProductId }}_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_${{ inputs.azureB2CProductId }}_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_${{ inputs.azureB2CProductId }}_IMPERSONATION.xml"
-          tenantDomain: ${{ inputs.azureB2CDomain }}
-          tenantId: ${{ inputs.azureB2CTenantId }}
-          clientId: ${{ secrets.azureB2CClientId }}
-          clientSecret: ${{ secrets.azureB2CClientSecret }}
+          files: "B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_BASE.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_IMPERSONATION.xml"
+          tenantDomain: "${{ env.AZURE_B2C_DOMAIN }}"
+          tenantId: "${{ env.AZURE_B2C_TENANT_ID }}"
+          clientId: "${{ env.AZURE_B2C_CLIENT_ID }}"
+          clientSecret: "${{ env.AZURE_B2C_CLIENT_SECRET }}"
 
       - name: Upload Auth Assets
         uses: azure/powershell@v1
