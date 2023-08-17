@@ -96,6 +96,12 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlineScript: |
+            if ("${{ inputs.environment }}" -match "production") {
+                $ContainerName = "assets"
+            }
+            else {
+                $ContainerName = "${{ inputs.environment }}-assets"
+            }
             $DistPath = Join-Path (Get-Location) "dist"
-            ./deployments/scripts/Deploy-B2C-Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName "${{ inputs.environment }}-assets" -DistPath $DistPath
+            ./deployments/scripts/Deploy-B2C-Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName $ContainerName -DistPath $DistPath
           azPSVersion: "latest"
