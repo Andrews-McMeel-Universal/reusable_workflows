@@ -86,7 +86,7 @@ jobs:
         uses: Andrews-McMeel-Universal/deploy-trustframework-policy@v6
         with:
           folder: "./dist/custom-policies/"
-          files: "B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_BASE.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_IMPERSONATION.xml"
+          files: "B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_BASE.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_EXTENSIONS.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_POLICIES.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_IMPERSONATION.xml,B2C_1A_${{ env.AZURE_B2C_PRODUCT_ID }}_SIGNINSIGNOUT_IMPERSONATION.xml"
           tenantDomain: ${{ env.AZURE_B2C_DOMAIN }}
           tenantId: ${{ env.AZURE_B2C_TENANT_ID }}
           clientId: ${{ env.AZURE_B2C_CLIENT_ID }}
