@@ -238,7 +238,10 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          if [[ "${{ inputs.environment }}" == "production" ]] ; then
+            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
+          fi
           if [[ "${{ inputs.dockerImageTag }}" == "${{ github.event.release.tag_name }}" ]]; then
             MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
             docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${MAJOR_RELEASE}"
