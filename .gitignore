@@ -267,9 +267,15 @@ jscpd-report.json
 # Output of 'npm pack'
 *.tgz
 
-# Yarn Integrity file
+# Yarn Package Management
 .yarn-integrity
 yarn-error.log
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 
 # Configs
 configFile.json
@@ -465,9 +471,6 @@ nCrunchTemp_*
 *.mm.*
 AutoTest.Net/
 
-# Web workbench (sass)
-.sass-cache/
-
 # Installshield output folder
 [Ee]xpress/
 
@@ -588,7 +591,6 @@ FakesAssemblies/
 
 # Node.js Tools for Visual Studio
 .ntvs_analysis.dat
-node_modules/
 
 # Visual Studio 6 build log
 *.plg
@@ -605,10 +607,6 @@ node_modules/
 # Visual Studio 6 workspace and project file (working project files containing files to include in project)
 *.dsw
 *.dsp
-
-# Visual Studio 6 technical files
-*.ncb
-*.aps
 
 # Visual Studio LightSwitch build output
 **/*.HTMLClient/GeneratedArtifacts
@@ -694,10 +692,7 @@ FodyWeavers.xsd
 
 # Windows Installer files from build outputs
 *.cab
-*.msi
 *.msix
-*.msm
-*.msp
 
 # JetBrains Rider
 *.sln.iml
@@ -708,7 +703,6 @@ FodyWeavers.xsd
 # https://github.com/github/gitignore/blob/master/Global/VisualStudioCode.gitignore
 
 # by default all files in this directory should be ignored in Git
-.vscode/*
 *devcontainer.env
 
 # these rules can be shared with collaborators
@@ -726,10 +720,6 @@ FodyWeavers.xsd
 # dependencies
 /.pnp
 .pnp.js
-
-# generated during build
-robots.txt
-sitemap*.xml
 
 # misc
 .DS_Store
@@ -760,3 +750,7 @@ Secrets.json
 # Azure B2C
 /**/src/custom-policies/B2C_1A_*_*_SIGNINSIGNOUT_*.xml
 /custom-policies/**/B2C_1A_*_*_SIGNINSIGNOUT_*.xml
+
+# Azure Functions
+*.Functions/Properties/ServiceDependencies/*/*.json
+*.Functions/Properties/serviceDependencies.*.json
