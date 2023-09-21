@@ -86,6 +86,11 @@ on:
         type: string
         description: "Add the environment name to the front of the hostname (for DNS)"
         default: "true"
+      environmentClusterIngress:
+        required: false
+        type: boolean
+        description: "Enable/Disable adding environment in AKS cluster ingress DNS record"
+        default: true
     secrets:
       azureClusterName:
         required: true
@@ -442,9 +447,17 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            $NewRecords = New-AzDnsRecordConfig -Cname "${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."
+            if ("${{ inputs.environmentClusterIngress }}") {
+                $ClusterIngress = ${{ secrets.azureClusterName }}-${{ inputs.environment }}"
+            }
+            elseif (!("${{ inputs.environmentClusterIngress }}")) {
+                $ClusterIngress = ${{ secrets.azureClusterName }}"
+            }
+            $NewRecords = New-AzDnsRecordConfig -Cname "${ClusterIngress}-ingress.centralus.cloudapp.azure.com."
 
             New-AzDnsRecordSet -Name "${{ needs.build.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.build.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
+
+            Write-Output  "clusterIngress=$ClusterIngress" >> $env:GITHUB_ENV
           azPSVersion: "latest"
 
       - name: Record deployment information in Azure Storage Table
@@ -453,7 +466,7 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
+          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ env.clusterIngress }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
           if_exists: "replace"
           extra_args: ""
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
