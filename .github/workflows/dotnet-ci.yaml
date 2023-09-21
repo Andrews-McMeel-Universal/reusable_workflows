@@ -56,6 +56,7 @@ jobs:
           path: |
             ${{ github.workspace }}/.nuget/packages
             **/project.assets.json
+            **/obj/
           # Look to see if there is a cache hit for the corresponding requirements file
           key: install-${{ hashFiles('**/*.csproj','**/project.assets.json') }}
 
