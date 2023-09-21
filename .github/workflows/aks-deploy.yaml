@@ -448,10 +448,10 @@ jobs:
         with:
           inlineScript: |
             if ("${{ inputs.environmentClusterIngress }}") {
-                $ClusterIngress = ${{ secrets.azureClusterName }}-${{ inputs.environment }}"
+                $ClusterIngress = "${{ secrets.azureClusterName }}-${{ inputs.environment }}"
             }
             elseif (!("${{ inputs.environmentClusterIngress }}")) {
-                $ClusterIngress = ${{ secrets.azureClusterName }}"
+                $ClusterIngress = "${{ secrets.azureClusterName }}"
             }
             $NewRecords = New-AzDnsRecordConfig -Cname "${ClusterIngress}-ingress.centralus.cloudapp.azure.com."
 
