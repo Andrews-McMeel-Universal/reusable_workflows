@@ -383,6 +383,7 @@ jobs:
           resource-group: ${{ inputs.clusterResourceGroup }}
 
       - name: Switch to ${{ inputs.environment }} Namespace
+        if: ${{ ! inputs.environmentClusterIngress }}
         run: kubectl config set-context --current --namespace="${{ inputs.environment }}"
 
       - name: Apply configMap if it exists
