@@ -383,13 +383,15 @@ jobs:
           resource-group: ${{ inputs.clusterResourceGroup }}
 
       - name: Switch Kubernetes Namespace
+        shell: pwsh
         run: |
           if ( "${{ inputs.environmentClusterIngress }}" -eq "true") {
             kubectl config set-context --current --namespace="${{ inputs.environment }}"
-            echo "namespace=${{ inputs.environment }}" >> $GITHUB_ENV
-          else
-            echo "namespace=default" >> $GITHUB_ENV
-          fi
+            Write-Output  "namespace=${{ inputs.environment }}" >> $env:GITHUB_ENV
+          }
+          else {
+            Write-Output  "namespace=default" >> $env:GITHUB_ENV
+          }
 
       - name: Apply configMap if it exists
         if: ${{ needs.build.outputs.configMap != null }}
@@ -398,6 +400,7 @@ jobs:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
       - name: Add GitHub secrets to k8s
+        shell: pwsh
         run: |
           if (kubectl get secret | Select-String "${{ needs.build.outputs.configSecret }}") {
               kubectl delete secret "${{ needs.build.outputs.configSecret }}"
