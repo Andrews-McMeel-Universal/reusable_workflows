@@ -382,9 +382,14 @@ jobs:
           cluster-name: ${{ secrets.azureClusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
-      - name: Switch to ${{ inputs.environment }} Namespace
-        if: ${{ inputs.environmentClusterIngress == 'false' }}
-        run: kubectl config set-context --current --namespace="${{ inputs.environment }}"
+      - name: Switch Kubernetes Namespace
+        run: |
+          if ( "${{ inputs.environmentClusterIngress }}" -eq "true") {
+            kubectl config set-context --current --namespace="${{ inputs.environment }}"
+            echo "namespace=${{ inputs.environment }}" >> $GITHUB_ENV
+          else
+            echo "namespace=default" >> $GITHUB_ENV
+          fi
 
       - name: Apply configMap if it exists
         if: ${{ needs.build.outputs.configMap != null }}
@@ -393,7 +398,6 @@ jobs:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
       - name: Add GitHub secrets to k8s
-        shell: pwsh
         run: |
           if (kubectl get secret | Select-String "${{ needs.build.outputs.configSecret }}") {
               kubectl delete secret "${{ needs.build.outputs.configSecret }}"
@@ -425,7 +429,7 @@ jobs:
         timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v4
         with:
-          namespace: ${{ inputs.environment }}
+          namespace: ${{ env.namespace }}
           manifests: ${{ needs.build.outputs.manifestsBundle }}
           images: |
             "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
