@@ -7,6 +7,11 @@ on:
         required: true
         type: string
         description: Type of release
+      environmentCharts:
+        required: false
+        type: boolean
+        description: Set to true if the repository has separate Helm chart directories for each environment
+        default: false
     secrets:
       PAT_ACTION_CI:
         required: false
@@ -24,10 +29,19 @@ jobs:
         uses: thebritican/fetch-latest-release@v2.0.0
 
       - name: Get Chart.yaml appVersion
+        if: inputs.environmentCharts == false
         id: chartyaml
         uses: rmeneely/get-yaml-value@v1
         with:
           infile: deployments/charts/Chart.yaml
+          varlist: appVersion
+
+      - name: Get Environment Chart.yaml appVersion
+        if: inputs.environmentCharts == true
+        id: environmentchartyaml
+        uses: rmeneely/get-yaml-value@v1
+        with:
+          infile: deployments/production-charts/Chart.yaml
           varlist: appVersion
 
       - name: Check if package.json exists
@@ -48,7 +62,7 @@ jobs:
         shell: pwsh
         run: |
           [Version]$a = "${{ steps.packagejson.outputs.prop || '0.0.0' }}"
-          [Version]$b = "${{ steps.chartyaml.outputs.values || '0.0.0' }}"
+          [Version]$b = "${{ steps.environmentchartyaml.outputs.values || steps.chartyaml.outputs.values || '0.0.0' }}"
           [Version]$c = "${{ steps.latestrelease.outputs.tag_name || '0.0.0' }}"
 
           $versions = [array]($a,$b,$c)
