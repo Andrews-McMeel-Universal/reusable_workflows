@@ -1,17 +1,17 @@
-<!--
-We appreciate the effort for this pull request but before that please make sure you read the contribution guidelines, then fill out the blanks below.
+<!-- Please make sure you read the contribution guidelines and then fill out the blanks below.
 
 Please format the PR title appropriately based on the type of change:
-  [<issue>]: <description>
-Where <issue> is the related Jira Issue Key.
+  [JIRA-XXX]: <description>
 -->
 
 ## Description
 
 <!-- Provide a description here -->
 
-## Related Issues
+## Related Links
 
-<!-- List any related Jira issues here -->
+<!-- List any links related to this pull request here
 
-- Jira Issue: PROJECT-<num>
+Replace "JIRA-XXX" with the your Jira issue key -->
+
+- Jira Issue: JIRA-XXX
