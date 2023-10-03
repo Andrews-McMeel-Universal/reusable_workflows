@@ -1,0 +1,203 @@
+name: AKS Deployment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
+      environmentKeyVault:
+        required: false
+        type: string
+        description: "AKS Key vault."
+      repositoryName:
+        required: false
+        type: string
+        description: "GitHub Repository Name."
+        default: "${{ github.event.repository.name }}"
+      clusterResourceGroup:
+        required: false
+        type: string
+        description: "AKS Cluster Resource Group."
+        default: "AMU_AKS_201"
+      dockerFilePath:
+        required: false
+        type: string
+        description: "Relative path to Dockerfile."
+        default: "."
+      dockerImageName:
+        required: false
+        type: string
+        description: "Docker image name."
+        default: "${{ github.event.repository.name }}"
+      azureResourceLocation:
+        required: false
+        type: string
+        description: "Location of resources in Azure"
+        default: "centralus"
+    secrets:
+      azureCredentials:
+        required: true
+      registryHostName:
+        required: true
+      registryUserName:
+        required: true
+      registryPassword:
+        required: true
+
+env:
+  githubPrBranch: ${{ github.head_ref }}
+  githubPrTitle: ${{ github.event.pull_request.title }}
+  githubPrDescription: ${{ github.event.pull_request.body }}
+
+jobs:
+  prepare:
+    name: Preparation Step
+    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'labeled' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve Jira ticket ID
+        id: jira-ticket
+        run: |
+          PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*")
+          PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*")
+          PR_DESC=$(echo "${{ env.githubPrDescription }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*")
+
+          for var in ${PR_BRANCH} ${PR_TITLE} ${PR_DESC}; do JIRA_TICKET_ID=$(echo $var | grep -E ".") && break ; done
+          JIRA_TICKET_ID_LC=$(echo "${JIRA_TICKET_ID}" | tr '[:upper:]' '[:lower:]')
+
+          echo "jiraTicketIdLc=${JIRA_TICKET_ID_LC}" >> $GITHUB_OUTPUT
+          echo "jiraTicketId=${JIRA_TICKET_ID}" >> $GITHUB_OUTPUT
+
+      - name: Fix repository name
+        id: repository-name
+        run: |
+          REPOSITORY_NAME=$(echo "${{ inputs.repositoryName }}" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
+
+          echo "repositoryName=${REPOSITORY_NAME}" >> $GITHUB_OUTPUT
+    outputs:
+      jiraTicketId: ${{ steps.jira-ticket.outputs.jiraTicketId }}
+      jiraTicketIdLc: ${{ steps.jira-ticket.outputs.jiraTicketIdLc }}
+      repositoryName: ${{ steps.repository-name.outputs.repositoryName }}
+
+  deploy:
+    name: Deploy Azure Container Instance
+    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.action != 'labeled' }}
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.prepare.outputs.jiraTicketId }}
+      url: http://${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}.${{ inputs.azureResourceLocation }}.azurecontainer.io
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Generate .env file from Azure Key Vaults
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environmentKeyVault: ${{ inputs.environmentKeyVault }}
+
+      - name: Set environment variables
+        id: env-vars
+        run: |
+          ENVIRONMENT_VARIABLES=$(cat .env)
+          echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
+
+      - name: Generate build args from Azure Key Vaults
+        shell: bash
+        run: |
+          ENVIRONMENT="${{ inputs.environment }}"
+          REPOSITORY_NAME="${{ inputs.repositoryName }}"
+          ENV_KEYVAULT_NAME="${{ inputs.environmentKeyVault }}"
+          BUILDARG_PREDICATE=" --build-arg "
+
+          # Check if searching for key vaults by repository name or otherwise, if key vault name argument is given
+          if [ -z "${ENV_KEYVAULT_NAME}" ]; then
+              # Search for key vault using tags
+              KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
+          else
+              KEYVAULT_NAME="${ENV_KEYVAULT_NAME}"
+          fi
+
+          # Get key vault object
+          KEYVAULT=$(az keyvault list --query "[?name == '${KEYVAULT_NAME}']" )
+
+          # Check if key vault exists
+          if ! echo "${KEYVAULT}" | grep -Eq "\w"; then
+              echo -e "${RED}Invalid value provided for 'KeyVaultName'. Please confirm a Key Vault exists under the name specified. Value provided: ${KEYVAULT_NAME}"
+              exit 1
+          fi
+          KEYVAULT_NAME="${KEYVAULT_NAME// /}"
+
+          # Set secrets list
+          SECRETS=$(az keyvault secret list --vault-name "${KEYVAULT_NAME}" --query "[?contentType == 'BuildArg Env' || contentType == 'BuildArg'].name" --output tsv)
+
+          # Loop through secrets and add them to .env
+          if echo "${SECRETS}" | grep -Eq "\w"; then
+              while IFS= read -r SECRET; do
+                  # Convert to upper case snake case and remove quotes
+                  SECRET_NAME=$(echo "${SECRET}" | tr '[:upper:][:lower:]' '[:lower:][:upper:]' | tr "-" "_" | tr -d '"')
+
+                  # Get secret value and set it to the secret name
+                  SECRET_VALUE=$(az keyvault secret show --vault-name "${KEYVAULT_NAME}" -n "${SECRET}" --query "value" --output tsv)
+
+                  # Add secret to file
+                  BUILDARGS="${BUILDARGS} ${BUILDARG_PREDICATE} ${SECRET_NAME}=${SECRET_VALUE}"
+              done < <(echo "${SECRETS[*]}")
+          fi
+          echo "buildArguments=${BUILDARGS}" >> $env:GITHUB_ENV
+
+      - name: Login to Azure Container Registry
+        uses: Azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.registryHostName }}
+          username: ${{ secrets.registryUserName }}
+          password: ${{ secrets.registryPassword }}
+
+      - name: Build & Push Docker Image
+        id: docker
+        run: |
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
+          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
+
+          dockerContainerPort=$(docker image inspect "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp' | tr "," " ")
+          echo "dockerContainerPort=${dockerContainerPort}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Azure Container Instances
+        uses: azure/aci-deploy@v1
+        with:
+          resource-group: ${{ inputs.clusterResourceGroup }}
+          dns-name-label: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
+          image: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
+          registry-login-server: ${{ secrets.registryHostName }}
+          registry-username: ${{ secrets.registryUserName }}
+          registry-password: ${{ secrets.registryPassword }}
+          name: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
+          location: ${{ inputs.azureResourceLocation }}
+          environment-variables: ${{ steps.env-vars.outputs.environmentVariables }}
+          ports: ${{ steps.docker.outputs.dockerContainerPort }}
+
+  destroy:
+    name: Destroy Azure Container Instance
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Azure
+        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+        with:
+          azureCredentials: "${{ secrets.azureCredentials }}"
+
+      - name: Delete Azure Resources
+        run: |
+          az lock delete --name deletion-lock --resource-group ${{ inputs.clusterResourceGroup }}
+          az container delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
+
+      - name: Delete deployment environment
+        uses: strumwolf/delete-deployment-environment@v2
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+          environment: ${{ needs.prepare.outputs.jiraTicketId }}
+          ref: ${{ github.ref_name }}
