@@ -189,6 +189,7 @@ jobs:
         uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
           azureCredentials: "${{ secrets.azureCredentials }}"
+          enable-AzPsSession: false
 
       - name: Delete Azure Resources
         run: |
