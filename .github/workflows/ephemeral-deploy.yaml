@@ -1,4 +1,4 @@
-name: AKS Deployment
+name: Ephemeral Deployment
 
 on:
   workflow_call:
@@ -96,6 +96,7 @@ jobs:
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
+          environment: ${{ inputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
@@ -111,7 +112,7 @@ jobs:
           ENVIRONMENT="${{ inputs.environment }}"
           REPOSITORY_NAME="${{ inputs.repositoryName }}"
           ENV_KEYVAULT_NAME="${{ inputs.environmentKeyVault }}"
-          BUILDARG_PREDICATE=" --build-arg "
+          BUILDARG_PREDICATE="--build-arg"
 
           # Check if searching for key vaults by repository name or otherwise, if key vault name argument is given
           if [ -z "${ENV_KEYVAULT_NAME}" ]; then
@@ -185,11 +186,10 @@ jobs:
     needs: [prepare]
     runs-on: ubuntu-latest
     steps:
-      - name: Login to Azure
-        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+      - name: Login via Az module
+        uses: azure/login@v1
         with:
-          azureCredentials: "${{ secrets.azureCredentials }}"
-          enable-AzPsSession: false
+          creds: "${{ secrets.azureCredentials }}"
 
       - name: Delete Azure Resources
         run: |
