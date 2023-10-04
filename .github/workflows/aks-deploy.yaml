@@ -202,7 +202,6 @@ jobs:
           ENVIRONMENT="${{ inputs.environment }}"
           REPOSITORY_NAME="${{ inputs.repositoryName }}"
           ENV_KEYVAULT_NAME="${{ inputs.environmentKeyVault }}"
-          BUILDARG_PREDICATE=" --build-arg "
 
           # Check if searching for key vaults by repository name or otherwise, if key vault name argument is given
           if [ -z "${ENV_KEYVAULT_NAME}" ]; then
@@ -235,7 +234,7 @@ jobs:
                   SECRET_VALUE=$(az keyvault secret show --vault-name "${KEYVAULT_NAME}" -n "${SECRET}" --query "value" --output tsv)
 
                   # Add secret to file
-                  BUILDARGS="${BUILDARGS} ${BUILDARG_PREDICATE} ${SECRET_NAME}=${SECRET_VALUE}"
+                  BUILDARGS="${BUILDARGS} --build-arg ${SECRET_NAME}=${SECRET_VALUE}"
               done < <(echo "${SECRETS[*]}")
           fi
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
