@@ -38,10 +38,11 @@ jobs:
               exit 1
             }
 
-      - name: Login to Azure
-        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+      - name: Login via Az module
+        uses: azure/login@v1
         with:
-          azureCredentials: "${{ secrets.azureCredentials }}"
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
 
       - name: Purge CDN cache
         uses: azure/powershell@v1

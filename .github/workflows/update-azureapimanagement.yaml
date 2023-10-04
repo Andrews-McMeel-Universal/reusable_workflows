@@ -73,10 +73,12 @@ jobs:
       azurePassword: ${{ secrets.azurePassword }}
       azureSubscription: ${{ secrets.azureSubscription }}
     steps:
-      - name: Login to Azure
-        uses: Andrews-McMeel-Universal/cache-azure-login@v1
+      - name: Login via Az module
+        if: ${{ env.azureCredentials }}
+        uses: azure/login@v1
         with:
-          azureCredentials: "${{ secrets.azureCredentials }}"
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
 
       - name: Login via PowerShell
         if: ${{ inputs.azureUser && env.azurePassword && env.azureSubscription }}
