@@ -189,11 +189,6 @@ jobs:
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
-      - name: Login to Azure
-        uses: Andrews-McMeel-Universal/cache-azure-login@v1
-        with:
-          azureCredentials: "${{ secrets.azureCredentials }}"
-
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
@@ -202,32 +197,48 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Generate build args from Azure Key Vaults
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
-            if ("${{ inputs.environmentKeyVault }}") {
-                $KeyVaultName = "${{ inputs.environmentKeyVault }}"
-            }
-            else {
-                $KeyVaultName = (Get-AzKeyVault -Tag @{"environment" = "${{ inputs.environment }}" } | Get-AzKeyVault -Tag @{"repository-name" = "${{ github.event.repository.name }}" }).VaultName
-            }
-            [string]$KeyVaultName = $KeyVaultName.Replace(" ", "-")
-            $buildSecrets = (Get-AzKeyVaultSecret -VaultName $KeyVaultName  | Where-Object { ($_.ContentType -contains 'BuildArg') -or ($_.ContentType -contains 'BuildArg Env') }).Name
-            if ($buildSecrets.Count -gt 0) {
-                $buildArgPredicate = ' --build-arg '
-            }
-            else {
-                return
-            }
-            $buildSecrets | ForEach-Object {
-                $argName = $_.ToUpper()
-                $argName = $argName.Replace("-", "_")
-                $argSecret = (Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name $_).secretvalue | ConvertFrom-SecureString -AsPlainText
-                $buildArguments = $buildArguments + $buildArgPredicate + $argName + "=" + $argSecret
-            }
+        shell: bash
+        run: |
+          ENVIRONMENT="${{ inputs.environment }}"
+          REPOSITORY_NAME="${{ inputs.repositoryName }}"
+          ENV_KEYVAULT_NAME="${{ inputs.environmentKeyVault }}"
+          BUILDARG_PREDICATE=" --build-arg "
 
-            echo "buildArguments=$buildArguments" >> $env:GITHUB_ENV
-          azPSVersion: "latest"
+          # Check if searching for key vaults by repository name or otherwise, if key vault name argument is given
+          if [ -z "${ENV_KEYVAULT_NAME}" ]; then
+              # Search for key vault using tags
+              KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
+          else
+              KEYVAULT_NAME="${ENV_KEYVAULT_NAME}"
+          fi
+
+          # Get key vault object
+          KEYVAULT=$(az keyvault list --query "[?name == '${KEYVAULT_NAME}']" )
+
+          # Check if key vault exists
+          if ! echo "${KEYVAULT}" | grep -Eq "\w"; then
+              echo -e "${RED}Invalid value provided for 'KeyVaultName'. Please confirm a Key Vault exists under the name specified. Value provided: ${KEYVAULT_NAME}"
+              exit 1
+          fi
+          KEYVAULT_NAME="${KEYVAULT_NAME// /}"
+
+          # Set secrets list
+          SECRETS=$(az keyvault secret list --vault-name "${KEYVAULT_NAME}" --query "[?contentType == 'BuildArg Env' || contentType == 'BuildArg'].name" --output tsv)
+
+          # Loop through secrets and add them to .env
+          if echo "${SECRETS}" | grep -Eq "\w"; then
+              while IFS= read -r SECRET; do
+                  # Convert to upper case snake case and remove quotes
+                  SECRET_NAME=$(echo "${SECRET}" | tr '[:upper:][:lower:]' '[:lower:][:upper:]' | tr "-" "_" | tr -d '"')
+
+                  # Get secret value and set it to the secret name
+                  SECRET_VALUE=$(az keyvault secret show --vault-name "${KEYVAULT_NAME}" -n "${SECRET}" --query "value" --output tsv)
+
+                  # Add secret to file
+                  BUILDARGS="${BUILDARGS} ${BUILDARG_PREDICATE} ${SECRET_NAME}=${SECRET_VALUE}"
+              done < <(echo "${SECRETS[*]}")
+          fi
+          echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -358,12 +369,6 @@ jobs:
           name: bake-manifests-bundle
           path: ${{ needs.build.outputs.manifestsBundle }}
 
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: true
-
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
@@ -437,15 +442,11 @@ jobs:
         uses: Andrews-McMeel-Universal/cache-azure-login@v1
         with:
           azureCredentials: "${{ secrets.azureCredentials }}"
+          enable-AzPsSession: false
 
       - name: Create or Update Public DNS Record
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
-            $NewRecords = New-AzDnsRecordConfig -Cname "${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com."
-
-            New-AzDnsRecordSet -Name "${{ needs.build.outputs.hostName }}" -RecordType CNAME -ZoneName "${{ needs.build.outputs.domainName }}" -ResourceGroupName ${{ inputs.dnsResourceGroup }} -Ttl 3600 -DnsRecords $NewRecords -Overwrite;
-          azPSVersion: "latest"
+        run: |
+          az network dns record-set cname set-record --resource-group ${{ inputs.dnsResourceGroup }} --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name ${{ needs.build.outputs.hostName }} --cname "${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com." --ttl 3600
 
       - name: Record deployment information in Azure Storage Table
         uses: LadyCailin/azure-table-storage-upload@v1.0.1
