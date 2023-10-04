@@ -148,7 +148,7 @@ jobs:
                   BUILDARGS="${BUILDARGS} ${BUILDARG_PREDICATE} ${SECRET_NAME}=${SECRET_VALUE}"
               done < <(echo "${SECRETS[*]}")
           fi
-          echo "buildArguments=${BUILDARGS}" >> $env:GITHUB_ENV
+          echo "buildArguments=${BUILDARGS}" >> $GITHUB_ENV
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
