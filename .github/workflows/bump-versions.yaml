@@ -88,7 +88,7 @@ jobs:
           find: '"version": .*'
           replace: '"version": "${{ env.release }}",'
           regex: true
-          include: "package.json"
+          include: "**package.json"
 
       - name: Update version in Chart.yaml
         uses: jacobtomlinson/gha-find-replace@v3
@@ -109,8 +109,8 @@ jobs:
           title: "⬆️ Version bump: ${{ env.release }}"
           body: |
             Updating version to ${{ env.release }} in:
-            - `deployments/charts/Charts.yaml`
-            - `package.json`
+            - `**/Charts.yaml`
+            - `**/package.json`
           labels: |
             maintenance
 
