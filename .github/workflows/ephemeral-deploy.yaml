@@ -102,6 +102,7 @@ jobs:
 
       - name: Set environment variables
         id: env-vars
+        shell: bash
         run: |
           ENVIRONMENT_VARIABLES=$(cat .env)
           TARGET_PORT=$(grep -Rh "targetPort: " **/values.yaml | awk -F ': ' '{print $2}' | uniq)
