@@ -153,6 +153,22 @@ jobs:
           fi
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_ENV
 
+      - name: Login to Azure Container Registry
+        uses: Azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.registryHostName }}
+          username: ${{ secrets.registryUserName }}
+          password: ${{ secrets.registryPassword }}
+
+      - name: Build & Push Docker Image
+        id: docker
+        run: |
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
+          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
+
+          dockerContainerPort=$(docker image inspect "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp' | tr "," " ")
+          echo "dockerContainerPort=${dockerContainerPort}" >> $GITHUB_OUTPUT
+
       - name: Deploy Azure Container App
         uses: azure/container-apps-deploy-action@v1
         with:
@@ -160,8 +176,7 @@ jobs:
           registryUrl: ${{ secrets.registryHostName }}
           registryUsername: ${{ secrets.registryUserName }}
           registryPassword: ${{ secrets.registryPassword }}
-          imageToBuild: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
-          dockerfilePath: Dockerfile
+          imageToDeploy: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
           containerAppName: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ steps.env-vars.outputs.targetPort }}
