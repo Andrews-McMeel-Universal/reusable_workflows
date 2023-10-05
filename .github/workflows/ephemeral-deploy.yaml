@@ -19,8 +19,8 @@ on:
       clusterResourceGroup:
         required: false
         type: string
-        description: "AKS Cluster Resource Group."
-        default: "AMU_AKS_201"
+        description: "Azure Resource Group."
+        default: "AMU_EphemeralDeployments_201"
       dockerFilePath:
         required: false
         type: string
@@ -54,7 +54,7 @@ env:
 jobs:
   prepare:
     name: Preparation Step
-    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'labeled' }}
+    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ephemeral-deployment') }}
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve Jira ticket ID
@@ -83,7 +83,7 @@ jobs:
 
   deploy:
     name: Deploy Azure Container Instance
-    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.action != 'labeled' }}
+    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ephemeral-deployment')  }}
     needs: [prepare]
     runs-on: ubuntu-latest
     environment:
@@ -104,6 +104,9 @@ jobs:
         id: env-vars
         run: |
           ENVIRONMENT_VARIABLES=$(cat .env)
+          TARGET_PORT=$(grep -Rh "targetPort: " **/values.yaml | awk -F ': ' '{print $2}' | uniq)
+
+          echo "targetPort=${TARGET_PORT}" >> $GITHUB_OUTPUT
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
 
       - name: Generate build args from Azure Key Vaults
@@ -150,35 +153,22 @@ jobs:
           fi
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_ENV
 
-      - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1
+      - name: Deploy Azure Container App
+        uses: azure/container-apps-deploy-action@v1
         with:
-          login-server: ${{ secrets.registryHostName }}
-          username: ${{ secrets.registryUserName }}
-          password: ${{ secrets.registryPassword }}
-
-      - name: Build & Push Docker Image
-        id: docker
-        run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
-          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
-
-          dockerContainerPort=$(docker image inspect "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp' | tr "," " ")
-          echo "dockerContainerPort=${dockerContainerPort}" >> $GITHUB_OUTPUT
-
-      - name: Deploy to Azure Container Instances
-        uses: azure/aci-deploy@v1
-        with:
-          resource-group: ${{ inputs.clusterResourceGroup }}
-          dns-name-label: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
-          image: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
-          registry-login-server: ${{ secrets.registryHostName }}
-          registry-username: ${{ secrets.registryUserName }}
-          registry-password: ${{ secrets.registryPassword }}
-          name: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
+          appSourcePath: ${{ github.workspace }}
+          acrName: ${{ secrets.registryHostName }}
+          acrUsername: ${{ secrets.registryUserName }}
+          acrPassword: ${{ secrets.registryPassword }}
+          imageToBuild: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
+          dockerfilePath: Dockerfile
+          containerAppName: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
+          resourceGroup: ${{ inputs.clusterResourceGroup }}
+          targetPort: ${{ steps.env-vars.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
-          environment-variables: ${{ steps.env-vars.outputs.environmentVariables }}
-          ports: ${{ steps.docker.outputs.dockerContainerPort }}
+          environmentVariables: ${{ steps.env-vars.outputs.environmentVariables }}
+          ingress: external
+          disableTelemetry: true
 
   destroy:
     name: Destroy Azure Container Instance
@@ -193,8 +183,8 @@ jobs:
 
       - name: Delete Azure Resources
         run: |
-          az lock delete --name deletion-lock --resource-group ${{ inputs.clusterResourceGroup }}
           az container delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
+          az acr repository delete -n ${{ secrets.registryHostName }} --image ${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
 
       - name: Delete deployment environment
         uses: strumwolf/delete-deployment-environment@v2
