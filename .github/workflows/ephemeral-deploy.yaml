@@ -20,7 +20,7 @@ on:
         required: false
         type: string
         description: "Azure Resource Group."
-        default: "AMU_EphemeralDeployments_201"
+        default: "AMU_EphemeralDeployments_RG"
       dockerFilePath:
         required: false
         type: string
