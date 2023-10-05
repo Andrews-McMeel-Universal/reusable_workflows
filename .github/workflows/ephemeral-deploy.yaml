@@ -105,7 +105,7 @@ jobs:
         shell: bash
         run: |
           ENVIRONMENT_VARIABLES=$(cat .env)
-          TARGET_PORT=$(grep -Rh "targetPort: " **/values.yaml | awk -F ': ' '{print $2}' | uniq)
+          TARGET_PORT=$(cat $(find . -iname "values.yaml") | grep "targetPort: " | awk -F ': ' '{print $2}' | uniq)
 
           echo "targetPort=${TARGET_PORT}" >> $GITHUB_OUTPUT
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
