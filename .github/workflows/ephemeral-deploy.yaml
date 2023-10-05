@@ -166,13 +166,9 @@ jobs:
           docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
-          dockerContainerPort=$(docker image inspect "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" -f "{{json .Config.ExposedPorts }}" | tr -d '{}":/tcp' | tr "," " ")
-          echo "dockerContainerPort=${dockerContainerPort}" >> $GITHUB_OUTPUT
-
       - name: Deploy Azure Container App
         uses: azure/container-apps-deploy-action@v1
         with:
-          appSourcePath: ${{ github.workspace }}
           registryUrl: ${{ secrets.registryHostName }}
           registryUsername: ${{ secrets.registryUserName }}
           registryPassword: ${{ secrets.registryPassword }}
