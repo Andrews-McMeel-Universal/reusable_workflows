@@ -157,9 +157,9 @@ jobs:
         uses: azure/container-apps-deploy-action@v1
         with:
           appSourcePath: ${{ github.workspace }}
-          acrName: ${{ secrets.registryHostName }}
-          acrUsername: ${{ secrets.registryUserName }}
-          acrPassword: ${{ secrets.registryPassword }}
+          registryUrl: ${{ secrets.registryHostName }}
+          registryUsername: ${{ secrets.registryUserName }}
+          registryPassword: ${{ secrets.registryPassword }}
           imageToBuild: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
           dockerfilePath: Dockerfile
           containerAppName: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
