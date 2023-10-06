@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: ${{ needs.prepare.outputs.jiraTicketId }}
-      url: http://${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}.${{ inputs.azureResourceLocation }}.azurecontainer.io
+      url: ${{ steps.hostname.outputs.hostname }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -182,13 +182,18 @@ jobs:
           ingress: external
           disableTelemetry: true
 
+      - name: Get Container App Hostname
+        id: hostname
+        run: |
+          HOSTNAME=$(az containerapp list --query "[?name == '${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}'].properties.configuration.ingress.fqdn" -o tsv)
+          echo "hostname=https://${HOSTNAME}" >> $GITHUB_OUTPUT
+
       - name: Update Next URL variables
         if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
         run: |
           REPOSITORY_NAME=$(echo ${{ github.event.repository.name }} | awk -F '_' '{print $1}' | tr -d "-")
-          HOSTNAME=$(az containerapp list --query "[?name == '${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}'].properties.configuration.ingress.fqdn" -o tsv)
-          az containerapp update -n ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }} -g ${{ inputs.clusterResourceGroup }} --set-env-vars $(cat .env | grep -E "localhost|${REPOSITORY_NAME}.com" | awk -F '=' '{print $1}' | sed "s|$|=https://${HOSTNAME}|g")
-
+          HOSTNAME="${{ steps.hostname.outputs.hostname }}"
+          az containerapp update -n ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }} -g ${{ inputs.clusterResourceGroup }} --set-env-vars $(cat .env | grep -E "localhost|${REPOSITORY_NAME}.com" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
 
   destroy:
     name: Destroy Azure Container Instance
