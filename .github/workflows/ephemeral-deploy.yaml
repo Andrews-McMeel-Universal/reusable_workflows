@@ -182,6 +182,14 @@ jobs:
           ingress: external
           disableTelemetry: true
 
+      - name: Update Next URL variables
+        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
+        run: |
+          REPOSITORY_NAME=$(echo ${{ github.event.repository.name }} | awk -F '_' '{print $1}' | tr -d "-")
+          HOSTNAME=$(az containerapp list --query "[?name == '${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}'].properties.configuration.ingress.fqdn" -o tsv)
+          az containerapp update -n ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }} -g ${{ inputs.clusterResourceGroup }} --set-env-vars $(cat .env | grep -E "localhost|${REPOSITORY_NAME}.com" | awk -F '=' '{print $1}' | sed "s|$|=https://${HOSTNAME}|g")
+
+
   destroy:
     name: Destroy Azure Container Instance
     if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
