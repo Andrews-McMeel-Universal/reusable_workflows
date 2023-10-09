@@ -196,9 +196,10 @@ jobs:
           REPOSITORY_NAME=$(echo "${{ github.event.repository.name }}" | awk -F '_' '{print $1}' | tr -d "-")
           HOSTNAME="${{ steps.hostname.outputs.hostname }}"
           URL_VARS=""
-          for var in $(grep -E "localhost|${REPOSITORY_NAME}.com" .env | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g"); do
+          while IFS= read -r line; do
+            var=$(echo "$line" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
             URL_VARS+="$var "
-          done
+          done < <(grep -E "localhost|${REPOSITORY_NAME}.com" .env)
 
           az containerapp update -n "${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}" -g "${{ inputs.clusterResourceGroup }}" --set-env-vars "${URL_VARS}"
 
