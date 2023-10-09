@@ -209,7 +209,7 @@ jobs:
       - name: Delete Azure Resources
         run: |
           az container delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }} --yes
-          az acr repository delete -n ${{ secrets.registryHostName }} --image ${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
+          az acr repository delete -n ${{ secrets.registryHostName }} --image ${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }} --yes
 
       - name: Delete deployment environment
         uses: strumwolf/delete-deployment-environment@v2
