@@ -163,7 +163,6 @@ jobs:
           password: ${{ secrets.registryPassword }}
 
       - name: Build & Push Docker Image
-        id: docker
         run: |
           docker build ${{ inputs.dockerFilePath }} ${{ steps.build-args.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
@@ -209,14 +208,13 @@ jobs:
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
 
-      - name: Build & Push Docker Image
+      - name: Build & Push Docker Image with updated Next.js variables
         if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
-        id: docker-next
         run: |
           docker build ${{ inputs.dockerFilePath }} ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
-      - name: Deploy Azure Container App
+      - name: Deploy Azure Container App with updated Next.js variables
         if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
         uses: azure/container-apps-deploy-action@v1
         with:
