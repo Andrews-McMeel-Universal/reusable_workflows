@@ -192,7 +192,7 @@ jobs:
         id: next-vars
         if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
         run: |
-          REPOSITORY_NAME=$(echo "${{ github.event.repository.name }}" | awk -F '_' '{print $1}  ' | tr -d "-")
+          REPOSITORY_NAME=$(echo "${{ github.event.repository.name }}" | awk -F '_' '{print $1}' | tr -d "-")
           HOSTNAME="${{ steps.hostname.outputs.hostname }}"
           ENVIRONMENT_VARIABLES=""
           BUILDARGS=""
