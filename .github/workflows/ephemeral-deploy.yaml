@@ -250,16 +250,6 @@ jobs:
     needs: [prepare]
     runs-on: ubuntu-latest
     steps:
-      - name: Login via Az module
-        uses: azure/login@v1
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-
-      - name: Delete Azure Resources
-        run: |
-          az containerapp delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }} --yes
-          az acr repository delete -n ${{ secrets.registryHostName }} --image ${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }} --yes
-
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
@@ -267,18 +257,13 @@ jobs:
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
-      - name: Set environment variables
-        id: env-vars
-        shell: bash
+      - name: Delete Azure Resources
         run: |
-          ENVIRONMENT_VARIABLES=$(tr "\n" " " < .env)
-          TARGET_PORT=$(find . -iname "values.yaml" -exec grep "targetPort: " {} \; | awk -F ': ' '{print $2}' | uniq)
-
-          echo "targetPort=${TARGET_PORT}" >> $GITHUB_OUTPUT
-          echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
+          az containerapp delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }} --yes
+          az acr repository delete -n ${{ secrets.registryHostName }} --image ${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }} --yes
 
       - name: Remove Azure B2C Redirect URI
-        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
+        if: ${{ env.NEXT_PUBLIC_BASE_URL || env.BASE_URL || env.NEXTAUTH_URL }}
         run: |
           az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
           REDIRECT_URIS=()
