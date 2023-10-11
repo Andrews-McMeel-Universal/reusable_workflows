@@ -75,9 +75,9 @@ jobs:
       - name: Fix repository name
         id: repository-name
         run: |
-          REPOSITORY_NAME=$(echo "${{ inputs.repositoryName }}" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
-
-          echo "repositoryName=${REPOSITORY_NAME}" >> $GITHUB_OUTPUT
+          REPOSITORY_NAME="${{ inputs.repositoryName }}"
+          REPO_NAME_SHORT=$(echo "${REPOSITORY_NAME:0:21}" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
+          echo "repositoryName=${REPO_NAME_SHORT}" >> $GITHUB_OUTPUT
     outputs:
       jiraTicketId: ${{ steps.jira-ticket.outputs.jiraTicketId }}
       jiraTicketIdLc: ${{ steps.jira-ticket.outputs.jiraTicketIdLc }}
@@ -113,12 +113,11 @@ jobs:
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
 
       - name: Generate build args from Azure Key Vaults
-        shell: bash
+        id: build-args
         run: |
           ENVIRONMENT="${{ inputs.environment }}"
           REPOSITORY_NAME="${{ inputs.repositoryName }}"
           ENV_KEYVAULT_NAME="${{ inputs.environmentKeyVault }}"
-          BUILDARG_PREDICATE="--build-arg"
 
           # Check if searching for key vaults by repository name or otherwise, if key vault name argument is given
           if [ -z "${ENV_KEYVAULT_NAME}" ]; then
@@ -151,10 +150,10 @@ jobs:
                   SECRET_VALUE=$(az keyvault secret show --vault-name "${KEYVAULT_NAME}" -n "${SECRET}" --query "value" --output tsv)
 
                   # Add secret to file
-                  BUILDARGS="${BUILDARGS} ${BUILDARG_PREDICATE} ${SECRET_NAME}=${SECRET_VALUE}"
+                  BUILDARGS="${BUILDARGS} --build-arg ${SECRET_NAME}=${SECRET_VALUE}"
               done < <(echo "${SECRETS[*]}")
           fi
-          echo "buildArguments=${BUILDARGS}" >> $GITHUB_ENV
+          echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -164,9 +163,8 @@ jobs:
           password: ${{ secrets.registryPassword }}
 
       - name: Build & Push Docker Image
-        id: docker
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
+          docker build ${{ inputs.dockerFilePath }} ${{ steps.build-args.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Deploy Azure Container App
@@ -190,18 +188,61 @@ jobs:
           HOSTNAME=$(az containerapp list --query "[?name == '${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}'].properties.configuration.ingress.fqdn" -o tsv)
           echo "hostname=https://${HOSTNAME}" >> $GITHUB_OUTPUT
 
+      - name: Add B2C Redirect URI
+        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
+        run: |
+          az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
+          REDIRECT_URIS=()
+          IFS=' ' read -ra REDIRECT_URIS <<< "$(echo "$(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " ")" "${{ steps.hostname.outputs.hostname }}/api/auth/callback/azureb2c" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+          az ad app update --id "${{ env.B2C_CLIENT_ID }}" --web-redirect-uris "${REDIRECT_URIS[@]}"
+
       - name: Update Next URL variables
+        id: next-vars
         if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
         run: |
           REPOSITORY_NAME=$(echo "${{ github.event.repository.name }}" | awk -F '_' '{print $1}' | tr -d "-")
           HOSTNAME="${{ steps.hostname.outputs.hostname }}"
-          URL_VARS=""
-          while IFS= read -r line; do
-            var=$(echo "$line" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
-            URL_VARS+="$var "
-          done < <(grep -E "localhost|${REPOSITORY_NAME}.com" .env)
+          ENVIRONMENT_VARIABLES=""
+          BUILDARGS=""
 
-          az containerapp update -n "${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}" -g "${{ inputs.clusterResourceGroup }}" --set-env-vars "${URL_VARS}"
+          while IFS= read -r VAR; do
+            if echo "${VAR}" | grep -Eq "localhost|${REPOSITORY_NAME}.com";then
+              VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
+            fi
+            ENVIRONMENT_VARIABLES+="${VAR} "
+            BUILDARGS="${BUILDARGS} --build-arg ${VAR}"
+          done < <(cat .env)
+
+          echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
+          echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Docker Image with updated Next.js variables
+        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
+        run: |
+          docker build ${{ inputs.dockerFilePath }} ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
+          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
+
+      - name: Login via Az module
+        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
+        uses: azure/login@v1
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+
+      - name: Deploy Azure Container App with updated Next.js variables
+        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          registryUrl: ${{ secrets.registryHostName }}
+          registryUsername: ${{ secrets.registryUserName }}
+          registryPassword: ${{ secrets.registryPassword }}
+          imageToDeploy: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
+          containerAppName: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
+          resourceGroup: ${{ inputs.clusterResourceGroup }}
+          targetPort: ${{ steps.env-vars.outputs.targetPort }}
+          location: ${{ inputs.azureResourceLocation }}
+          environmentVariables: ${{ steps.next-vars.outputs.environmentVariables }}
+          ingress: external
+          disableTelemetry: true
 
   destroy:
     name: Destroy Azure Container Instance
@@ -209,15 +250,25 @@ jobs:
     needs: [prepare]
     runs-on: ubuntu-latest
     steps:
-      - name: Login via Az module
-        uses: azure/login@v1
+      - name: Generate .env file from Azure Key Vaults
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
-          creds: "${{ secrets.azureCredentials }}"
+          environment: ${{ inputs.environment }}
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Delete Azure Resources
         run: |
           az containerapp delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }} --yes
           az acr repository delete -n ${{ secrets.registryHostName }} --image ${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }} --yes
+
+      - name: Remove Azure B2C Redirect URI
+        if: ${{ env.NEXT_PUBLIC_BASE_URL || env.BASE_URL || env.NEXTAUTH_URL }}
+        run: |
+          az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
+          REDIRECT_URIS=()
+          IFS=' ' read -ra REDIRECT_URIS <<< "$(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " " | sed 's|https://[^ ]*azurecontainerapps.io/api/auth/callback/azureb2c*[^ ] ||g')"
+          az ad app update --id "${{ env.B2C_CLIENT_ID }}"  --web-redirect-uris "${REDIRECT_URIS[@]}"
 
       - name: Delete deployment environment
         uses: strumwolf/delete-deployment-environment@v2
