@@ -193,8 +193,8 @@ jobs:
         run: |
           az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
           REDIRECT_URIS=()
-          IFS=' ' read -ra REDIRECT_URIS <<< "$(echo $(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " ") "${{ steps.hostname.outputs.hostname }}/api/auth/callback/azureb2c" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
-          az ad app update --id "${{ env.B2C_CLIENT_ID }}"  --web-redirect-uris "${REDIRECT_URIS[@]}"
+          IFS=' ' read -ra REDIRECT_URIS <<< "$(echo "$(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " ")" "${{ steps.hostname.outputs.hostname }}/api/auth/callback/azureb2c" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+          az ad app update --id "${{ env.B2C_CLIENT_ID }}" --web-redirect-uris "${REDIRECT_URIS[@]}"
 
       - name: Update Next URL variables
         id: next-vars
@@ -267,7 +267,7 @@ jobs:
         run: |
           az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
           REDIRECT_URIS=()
-          IFS=' ' read -ra REDIRECT_URIS <<< "$(echo $(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " ") | sed 's|https://[^ ]*azurecontainerapps.io/api/auth/callback/azureb2c*[^ ] ||g')
+          IFS=' ' read -ra REDIRECT_URIS <<< "$(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " " | sed 's|https://[^ ]*azurecontainerapps.io/api/auth/callback/azureb2c*[^ ] ||g')"
           az ad app update --id "${{ env.B2C_CLIENT_ID }}"  --web-redirect-uris "${REDIRECT_URIS[@]}"
 
       - name: Delete deployment environment
