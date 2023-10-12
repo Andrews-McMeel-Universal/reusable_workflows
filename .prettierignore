@@ -4,10 +4,7 @@
 
 
 # GitHub Actions Workflows
-.github/dependabot.yml
-.github/labeler.yml
-.github/workflows/aks*.yml
-.github/release.yml
+.github/
 
 # Helm
 deployments/**/templates/
