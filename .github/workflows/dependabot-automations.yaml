@@ -6,17 +6,19 @@ on:
   workflow_call:
     inputs:
       autoApprove:
-        default: false
-        type: boolean
+        default: "false"
+        description: Array of version update to automatically approve (for ex. '["version-update:semver-major", "version-update:semver-minor"]')
+        type: string
       autoMerge:
-        default: false
-        type: boolean
+        default: "false"
+        description: Array of version update to automatically merge in (for ex. '["version-update:semver-major", "version-update:semver-minor"]')
+        type: string
 
 jobs:
   dependabot-automations:
     name: Dependabot Automations
     runs-on: ubuntu-latest
-    if: ${{ inputs.autoApprove || inputs.autoMerge }}
+    if: ${{ inputs.autoApprove != 'false' || inputs.autoMerge != 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -29,14 +31,15 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Approve PR
-        uses: hmarr/auto-approve-action@v3.2.1
-        if: ${{ inputs.autoApprove }}
+        if: ${{ contains(fromJson(inputs.autoApprove), steps.dependabot-metadata.outputs.update-type) }}
+        uses: hmarr/auto-approve-action@v3
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Enable auto-merge
-        if: ${{ inputs.autoMerge && steps.dependabot-metadata.outputs.update-type != 'version-update:semver-major' }}
-        run: gh pr merge --auto --squash "$PR_URL"
+        if: ${{ contains(fromJson(inputs.autoMerge), steps.dependabot-metadata.outputs.update-type) }}
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: |
+          gh pr merge --auto --squash "${PR_URL}"
