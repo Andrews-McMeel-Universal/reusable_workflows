@@ -36,6 +36,11 @@ on:
         type: string
         description: "Location of resources in Azure"
         default: "centralus"
+      ingressWhitelist:
+        required: false
+        type: string
+        description: "IP address that will be allowed to access the ephemeral deployment"
+        default: "207.67.20.252/32"
     secrets:
       azureCredentials:
         required: true
@@ -181,6 +186,10 @@ jobs:
           environmentVariables: ${{ steps.env-vars.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
+
+      - name: Add access restrictions to Container App ingress
+        run: |
+          az containerapp ingress access-restriction set --action Allow --ip-address "${{ inputs.ingressWhitelist }}" --rule-name allow-range --name "${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}" --resource-group "${{ inputs.clusterResourceGroup }}"
 
       - name: Get Container App Hostname
         id: hostname
