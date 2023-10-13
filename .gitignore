@@ -754,3 +754,10 @@ Secrets.json
 # Azure Functions
 *.Functions/Properties/ServiceDependencies/*/*.json
 *.Functions/Properties/serviceDependencies.*.json
+
+# Terraform
+terraform/.terraform.lock.hcl
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/*.tfplan
+terraform/variables.tf
