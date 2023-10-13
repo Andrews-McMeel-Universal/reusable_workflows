@@ -8,6 +8,9 @@ on:
       runPrettier:
         default: true
         type: boolean
+      runYarnInstall:
+        default: false
+        type: boolean
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -23,9 +26,12 @@ jobs:
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
 
-      - uses: actionsx/prettier@v2
+      - name: Use cache-next-install action
+        if: ${{ inputs.runYarnInstall }}
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
+
+      - uses: actionsx/prettier@v3
         with:
-          # prettier CLI arguments.
           args: --write .
 
       - uses: stefanzweifel/git-auto-commit-action@v4
