@@ -17,9 +17,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.PAT_ACTION_CI }}
-          fetch-depth: 0
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
