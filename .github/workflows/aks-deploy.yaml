@@ -463,8 +463,8 @@ jobs:
           else
             INGRESS="${{ secrets.azureClusterName }}"
           fi
-          AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com"
-          az network dns record-set cname set-record --resource-group ${{ inputs.dnsResourceGroup }} --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
+          AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
+          az network dns record-set cname set-record --resource-group "${{ inputs.dnsResourceGroup }}" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
