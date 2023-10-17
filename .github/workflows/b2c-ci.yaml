@@ -1,0 +1,50 @@
+name: B2C Application CI
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+
+jobs:
+  application-ci:
+    name: Application CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Use .env cache action
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
+
+      - name: Use cache-next-install action
+        uses: Andrews-McMeel-Universal/cache-next-install@v1
+
+      - run: yarn generate
+
+      - name: Check Generated B2C Policies
+        shell: pwsh
+        run: |
+          # Get TenantId
+          $TenantId = "${{ env.AZURE_B2C_TENANT_ID }}"
+
+          # Get the list of files to upload
+          $Folder = "./dist/custom-policies/"
+          $Files = Get-ChildItem $Folder | ForEach-Object { $_.name }
+
+          # Check each B2C policy
+          foreach ($File in $Files) {
+              $XML = New-Object xml
+              $XML.Load((Convert-Path "$Folder/$File"))
+              if (! $XML.TrustFrameworkPolicy.TenantObjectId -eq $TenantId ) {
+                  Write-Error "Variables in $File were not substituted correctly"
+                  exit 1
+              }
+          }
