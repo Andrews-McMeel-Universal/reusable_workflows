@@ -456,13 +456,17 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
 
       - name: Create or Update Public DNS Record
+        id: dns
         run: |
           if [ "${{ inputs.environmentClusterIngress }}" == "true" ]; then
             INGRESS="${{ secrets.azureClusterName }}-${{ inputs.environment }}"
           else
             INGRESS="${{ secrets.azureClusterName }}"
           fi
-          az network dns record-set cname set-record --resource-group ${{ inputs.dnsResourceGroup }} --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name ${{ needs.build.outputs.hostName }} --cname "${INGRESS}-ingress.centralus.cloudapp.azure.com." --ttl 3600
+          AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com"
+          az network dns record-set cname set-record --resource-group ${{ inputs.dnsResourceGroup }} --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
+
+          echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
       - name: Record deployment information in Azure Storage Table
         uses: LadyCailin/azure-table-storage-upload@v1.0.1
@@ -470,7 +474,7 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ env.clusterIngress }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
+          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ steps.dns.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
           if_exists: "replace"
           extra_args: ""
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
