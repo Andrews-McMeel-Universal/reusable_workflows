@@ -17,14 +17,35 @@ on:
       JIRA_TOKEN:
         required: true
 
+env:
+  githubPrBranch: ${{ github.head_ref }}
+  githubPrTitle: ${{ github.event.pull_request.title }}
+
 jobs:
   jira-lint:
     name: Run Jira Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Check for missing Jira ID comment
-        uses: peter-evans/find-comment@v2
+      - name: Retrieve Jira issue key from PR
+        id: jira-ticket
+        run: |
+          PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*")
+          PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*")
+
+          for var in ${PR_BRANCH} ${PR_TITLE}; do JIRA_TICKET_ID=$(echo $var | grep -E ".") && break ; done
+
+          if [ -z "${JIRA_TICKET_ID}" ]; then
+            if [ "${{ inputs.fail-on-error }}" = "true" ]; then
+                echo "::error A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
+                exit 1
+            else
+                echo "::warning A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
+            fi
+          fi
+
+      - name: Check if missing Jira issue key comment exists
         id: comment
+        uses: peter-evans/find-comment@v2
         with:
           issue-number: ${{ github.event.number }}
           body-includes: A JIRA Issue ID is missing from your branch name!
