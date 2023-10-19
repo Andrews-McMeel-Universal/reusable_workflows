@@ -18,7 +18,7 @@ jobs:
   dependabot-automations:
     name: Dependabot Automations
     runs-on: ubuntu-latest
-    if: ${{ github.actor == 'dependabot[bot]' && inputs.autoApprove != 'false' || inputs.autoMerge != 'false' }}
+    if: ${{ github.actor == 'dependabot[bot]' && inputs.autoApprove != 'false' || github.actor == 'dependabot[bot]' && inputs.autoMerge != 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
