@@ -22,7 +22,7 @@ jobs:
     name: Run Jira Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Find Comment
+      - name: Check for missing Jira ID comment
         uses: peter-evans/find-comment@v2
         id: comment
         with:
