@@ -22,7 +22,16 @@ jobs:
     name: Run Jira Lint
     runs-on: ubuntu-latest
     steps:
+      - name: Find Comment
+        uses: peter-evans/find-comment@v2
+        id: comment
+        with:
+          issue-number: ${{ github.event.number }}
+          body-includes: A JIRA Issue ID is missing from your branch name!
+          direction: last
+
       - uses: jira-tools/action-jira-linter@v1.0.1
+        if: ${{ ! steps.comment.outputs.comment-body }}
         name: Jira Lint
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
