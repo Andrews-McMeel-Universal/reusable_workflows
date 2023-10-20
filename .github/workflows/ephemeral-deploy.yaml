@@ -67,9 +67,9 @@ jobs:
       - name: Retrieve Jira ticket ID
         id: jira-ticket
         run: |
-          PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*")
-          PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*")
-          PR_DESC=$(echo "${{ env.githubPrDescription }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*")
+          PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
+          PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
+          PR_DESC=$(echo "${{ env.githubPrDescription }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
 
           for var in ${PR_BRANCH} ${PR_TITLE} ${PR_DESC}; do JIRA_TICKET_ID=$(echo $var | grep -E ".") && break ; done
           JIRA_TICKET_ID_LC=$(echo "${JIRA_TICKET_ID}" | tr '[:upper:]' '[:lower:]')
