@@ -387,15 +387,14 @@ jobs:
           resource-group: ${{ inputs.clusterResourceGroup }}
 
       - name: Switch Kubernetes Namespace
-        shell: pwsh
+        id: namespace
         run: |
-          if ( "${{ inputs.environmentNamespace }}" -eq "true") {
+          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
             kubectl config set-context --current --namespace="${{ inputs.environment }}"
-            Write-Output  "namespace=${{ inputs.environment }}" >> $env:GITHUB_ENV
-          }
-          else {
-            Write-Output  "namespace=default" >> $env:GITHUB_ENV
-          }
+            echo "namespace=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "namespace=default" >> $GITHUB_OUTPUT
+          fi
 
       - name: Apply configMap if it exists
         if: ${{ needs.build.outputs.configMap != null }}
@@ -436,7 +435,7 @@ jobs:
         timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v4
         with:
-          namespace: ${{ env.namespace }}
+          namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ needs.build.outputs.manifestsBundle }}
           images: |
             "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
