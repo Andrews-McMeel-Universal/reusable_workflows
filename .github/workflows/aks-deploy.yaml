@@ -86,7 +86,7 @@ on:
         type: string
         description: "Add the environment name to the front of the hostname (for DNS)"
         default: "true"
-      environmentClusterIngress:
+      environmentNamespace:
         required: false
         type: boolean
         description: "Enable/Disable adding environment in AKS cluster ingress DNS record"
@@ -389,7 +389,7 @@ jobs:
       - name: Switch Kubernetes Namespace
         shell: pwsh
         run: |
-          if ( "${{ inputs.environmentClusterIngress }}" -eq "true") {
+          if ( "${{ inputs.environmentNamespace }}" -eq "true") {
             kubectl config set-context --current --namespace="${{ inputs.environment }}"
             Write-Output  "namespace=${{ inputs.environment }}" >> $env:GITHUB_ENV
           }
@@ -458,7 +458,7 @@ jobs:
       - name: Create or Update Public DNS Record
         id: dns
         run: |
-          if [ "${{ inputs.environmentClusterIngress }}" == "true" ]; then
+          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
             INGRESS="${{ secrets.azureClusterName }}-${{ inputs.environment }}"
           else
             INGRESS="${{ secrets.azureClusterName }}"
