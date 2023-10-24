@@ -50,4 +50,4 @@ jobs:
           }
 
       - name: Check B2C index.html file
-        run: cat dist/index.html | grep "${{ env.AUTH_ASSETS_RESOURCE_URL }}"
+        run: grep "${{ env.AUTH_ASSETS_RESOURCE_URL }}" dist/index.html
