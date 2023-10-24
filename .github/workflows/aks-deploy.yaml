@@ -86,6 +86,11 @@ on:
         type: string
         description: "Add the environment name to the front of the hostname (for DNS)"
         default: "true"
+      environmentNamespace:
+        required: false
+        type: boolean
+        description: "Enable/Disable adding environment in AKS cluster ingress DNS record"
+        default: true
     secrets:
       azureClusterName:
         required: true
@@ -381,8 +386,15 @@ jobs:
           cluster-name: ${{ secrets.azureClusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
 
-      - name: Switch to ${{ inputs.environment }} Namespace
-        run: kubectl config set-context --current --namespace="${{ inputs.environment }}"
+      - name: Switch Kubernetes Namespace
+        id: namespace
+        run: |
+          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
+            kubectl config set-context --current --namespace="${{ inputs.environment }}"
+            echo "namespace=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "namespace=default" >> $GITHUB_OUTPUT
+          fi
 
       - name: Apply configMap if it exists
         if: ${{ needs.build.outputs.configMap != null }}
@@ -423,7 +435,7 @@ jobs:
         timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v4
         with:
-          namespace: ${{ inputs.environment }}
+          namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ needs.build.outputs.manifestsBundle }}
           images: |
             "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
@@ -443,8 +455,17 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
 
       - name: Create or Update Public DNS Record
+        id: dns
         run: |
-          az network dns record-set cname set-record --resource-group ${{ inputs.dnsResourceGroup }} --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name ${{ needs.build.outputs.hostName }} --cname "${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com." --ttl 3600
+          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
+            INGRESS="${{ secrets.azureClusterName }}-${{ inputs.environment }}"
+          else
+            INGRESS="${{ secrets.azureClusterName }}"
+          fi
+          AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
+          az network dns record-set cname set-record --resource-group "${{ inputs.dnsResourceGroup }}" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
+
+          echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
       - name: Record deployment information in Azure Storage Table
         uses: LadyCailin/azure-table-storage-upload@v1.0.1
@@ -452,7 +473,7 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ secrets.azureClusterName }}-${{ inputs.environment }}-ingress.centralus.cloudapp.azure.com. Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
+          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ steps.dns.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
           if_exists: "replace"
           extra_args: ""
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
