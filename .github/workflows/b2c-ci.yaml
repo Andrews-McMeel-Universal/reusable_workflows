@@ -27,7 +27,7 @@ jobs:
       - name: Use cache-next-install action
         uses: Andrews-McMeel-Universal/cache-next-install@v1
 
-      - run: yarn generate
+      - run: yarn build
 
       - name: Check Generated B2C Policies
         shell: pwsh
@@ -48,3 +48,6 @@ jobs:
                   exit 1
               }
           }
+
+      - name: Check B2C index.html file
+        run: grep "${{ env.AUTH_ASSETS_RESOURCE_URL }}" dist/index.html
