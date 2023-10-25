@@ -211,7 +211,7 @@ jobs:
 
   update-next-deploy:
     name: Update Next.js Container App
-    if: ${{ needs.deploy.outputs.hostname && needs.deploy.outputs.next-app == 'true' }}
+    if: ${{ needs.deploy.outputs.next-app == 'true' }}
     needs: [prepare,deploy]
     runs-on: ubuntu-latest
     steps:
