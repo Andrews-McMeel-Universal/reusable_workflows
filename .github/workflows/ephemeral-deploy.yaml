@@ -253,7 +253,7 @@ jobs:
 
       - name: Build & Push Docker Image with updated Next.js variables
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
+          docker build --no-cache ${{ inputs.dockerFilePath }} ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Login via Az module
