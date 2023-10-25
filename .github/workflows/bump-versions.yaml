@@ -26,8 +26,8 @@ on:
 
 jobs:
   bump-app-versions:
-    name: Bump Versions to next ${{ inputs.releaseType }} release
-    if: ${{ inputs.bumpAppVersion == 'true' }}
+    name: Bump App Versions
+    if: ${{ inputs.bumpAppVersion == true }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -131,7 +131,7 @@ jobs:
 
   bump-nuget-version:
     name: Bump Nuget Version
-    if: ${{ inputs.bumpNugetVersion == 'true' }}
+    if: ${{ inputs.bumpNugetVersion == true }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
