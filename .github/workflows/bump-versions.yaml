@@ -141,7 +141,7 @@ jobs:
         shell: sh
         id: files-changed
         run: |
-          while IFS= read -r file; do
+          while IFS= read -r FILE; do
             echo "${FILE}"
             if [ "${FILE}" == "*.Models/*" ]; then
               echo "models-changed=true" >> $GITHUB_OUTPUT
