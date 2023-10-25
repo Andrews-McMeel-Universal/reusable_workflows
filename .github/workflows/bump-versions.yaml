@@ -146,7 +146,7 @@ jobs:
             if [ "${FILE}" == "*.Models/*" ]; then
               echo "models-changed=true" >> $GITHUB_OUTPUT
             fi
-          done < <(git diff --name-only HEAD^ HEAD)
+          done < <(git diff --name-only HEAD~1 HEAD)
 
       - name: Run Increment-Version.ps1
         if: ${{ github.actor != 'amutechtest' && steps.files-changed.outputs.models-changed == 'true' }}
