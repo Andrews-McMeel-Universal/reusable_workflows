@@ -198,20 +198,45 @@ jobs:
           HOSTNAME=$(az containerapp list --query "[?name == '${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}'].properties.configuration.ingress.fqdn" -o tsv)
           echo "hostname=https://${HOSTNAME}" >> $GITHUB_OUTPUT
 
-      - name: Add B2C Redirect URI
+      - name: Check if app is a Next.js application
         if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
+        id: check-next
+        run: |
+          echo "next-app=true" >> $GITHUB_OUTPUT
+
+    outputs:
+      hostname: ${{ steps.hostname.outputs.hostname }}
+      next-app: ${{ steps.check-next.outputs.next-app }}
+      targetPort: ${{ steps.env-vars.outputs.targetPort }}
+
+  update-next-deploy:
+    name: Update Next.js Container App
+    if: ${{ needs.deploy.outputs.hostname && needs.deploy.outputs.next-app == 'true' }}
+    needs: [prepare,deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Generate .env file from Azure Key Vaults
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          environment: ${{ inputs.environment }}
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environmentKeyVault: ${{ inputs.environmentKeyVault }}
+
+      - name: Add B2C Redirect URI
         run: |
           az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
           REDIRECT_URIS=()
-          IFS=' ' read -ra REDIRECT_URIS <<< "$(echo "$(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " ")" "${{ steps.hostname.outputs.hostname }}/api/auth/callback/azureb2c" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+          IFS=' ' read -ra REDIRECT_URIS <<< "$(echo "$(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " ")" "${{ needs.deploy.outputs.hostname }}/api/auth/callback/azureb2c" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
           az ad app update --id "${{ env.B2C_CLIENT_ID }}" --web-redirect-uris "${REDIRECT_URIS[@]}"
 
       - name: Update Next URL variables
         id: next-vars
-        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
         run: |
           REPOSITORY_NAME=$(echo "${{ github.event.repository.name }}" | awk -F '_' '{print $1}' | tr -d "-")
-          HOSTNAME="${{ steps.hostname.outputs.hostname }}"
+          HOSTNAME="${{ needs.deploy.outputs.hostname }}"
           ENVIRONMENT_VARIABLES=""
           BUILDARGS=""
 
@@ -227,19 +252,16 @@ jobs:
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
 
       - name: Build & Push Docker Image with updated Next.js variables
-        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
         run: |
           docker build ${{ inputs.dockerFilePath }} ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Login via Az module
-        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
         uses: azure/login@v1
         with:
           creds: "${{ secrets.azureCredentials }}"
 
       - name: Deploy Azure Container App with updated Next.js variables
-        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
         timeout-minutes: 20
         uses: azure/container-apps-deploy-action@v1
         with:
@@ -249,7 +271,7 @@ jobs:
           imageToDeploy: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
           containerAppName: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
           resourceGroup: ${{ inputs.clusterResourceGroup }}
-          targetPort: ${{ steps.env-vars.outputs.targetPort }}
+          targetPort: ${{ needs.deploy.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
           environmentVariables: ${{ steps.next-vars.outputs.environmentVariables }}
           ingress: external
