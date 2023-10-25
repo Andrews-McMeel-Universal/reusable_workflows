@@ -251,6 +251,13 @@ jobs:
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
 
+      - name: Login to Azure Container Registry
+        uses: Azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.registryHostName }}
+          username: ${{ secrets.registryUserName }}
+          password: ${{ secrets.registryPassword }}
+
       - name: Build & Push Docker Image with updated Next.js variables
         run: |
           docker build --no-cache ${{ inputs.dockerFilePath }} ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
