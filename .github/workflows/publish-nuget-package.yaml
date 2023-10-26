@@ -1,0 +1,49 @@
+name: Publish Nuget Package
+
+on:
+  workflow_call:
+    inputs:
+      projectName:
+        required: true
+        type: string
+        description: Type of release
+      dotnetVersion:
+        required: true
+        type: string
+        description: ".NET SDK Version"
+    secrets:
+      PAT_ACTION_CI:
+        required: true
+
+jobs:
+  publish-nuget-package:
+    name: Publish Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ inputs.dotnetVersion }}
+
+      - name: Add AMU GitHub Packages nuget source
+        working-directory: ${{ inputs.projectName }}
+        run: |
+          dotnet nuget add source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --name "AMU GitHub Packages" --username "amu_deploy@amuniversal.com" --password "${{ secrets.PAT_ACTION_CI }}" --store-password-in-clear-text
+
+      - name: Restore dependencies
+        working-directory: ${{ inputs.projectName }}
+        run: dotnet restore
+
+      - name: Build Release
+        working-directory: ${{ inputs.projectName }}
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Package
+        working-directory: ${{ inputs.projectName }}
+        run: dotnet pack  --configuration Release
+
+      - name: Push ${{ inputs.projectName }} Package
+        working-directory: "${{ inputs.projectName }}/bin/Release/"
+        run: dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
