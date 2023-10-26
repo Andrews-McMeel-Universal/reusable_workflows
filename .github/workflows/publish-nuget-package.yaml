@@ -1,0 +1,57 @@
+name: Publish Nuget Package
+
+on:
+  workflow_call:
+    inputs:
+      projectName:
+        required: false
+        type: string
+        description: Models Project Directory Name
+      dotnetVersion:
+        required: true
+        type: string
+        description: ".NET SDK Version"
+    secrets:
+      PAT_ACTION_CI:
+        required: true
+
+jobs:
+  publish-nuget-package:
+    name: Publish Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get Project Name
+        id: project-name
+        shell: pwsh
+        run: |
+          $ProjectName = ("${{ inputs.projectName }}" || (Split-Path -Path (Get-ChildItem ./ -Recurse | Where-Object { $_.PSIsContainer -and $_.Name.EndsWith(".Models")}) -Leaf))
+          Write-Output "projectName=$ProjectName" >> $env:GITHUB_OUTPUT
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ inputs.dotnetVersion }}
+
+      - name: Add AMU GitHub Packages nuget source
+        working-directory: ${{ steps.project-name.outputs.projectName }}
+        run: |
+          dotnet nuget add source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --name "AMU GitHub Packages" --username "amu_deploy@amuniversal.com" --password "${{ secrets.PAT_ACTION_CI }}" --store-password-in-clear-text
+
+      - name: Restore dependencies
+        working-directory: ${{ steps.project-name.outputs.projectName }}
+        run: dotnet restore
+
+      - name: Build Project
+        working-directory: ${{ steps.project-name.outputs.projectName }}
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Package Project
+        working-directory: ${{ steps.project-name.outputs.projectName }}
+        run: dotnet pack  --configuration Release
+
+      - name: Push ${{ steps.project-name.outputs.projectName }} Package
+        working-directory: "${{ steps.project-name.outputs.projectName }}/bin/Release/"
+        run: dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
