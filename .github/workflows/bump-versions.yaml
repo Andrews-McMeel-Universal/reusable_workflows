@@ -142,13 +142,12 @@ jobs:
       - name: Check modified files
         id: files-changed
         run: |
-          git diff --name-only HEAD^ HEAD > files.txt
           while IFS= read -r FILE; do
             echo "${FILE}"
             if [ "${FILE}" == "*.Models/*" ]; then
               echo "models-changed=true" >> $GITHUB_OUTPUT
             fi
-          done < files.txt
+          done < <(git diff --name-only HEAD^ HEAD)
 
       - name: Run Increment-Version.ps1
         if: ${{ github.actor != 'amutechtest' && steps.files-changed.outputs.models-changed == 'true' }}
