@@ -52,6 +52,8 @@ on:
         required: true
       githubPAT:
         required: true
+      JIRA_TOKEN:
+        required: true
 
 env:
   githubPrBranch: ${{ github.head_ref }}
@@ -283,6 +285,43 @@ jobs:
           environmentVariables: ${{ steps.next-vars.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
+
+  link-deployment:
+    name: Link Deployment in Jira
+    needs: [prepare,deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if deployment has already been linked
+        id: check-jira-comments
+        shell: pwsh
+        run: |
+          $uri = "https://amuniversal.atlassian.net/rest/api/2/issue/${{ needs.prepare.outputs.jiraTicketId }}"
+          $username = "amu_deploy@amuniversal.com"
+          $token = "${{ secrets.JIRA_TOKEN }}"
+          $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$token)))
+          $response = Invoke-RestMethod -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Uri $uri -Method Get
+          $comments = $response.fields.comment.comments
+          foreach ($comment in $comments) {
+              if ($comment.body -match "This ticket has been linked to an ephemeral deployment. The URL is: ${{ needs.deploy.outputs.hostname }}") {
+                  Write-Output "comment-found=true" >> $env:GITHUB_OUTPUT
+                  break
+              }
+          }
+
+      - name: Login to Jira
+        if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: https://amuniversal.atlassian.net
+          JIRA_USER_EMAIL: amu_deploy@amuniversal.com
+          JIRA_API_TOKEN: ${{ secrets.JIRA_TOKEN }}
+
+      - name: Link ephemeral deployment in Jira ticket
+        if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue: ${{ needs.prepare.outputs.jiraTicketId }}
+          comment: "This ticket has been linked to an ephemeral deployment. The URL is: ${{ needs.deploy.outputs.hostname }}"
 
   destroy:
     name: Destroy Azure Container Instance
