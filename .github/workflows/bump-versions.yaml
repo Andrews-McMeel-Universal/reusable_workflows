@@ -1,4 +1,4 @@
-name: Bump App Version
+name: Bump Versions
 
 on:
   workflow_call:
