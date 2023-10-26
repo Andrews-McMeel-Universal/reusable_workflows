@@ -20,7 +20,8 @@ jobs:
     name: Publish Package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Get Project Name
         id: project-name
@@ -43,11 +44,11 @@ jobs:
         working-directory: ${{ steps.project-name.outputs.projectName }}
         run: dotnet restore
 
-      - name: Build Release
+      - name: Build Project
         working-directory: ${{ steps.project-name.outputs.projectName }}
         run: dotnet build --configuration Release --no-restore
 
-      - name: Package
+      - name: Package Project
         working-directory: ${{ steps.project-name.outputs.projectName }}
         run: dotnet pack  --configuration Release
 
