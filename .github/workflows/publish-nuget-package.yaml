@@ -11,6 +11,10 @@ on:
         required: true
         type: string
         description: ".NET SDK Version"
+      libraries:
+        required: false
+        type: string
+        description: Shared Library Name
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -53,5 +57,14 @@ jobs:
         run: dotnet pack  --configuration Release
 
       - name: Push ${{ steps.project-name.outputs.projectName }} Package
+        if: ${{ ! inputs.libraries }}
         working-directory: "${{ steps.project-name.outputs.projectName }}/bin/Release/"
         run: dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
+
+      - name: Push ${{ steps.project-name.outputs.projectName }} Packages
+        if: ${{ inputs.libraries }}
+        run: |
+          for lib in ${{ inputs.libraries }}; do
+            cd "${{ steps.project-name.outputs.projectName }}/${lib}/bin/Release/"
+            dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
+          done
