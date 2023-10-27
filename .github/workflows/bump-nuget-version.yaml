@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       projectName:
-        required: false
+        required: true
         type: string
         description: Models Project Directory Name
       libraryName:
@@ -30,8 +30,12 @@ jobs:
         id: files-changed
         run: |
           while IFS= read -r FILE; do
-            echo "${FILE}"
-            if [ "${FILE}" == "*.Models/*" ]; then
+            if [[ -n ${{ inputs.libraryName }} ]]; then
+              PROJECT_PATH="${{ inputs.projectName }}/${{ inputs.libraryName }}/*"
+            else
+              PROJECT_PATH="${{ inputs.projectName }}/*"
+            fi
+            if echo "${FILE}" | grep -Eq "${PROJECT_PATH}" ; then
               echo "models-changed=true" >> $GITHUB_OUTPUT
             fi
           done < <(git diff --name-only HEAD^ HEAD)
@@ -41,7 +45,7 @@ jobs:
         shell: pwsh
         run: |
           param (
-            [string]$ProjectName = ("${{ inputs.projectName }}" || (Split-Path -Path (Get-ChildItem ./ -Recurse | Where-Object { $_.PSIsContainer -and $_.Name.EndsWith(".Models")}) -Leaf)),
+              [string]$ProjectName = "${{ inputs.projectName }}",
               [string]$LibraryName = "${{ inputs.libraryName }}"
           )
 
@@ -85,8 +89,17 @@ jobs:
           }
 
       - name: Commit Changes
+        if: ${{ ! inputs.libraryName }}
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
           commit_message: ⬆️ Bump Nuget version
+
+      - name: Commit Changes
+        if: ${{ inputs.libraryName }}
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_user_name: amutechtest
+          commit_user_email: amu_deploy@amuniversal.com
+          commit_message: ⬆️ Bump ${{ inputs.libraryName }} Nuget version
