@@ -65,6 +65,6 @@ jobs:
         if: ${{ inputs.libraries }}
         run: |
           for lib in ${{ inputs.libraries }}; do
-            cd "${{ steps.project-name.outputs.projectName }}/${lib}/bin/Release/"
+            cd "${{ github.workspace }}/${{ steps.project-name.outputs.projectName }}/${lib}/bin/Release/"
             dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
           done
