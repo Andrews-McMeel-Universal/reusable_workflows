@@ -7,6 +7,11 @@ on:
         required: false
         type: string
         description: Models Project Directory Name
+      libraryName:
+        required: false
+        type: string
+        description: Set to true if project has a separate library name
+        default: ""
     secrets:
       PAT_ACTION_CI:
         required: false
@@ -36,16 +41,22 @@ jobs:
         shell: pwsh
         run: |
           param (
-              [string]$ProjectName = ("${{ inputs.projectName }}" || (Split-Path -Path (Get-ChildItem ./ -Recurse | Where-Object { $_.PSIsContainer -and $_.Name.EndsWith(".Models")}) -Leaf))
+            [string]$ProjectName = ("${{ inputs.projectName }}" || (Split-Path -Path (Get-ChildItem ./ -Recurse | Where-Object { $_.PSIsContainer -and $_.Name.EndsWith(".Models")}) -Leaf)),
+              [string]$LibraryName = "${{ inputs.libraryName }}"
           )
 
           # Get project file contents
-          $ProjectFile = ($ProjectName + "/" + $ProjectName + ".csproj")
+          if ($LibraryName) {
+              $ProjectFile = ("$ProjectName/$LibraryName/$LibraryName.csproj")
+          }
+          else {
+              $ProjectFile = ("$ProjectName/$ProjectName.csproj")
+          }
           $ProjectFileContents = Get-Content $ProjectFile -Raw
 
           # Get version from project file
-          $VersionString = [RegEx]::Match($ProjectFileContents,"<Version>(.+?)</Version>")
-          $Version = [version]([RegEx]::Match($VersionString,"((?:\d+\.\d+\.\d+))")).Value
+          $VersionString = [RegEx]::Match($ProjectFileContents, "<Version>(.+?)</Version>")
+          $Version = [version]([RegEx]::Match($VersionString, "((?:\d+\.\d+\.\d+))")).Value
           Write-Host ("Current Version: " + $Version) -ForegroundColor DarkGray
 
           # Bump version number
@@ -63,8 +74,8 @@ jobs:
           Set-Content -Path $ProjectFile -Value $ProjectFileContents
 
           # Verify version number in project file
-          $UpdatedVersionString = [RegEx]::Match((Get-Content $ProjectFile -Raw),"<Version>(.+?)</Version>")
-          $UpdatedVersion = [version]([RegEx]::Match($UpdatedVersionString,"((?:\d+\.\d+\.\d+))")).Value
+          $UpdatedVersionString = [RegEx]::Match((Get-Content $ProjectFile -Raw), "<Version>(.+?)</Version>")
+          $UpdatedVersion = [version]([RegEx]::Match($UpdatedVersionString, "((?:\d+\.\d+\.\d+))")).Value
           if ($UpdatedVersion -eq $NewVersion) {
               Write-Host ('Version was updated correctly. Version string: "' + $UpdatedVersionString + '"') -ForegroundColor Green
           }
