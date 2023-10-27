@@ -1,0 +1,81 @@
+name: Bump Nuget Version
+
+on:
+  workflow_call:
+    inputs:
+      projectName:
+        required: false
+        type: string
+        description: Models Project Directory Name
+    secrets:
+      PAT_ACTION_CI:
+        required: false
+
+jobs:
+  bump-nuget-version:
+    name: Bump Nuget Version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Check modified files
+        id: files-changed
+        run: |
+          while IFS= read -r FILE; do
+            echo "${FILE}"
+            if [ "${FILE}" == "*.Models/*" ]; then
+              echo "models-changed=true" >> $GITHUB_OUTPUT
+            fi
+          done < <(git diff --name-only HEAD^ HEAD)
+
+      - name: Run Increment-Version.ps1
+        if: ${{ github.actor != 'amutechtest' && steps.files-changed.outputs.models-changed == 'true' }}
+        shell: pwsh
+        run: |
+          param (
+              [string]$ProjectName = ("${{ inputs.projectName }}" || (Split-Path -Path (Get-ChildItem ./ -Recurse | Where-Object { $_.PSIsContainer -and $_.Name.EndsWith(".Models")}) -Leaf))
+          )
+
+          # Get project file contents
+          $ProjectFile = ($ProjectName + "/" + $ProjectName + ".csproj")
+          $ProjectFileContents = Get-Content $ProjectFile -Raw
+
+          # Get version from project file
+          $VersionString = [RegEx]::Match($ProjectFileContents,"<Version>(.+?)</Version>")
+          $Version = [version]([RegEx]::Match($VersionString,"((?:\d+\.\d+\.\d+))")).Value
+          Write-Host ("Current Version: " + $Version) -ForegroundColor DarkGray
+
+          # Bump version number
+          if ($Version.Build -eq "9999") {
+              $NewBuild = 0
+          }
+          else {
+              $NewBuild = $Version.Build + 1
+          }
+          $NewVersion = ([string]$Version.Major + "." + [string]$Version.Minor + "." + [string]$NewBuild)
+          Write-Host ("New Version: " + $NewVersion) -ForegroundColor DarkGray
+
+          # Update version number in project file
+          $ProjectFileContents = [RegEx]::Replace($ProjectFileContents, "<Version>(.+?)</Version>", ("<Version>" + $NewVersion + "</Version>"))
+          Set-Content -Path $ProjectFile -Value $ProjectFileContents
+
+          # Verify version number in project file
+          $UpdatedVersionString = [RegEx]::Match((Get-Content $ProjectFile -Raw),"<Version>(.+?)</Version>")
+          $UpdatedVersion = [version]([RegEx]::Match($UpdatedVersionString,"((?:\d+\.\d+\.\d+))")).Value
+          if ($UpdatedVersion -eq $NewVersion) {
+              Write-Host ('Version was updated correctly. Version string: "' + $UpdatedVersionString + '"') -ForegroundColor Green
+          }
+          else {
+              Write-Error "Version not updated correctly. Version string: $UpdatedVersionString"
+              exit 1
+          }
+
+      - name: Commit Changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_user_name: amutechtest
+          commit_user_email: amu_deploy@amuniversal.com
+          commit_message: ⬆️ Bump Nuget version
