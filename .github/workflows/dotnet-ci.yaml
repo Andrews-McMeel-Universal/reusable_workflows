@@ -6,6 +6,11 @@ on:
       environment:
         required: true
         type: string
+      projectName:
+        required: false
+        type: string
+        description: Project Directory Name
+        default: ""
       DOTNET_VERSION:
         required: true
         type: string
@@ -62,11 +67,14 @@ jobs:
 
       - name: Install dependencies
         if: steps.install-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ inputs.projectName }}
         run: dotnet restore
 
       # Builds the app if the cache was broken
       - name: Build app
+        working-directory: ${{ inputs.projectName }}
         run: dotnet build -c Release --no-restore
 
       - name: Run tests
+        working-directory: ${{ inputs.projectName }}
         run: dotnet test --no-restore --verbosity normal
