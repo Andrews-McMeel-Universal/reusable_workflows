@@ -756,8 +756,6 @@ Secrets.json
 *.Functions/Properties/serviceDependencies.*.json
 
 # Terraform
-terraform/.terraform.lock.hcl
 terraform/.terraform/
-terraform/*.tfstate*
 terraform/*.tfplan
 terraform/variables.tf
