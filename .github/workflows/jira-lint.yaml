@@ -24,6 +24,7 @@ env:
 jobs:
   jira-lint:
     name: Run Jira Lint
+    if: ${{ github.actor != 'amutechtest' && github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve Jira issue key from PR
