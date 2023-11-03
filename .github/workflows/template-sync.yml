@@ -2,7 +2,7 @@ name: 🔄 Sync with .github repository
 
 on:
   schedule:
-    - cron: 0 9 1 * *
+    - cron: 0 9 1 JAN,APR,JUL,OCT *
   workflow_dispatch:
     inputs:
       isdryrun:
@@ -26,7 +26,7 @@ jobs:
           github_token: ${{ secrets.PAT_ACTION_CI }}
           source_repo_path: Andrews-McMeel-Universal/.github
           upstream_branch: main
-          pr_labels: maintenance
+          pr_labels: sync
           pr_commit_msg: 🔄 Synchronize with @Andrews-McMeel-Universal/.github
           pr_title: 🔄 Sync with @Andrews-McMeel-Universal/.github
           pr_branch_name_prefix: sync/dotgithub/
