@@ -703,6 +703,7 @@ FodyWeavers.xsd
 # https://github.com/github/gitignore/blob/master/Global/VisualStudioCode.gitignore
 
 # by default all files in this directory should be ignored in Git
+.vscode/*
 *devcontainer.env
 
 # these rules can be shared with collaborators
@@ -720,6 +721,10 @@ FodyWeavers.xsd
 # dependencies
 /.pnp
 .pnp.js
+
+# generated during build
+robots.txt
+sitemap*.xml
 
 # misc
 .DS_Store
