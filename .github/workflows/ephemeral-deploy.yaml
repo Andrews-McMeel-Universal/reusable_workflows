@@ -118,7 +118,7 @@ jobs:
         with:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
-          environmentKeyVault: ${{ inputs.environmentKeyVault }}
+          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
 
       - name: Set environment variables
         id: env-vars
@@ -135,7 +135,7 @@ jobs:
         run: |
           ENVIRONMENT="${{ needs.prepare.outputs.environment }}"
           REPOSITORY_NAME="${{ inputs.repositoryName }}"
-          ENV_KEYVAULT_NAME="${{ inputs.environmentKeyVault }}"
+          ENV_KEYVAULT_NAME="${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}"
 
           # Check if searching for key vaults by repository name or otherwise, if key vault name argument is given
           if [ -z "${ENV_KEYVAULT_NAME}" ]; then
@@ -236,7 +236,7 @@ jobs:
         with:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
-          environmentKeyVault: ${{ inputs.environmentKeyVault }}
+          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
 
       - name: Add B2C Redirect URI
         run: |
@@ -345,7 +345,7 @@ jobs:
         with:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
-          environmentKeyVault: ${{ inputs.environmentKeyVault }}
+          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
 
       - name: Delete Azure Resources
         run: |
