@@ -3,14 +3,11 @@ name: Ephemeral Deployment
 on:
   workflow_call:
     inputs:
-      environment:
-        required: true
-        type: string
-        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
-      environmentKeyVault:
+      environmentKeyVaultPrefix:
         required: false
         type: string
-        description: "AKS Key vault."
+        description: "AKS Key vault prefix."
+        default: ${{ vars.AZURE_KEYVAULT_PREFIX }}
       repositoryName:
         required: false
         type: string
@@ -85,7 +82,21 @@ jobs:
           REPOSITORY_NAME="${{ inputs.repositoryName }}"
           REPO_NAME_SHORT=$(echo "${REPOSITORY_NAME:0:21}" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
           echo "repositoryName=${REPO_NAME_SHORT}" >> $GITHUB_OUTPUT
+
+      - name: Get Environment
+        id: environment
+        shell: bash
+        run: |
+          DESCRIPTION="${{ env.githubPrDescription }}"
+          ENVIRONMENT=$(echo "${DESCRIPTION}" | grep -Eo "\- \[x\] .+ APIs"  | awk -F ' ' '{print $3}')
+          if [ -n "${ENVIRONMENT}" ]; then
+            echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
+          else
+            echo "::notice::Unknown API Services environment. Defaulting to development APIs."
+            echo "environment=development" >> $GITHUB_OUTPUT
+          fi
     outputs:
+      environment: ${{ steps.environment.outputs.environment }}
       jiraTicketId: ${{ steps.jira-ticket.outputs.jiraTicketId }}
       jiraTicketIdLc: ${{ steps.jira-ticket.outputs.jiraTicketIdLc }}
       repositoryName: ${{ steps.repository-name.outputs.repositoryName }}
@@ -105,7 +116,7 @@ jobs:
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
-          environment: ${{ inputs.environment }}
+          environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
@@ -122,7 +133,7 @@ jobs:
       - name: Generate build args from Azure Key Vaults
         id: build-args
         run: |
-          ENVIRONMENT="${{ inputs.environment }}"
+          ENVIRONMENT="${{ needs.prepare.outputs.environment }}"
           REPOSITORY_NAME="${{ inputs.repositoryName }}"
           ENV_KEYVAULT_NAME="${{ inputs.environmentKeyVault }}"
 
@@ -223,7 +234,7 @@ jobs:
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
-          environment: ${{ inputs.environment }}
+          environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
@@ -332,7 +343,7 @@ jobs:
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
-          environment: ${{ inputs.environment }}
+          environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
