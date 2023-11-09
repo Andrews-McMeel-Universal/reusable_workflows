@@ -88,11 +88,11 @@ jobs:
         shell: bash
         run: |
           DESCRIPTION="${{ env.githubPrDescription }}"
-          ENVIRONMENT=$(echo "${DESCRIPTION}" | grep -Eo "\- \[x\] .+ APIs"  | awk -F ' ' '{print $3}' | tr '[:upper:]' '[:lower:]')
+          ENVIRONMENT=$(echo "${DESCRIPTION}" | grep -Eo "\- \[x\] .+ Key Vaults"  | awk -F ' ' '{print $3}' | tr '[:upper:]' '[:lower:]')
           if [ -n "${ENVIRONMENT}" ]; then
             echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
           else
-            echo "::notice::Unknown API Services environment. Defaulting to development APIs."
+            echo "::notice::Unknown environment key vault. Defaulting to development key vault."
             echo "environment=development" >> $GITHUB_OUTPUT
           fi
     outputs:
