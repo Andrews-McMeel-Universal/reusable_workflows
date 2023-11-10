@@ -4,9 +4,14 @@ on:
   workflow_call:
     inputs:
       projectName:
-        required: false
+        required: true
         type: string
         description: Models Project Directory Name
+      libraryName:
+        required: false
+        type: string
+        description: Set to true if project has a separate library name
+        default: ""
     secrets:
       PAT_ACTION_CI:
         required: false
@@ -25,8 +30,12 @@ jobs:
         id: files-changed
         run: |
           while IFS= read -r FILE; do
-            echo "${FILE}"
-            if [ "${FILE}" == "*.Models/*" ]; then
+            if [[ -n ${{ inputs.libraryName }} ]]; then
+              PROJECT_PATH="${{ inputs.projectName }}/${{ inputs.libraryName }}/*"
+            else
+              PROJECT_PATH="${{ inputs.projectName }}/*"
+            fi
+            if echo "${FILE}" | grep -Eq "${PROJECT_PATH}" ; then
               echo "models-changed=true" >> $GITHUB_OUTPUT
             fi
           done < <(git diff --name-only HEAD^ HEAD)
@@ -36,16 +45,22 @@ jobs:
         shell: pwsh
         run: |
           param (
-              [string]$ProjectName = ("${{ inputs.projectName }}" || (Split-Path -Path (Get-ChildItem ./ -Recurse | Where-Object { $_.PSIsContainer -and $_.Name.EndsWith(".Models")}) -Leaf))
+              [string]$ProjectName = "${{ inputs.projectName }}",
+              [string]$LibraryName = "${{ inputs.libraryName }}"
           )
 
           # Get project file contents
-          $ProjectFile = ($ProjectName + "/" + $ProjectName + ".csproj")
+          if ($LibraryName) {
+              $ProjectFile = ("$ProjectName/$LibraryName/$LibraryName.csproj")
+          }
+          else {
+              $ProjectFile = ("$ProjectName/$ProjectName.csproj")
+          }
           $ProjectFileContents = Get-Content $ProjectFile -Raw
 
           # Get version from project file
-          $VersionString = [RegEx]::Match($ProjectFileContents,"<Version>(.+?)</Version>")
-          $Version = [version]([RegEx]::Match($VersionString,"((?:\d+\.\d+\.\d+))")).Value
+          $VersionString = [RegEx]::Match($ProjectFileContents, "<Version>(.+?)</Version>")
+          $Version = [version]([RegEx]::Match($VersionString, "((?:\d+\.\d+\.\d+))")).Value
           Write-Host ("Current Version: " + $Version) -ForegroundColor DarkGray
 
           # Bump version number
@@ -63,8 +78,8 @@ jobs:
           Set-Content -Path $ProjectFile -Value $ProjectFileContents
 
           # Verify version number in project file
-          $UpdatedVersionString = [RegEx]::Match((Get-Content $ProjectFile -Raw),"<Version>(.+?)</Version>")
-          $UpdatedVersion = [version]([RegEx]::Match($UpdatedVersionString,"((?:\d+\.\d+\.\d+))")).Value
+          $UpdatedVersionString = [RegEx]::Match((Get-Content $ProjectFile -Raw), "<Version>(.+?)</Version>")
+          $UpdatedVersion = [version]([RegEx]::Match($UpdatedVersionString, "((?:\d+\.\d+\.\d+))")).Value
           if ($UpdatedVersion -eq $NewVersion) {
               Write-Host ('Version was updated correctly. Version string: "' + $UpdatedVersionString + '"') -ForegroundColor Green
           }
@@ -74,8 +89,17 @@ jobs:
           }
 
       - name: Commit Changes
+        if: ${{ ! inputs.libraryName }}
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
           commit_message: ⬆️ Bump Nuget version
+
+      - name: Commit Changes
+        if: ${{ inputs.libraryName }}
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_user_name: amutechtest
+          commit_user_email: amu_deploy@amuniversal.com
+          commit_message: ⬆️ Bump ${{ inputs.libraryName }} Nuget version
