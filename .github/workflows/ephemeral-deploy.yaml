@@ -336,7 +336,10 @@ jobs:
         uses: atlassian/gajira-comment@v3
         with:
           issue: ${{ needs.prepare.outputs.jiraTicketId }}
-          comment: "This ticket has been linked to an ephemeral deployment. The URL is: ${{ needs.deploy.outputs.hostname }}"
+          comment: |
+            This ticket has been linked to an ephemeral deployment.
+            - URL: ${{ needs.deploy.outputs.hostname }}
+            - Environment APIs: ${{ needs.prepare.outputs.environment }}
 
   destroy:
     name: Destroy Azure Container Instance
