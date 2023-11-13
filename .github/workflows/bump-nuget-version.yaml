@@ -30,7 +30,7 @@ jobs:
         id: files-changed
         run: |
           while IFS= read -r FILE; do
-            if [[ -n ${{ inputs.libraryName }} ]]; then
+            if [[ -n "${{ inputs.libraryName }}" ]]; then
               PROJECT_PATH="${{ inputs.projectName }}/${{ inputs.libraryName }}/*"
             else
               PROJECT_PATH="${{ inputs.projectName }}/*"
