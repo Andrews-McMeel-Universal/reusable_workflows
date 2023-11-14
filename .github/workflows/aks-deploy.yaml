@@ -213,7 +213,7 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           setBuildArguments: true
-          addBuildArgPredicate: true
+          addBuildArgPredicate: false
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -246,7 +246,8 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.docker-image-tags.outputs.dockerImageTags }}
-          build-args: ${{ env.buildArguments }}
+          build-args: |
+            ${{ env.buildArguments }}
 
       - name: Create values override file
         run: |

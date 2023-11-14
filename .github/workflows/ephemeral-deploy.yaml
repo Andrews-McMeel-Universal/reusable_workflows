@@ -141,7 +141,7 @@ jobs:
           environment: ${{ needs.prepare.outputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
           setBuildArguments: true
-          addBuildArgPredicate: true
+          addBuildArgPredicate: false
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -161,7 +161,8 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
-          build-args: ${{ env.buildArguments }}
+          build-args: |
+            ${{ env.buildArguments }}
 
       - name: Deploy Azure Container App
         uses: azure/container-apps-deploy-action@v1
@@ -236,7 +237,8 @@ jobs:
               VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
             fi
             ENVIRONMENT_VARIABLES+="${VAR} "
-            BUILDARGS="${BUILDARGS} ${VAR}"
+            BUILDARGS="${BUILDARGS} \
+            ${VAR}"
           done < <(cat .env)
 
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
@@ -260,8 +262,9 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
-          build-args: ${{ steps.next-vars.outputs.buildArguments }}
           no-cache: true
+          build-args: |
+            ${{ steps.next-vars.outputs.buildArguments }}
 
       - name: Login via Az module
         uses: azure/login@v1
