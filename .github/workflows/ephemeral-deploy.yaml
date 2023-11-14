@@ -232,8 +232,7 @@ jobs:
               VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
             fi
             ENVIRONMENT_VARIABLES+="${VAR} "
-            BUILDARGS="${BUILDARGS} \
-            ${VAR}"
+            BUILDARGS="${BUILDARGS} --build-arg ${VAR}"
           done < <(cat .env)
 
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
