@@ -213,6 +213,7 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           setBuildArguments: true
+          addBuildArgPredicate: false
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -226,17 +227,26 @@ jobs:
         with:
           install: true
 
-      - name: Build & Push Docker Image
+      - name: Determine Docker Image Tags
+        id: docker-image-tags
         run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          DOCKER_IMAGE_TAGS="${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
-            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
+            DOCKER_IMAGE_TAGS="${DOCKER_IMAGE_TAGS},${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
           fi
           if [[ "${{ inputs.dockerImageTag }}" == "${{ github.event.release.tag_name }}" ]]; then
             MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${MAJOR_RELEASE}"
+            DOCKER_IMAGE_TAGS="${DOCKER_IMAGE_TAGS},${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${MAJOR_RELEASE}"
           fi
-          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
+          echo "dockerImageTags=${DOCKER_IMAGE_TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Docker Image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.docker-image-tags.outputs.dockerImageTags }}
+          build-args: ${{ env.buildArguments }}
 
       - name: Create values override file
         run: |

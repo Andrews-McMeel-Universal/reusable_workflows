@@ -141,6 +141,7 @@ jobs:
           environment: ${{ needs.prepare.outputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
           setBuildArguments: true
+          addBuildArgPredicate: false
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -155,9 +156,12 @@ jobs:
           install: true
 
       - name: Build & Push Docker Image
-        run: |
-          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
-          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
+          build-args: ${{ env.buildArguments }}
 
       - name: Deploy Azure Container App
         uses: azure/container-apps-deploy-action@v1
@@ -232,7 +236,7 @@ jobs:
               VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
             fi
             ENVIRONMENT_VARIABLES+="${VAR} "
-            BUILDARGS="${BUILDARGS} --build-arg ${VAR}"
+            BUILDARGS="${BUILDARGS} ${VAR}"
           done < <(cat .env)
 
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
@@ -251,9 +255,13 @@ jobs:
           install: true
 
       - name: Build & Push Docker Image with updated Next.js variables
-        run: |
-          docker build --no-cache ${{ inputs.dockerFilePath }} ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
-          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
+          build-args: ${{ steps.next-vars.outputs.buildArguments }}
+          no-cache: true
 
       - name: Login via Az module
         uses: azure/login@v1
