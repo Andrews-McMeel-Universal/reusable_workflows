@@ -149,9 +149,14 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+
       - name: Build & Push Docker Image
         run: |
-          docker buildx build ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }}
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Deploy Azure Container App
@@ -240,9 +245,14 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+
       - name: Build & Push Docker Image with updated Next.js variables
         run: |
-          docker buildx build --no-cache ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }}
+          docker build --no-cache ${{ inputs.dockerFilePath }} ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}"
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Login via Az module

@@ -221,9 +221,14 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+
       - name: Build & Push Docker Image
         run: |
-          docker buildx build ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" ${{ inputs.dockerFilePath }}
+          docker build ${{ inputs.dockerFilePath }} ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
             docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
           fi
