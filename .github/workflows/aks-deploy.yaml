@@ -213,7 +213,6 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           setBuildArguments: true
-          addBuildArgPredicate: true
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -227,26 +226,17 @@ jobs:
         with:
           install: true
 
-      - name: Determine Docker Image Tags
-        id: docker-image-tags
+      - name: Build & Push Docker Image
         run: |
-          DOCKER_IMAGE_TAGS="${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+          docker buildx build ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" ${{ inputs.dockerFilePath }} --load
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
-            DOCKER_IMAGE_TAGS="${DOCKER_IMAGE_TAGS},${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
+            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
           fi
           if [[ "${{ inputs.dockerImageTag }}" == "${{ github.event.release.tag_name }}" ]]; then
             MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            DOCKER_IMAGE_TAGS="${DOCKER_IMAGE_TAGS},${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${MAJOR_RELEASE}"
+            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${MAJOR_RELEASE}"
           fi
-          echo "dockerImageTags=${DOCKER_IMAGE_TAGS}" >> $GITHUB_OUTPUT
-
-      - name: Build & Push Docker Image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.docker-image-tags.outputs.dockerImageTags }}
-          build-args: ${{ env.buildArguments }}
+          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Create values override file
         run: |
