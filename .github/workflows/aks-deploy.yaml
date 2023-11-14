@@ -241,10 +241,11 @@ jobs:
           echo "dockerImageTags=${DOCKER_IMAGE_TAGS}" >> $GITHUB_OUTPUT
 
       - name: Fix Docker build arguments
+        id: fix-build-args
         run: |
           BUILD_ARGUMENTS="${{ env.buildArguments }}"
           FIXED_BUILD_ARGUMENTS=$(echo "${{ env.buildArguments }}" | sed "s/^ --build-arg //g")
-          echo "buildArguments=${FIXED_BUILD_ARGUMENTS}" >> $GITHUB_ENV
+          echo "buildArguments=${FIXED_BUILD_ARGUMENTS}" >> $GITHUB_OUTPUT
 
       - name: Build & Push Docker Image
         uses: docker/build-push-action@v2
@@ -252,7 +253,8 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.docker-image-tags.outputs.dockerImageTags }}
-          build-args: ${{ env.buildArguments }}
+          build-args: |
+            ${{ steps.fix-build-args.outputs.buildArguments }}
 
       - name: Create values override file
         run: |
