@@ -207,47 +207,12 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Generate build args from Azure Key Vaults
-        shell: bash
-        run: |
-          ENVIRONMENT="${{ inputs.environment }}"
-          REPOSITORY_NAME="${{ inputs.repositoryName }}"
-          ENV_KEYVAULT_NAME="${{ inputs.environmentKeyVault }}"
-
-          # Check if searching for key vaults by repository name or otherwise, if key vault name argument is given
-          if [ -z "${ENV_KEYVAULT_NAME}" ]; then
-              # Search for key vault using tags
-              KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
-          else
-              KEYVAULT_NAME="${ENV_KEYVAULT_NAME}"
-          fi
-
-          # Get key vault object
-          KEYVAULT=$(az keyvault list --query "[?name == '${KEYVAULT_NAME}']" )
-
-          # Check if key vault exists
-          if ! echo "${KEYVAULT}" | grep -Eq "\w"; then
-              echo -e "${RED}Invalid value provided for 'KeyVaultName'. Please confirm a Key Vault exists under the name specified. Value provided: ${KEYVAULT_NAME}"
-              exit 1
-          fi
-          KEYVAULT_NAME="${KEYVAULT_NAME// /}"
-
-          # Set secrets list
-          SECRETS=$(az keyvault secret list --vault-name "${KEYVAULT_NAME}" --query "[?contentType == 'BuildArg Env' || contentType == 'BuildArg'].name" --output tsv)
-
-          # Loop through secrets and add them to .env
-          if echo "${SECRETS}" | grep -Eq "\w"; then
-              while IFS= read -r SECRET; do
-                  # Convert to upper case snake case and remove quotes
-                  SECRET_NAME=$(echo "${SECRET}" | tr '[:upper:][:lower:]' '[:lower:][:upper:]' | tr "-" "_" | tr -d '"')
-
-                  # Get secret value and set it to the secret name
-                  SECRET_VALUE=$(az keyvault secret show --vault-name "${KEYVAULT_NAME}" -n "${SECRET}" --query "value" --output tsv)
-
-                  # Add secret to file
-                  BUILDARGS="${BUILDARGS} --build-arg ${SECRET_NAME}=${SECRET_VALUE}"
-              done < <(echo "${SECRETS[*]}")
-          fi
-          echo "buildArguments=${BUILDARGS}" >> $GITHUB_ENV
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environment: ${{ inputs.environment }}
+          environmentKeyVault: ${{ inputs.environmentKeyVault }}
+          setBuildArguments: true
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
