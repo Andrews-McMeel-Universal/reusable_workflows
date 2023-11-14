@@ -141,7 +141,6 @@ jobs:
           environment: ${{ needs.prepare.outputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
           setBuildArguments: true
-          addBuildArgPredicate: false
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -156,13 +155,9 @@ jobs:
           install: true
 
       - name: Build & Push Docker Image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
-          build-args: |
-            ${{ env.buildArguments }}
+        run: |
+          docker buildx build ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
+          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Deploy Azure Container App
         uses: azure/container-apps-deploy-action@v1
@@ -257,14 +252,9 @@ jobs:
           install: true
 
       - name: Build & Push Docker Image with updated Next.js variables
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
-          no-cache: true
-          build-args: |
-            ${{ steps.next-vars.outputs.buildArguments }}
+        run: |
+          docker buildx build --no-cache ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
+          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Login via Az module
         uses: azure/login@v1
