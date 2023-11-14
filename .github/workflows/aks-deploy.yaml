@@ -213,7 +213,7 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           setBuildArguments: true
-          addBuildArgPredicate: false
+          addBuildArgPredicate: true
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
