@@ -227,7 +227,7 @@ jobs:
         with:
           install: true
 
-      - name: Build & Push Docker Image
+      - name: Determine Docker Image Tags
         id: docker-image-tags
         run: |
           DOCKER_IMAGE_TAGS="${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
@@ -240,7 +240,7 @@ jobs:
           fi
           echo "dockerImageTags=${DOCKER_IMAGE_TAGS}" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image
+      - name: Build & Push Docker Image
         uses: docker/build-push-action@v2
         with:
           context: .
