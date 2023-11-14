@@ -243,7 +243,7 @@ jobs:
       - name: Fix Docker build arguments
         run: |
           BUILD_ARGUMENTS="${{ env.buildArguments }}"
-          FIXED_BUILD_ARGUMENTS=$(echo "${{ env.buildArguments }}" | sed "s/^ --build-arg //g" | tr ' ' '\n')
+          FIXED_BUILD_ARGUMENTS=$(echo "${{ env.buildArguments }}" | sed "s/^ --build-arg //g")
           echo "buildArguments=${FIXED_BUILD_ARGUMENTS}" >> $GITHUB_ENV
 
       - name: Build & Push Docker Image
