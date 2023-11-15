@@ -25,9 +25,9 @@ jobs:
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
+          ref: ${{ github.head_ref }}
 
-      - name: Run yarn install
-        if: ${{ inputs.prettierPlugins }}
+      - if: ${{ inputs.prettierPlugins }}
         run: yarn install
 
       - uses: creyD/prettier_action@v4.3
