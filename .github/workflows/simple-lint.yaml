@@ -18,7 +18,7 @@ on:
 jobs:
   prettier:
     name: Prettier Check
-    if: ${{ inputs.runPrettier || github.event_name != 'workflow_call' }}
+    if: ${{ inputs.runPrettier }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
