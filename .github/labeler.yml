@@ -1,78 +1,47 @@
 dependencies:
-  - yarn.lock
-  - package.json
-  - "**/package-lock.json"
-  - Gemfile.lock
-  - Gemfile
-  - ".ruby-version"
+  - "{yarn,Gemfile}.lock"
+  - "package*.json"
+  - "Gemfile"
+  - ".ruby-{version,gemset}"
   - "**/*.csproj"
   - "**/pnpm-lock.yaml"
+  - ".yarn/"
+  - ".{npm,nvm}rc"
 
 documentation:
   - "**/*.md"
 
 front-end:
-  - "**/*.js"
-  - "**/*.js.html"
-  - "**/*.json"
-  - "**/*.jsx"
-  - "**/*.ts"
-  - "**/*.tsx"
-  - "**/*.html"
-  - "**/*.css"
-  - "**/*.less"
-  - "**/*.scss"
-  - "**/*.sass"
-  - "**/*.otf"
-  - "**/*.eot"
-  - "**/*.ttf"
-  - "**/*.woff*"
-  - "**/*.svg"
-  - "**/*.jpg"
-  - "**/*.jpeg"
-  - "**/*.gif"
-  - "**/*.png"
-  - "**/*.ico"
-  - "public/**"
-  - "src/**"
-  - .storybook/**
-  - package.json
-  - wp-content/
-  - "!**/Secrets.json*"
+  - "**/*.{js,js.html,jsx,ts,tsx,html,css,less,scss,sass,otf,eot,ttf,woff*}"
+  - "public/"
+  - "src/"
+  - "wp-content/"
+  - ".storybook/"
+  - "package.json"
   - "!/.vscode"
-  - "!**/*.test.js"
-  - "!.github/**"
 
 back-end:
-  - "**/*.cs"
-  - "**/*.csproj"
-  - "**/*.sln"
-  - "**/**.json"
-  - "bin/"
-  - "**/*.rb"
-  - "Rakefile"
-  - "**/*.yml"
-  - "**/*.ru"
-  - "!**/Secrets.json*"
-  - "!.github/**"
+  - "**/*.{cs,sln,csproj,rb,ru}"
 
 tools:
   - "/.vscode"
   - "/.devcontainer"
+  - "stylelint.config.js"
+  - ".{prettierrc,size-limit,eslintrc}.js"
+  - ".{yamllint,yarnrc,mega-linter,solargraph,postcssrc,erb-lint,rubocop}.yml"
+  - ".{jscpd,markdownlint,babel.config,prettierrc,eslintrc,stylelintrc}.json"
 
 tests:
   - "playwright/**"
   - "cypress/**"
-  - "**/.spec.*"
-  - "**/*.test.js"
-  - ".github/workflows/workflow-linter.yaml"
-  - ".github/actionlint.yaml"
+  - ".spec.*"
+  - "*.test.js"
+  - "{jest,playwright}.*.js"
 
 devops:
-  - ".github/**"
-  - "deployments/**"
+  - ".github/"
+  - "deployments/"
   - "*.ps1"
-  - "Secrets.json*"
+  - "Secrets-example.json"
   - "docker-compose.yml"
   - "Dockerfile"
-  - ".*ignore"
