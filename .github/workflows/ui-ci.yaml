@@ -83,9 +83,6 @@ jobs:
       - name: Use cache-yarn-install action
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
 
-      - name: Install Playwright Browsers
-        run: yarn pretest:integration:ci
-
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
@@ -94,6 +91,9 @@ jobs:
 
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1
+
+      - name: Install Playwright Browsers
+        run: yarn playwright install
 
       - name: Run Playwright tests
         run: yarn test:integration:ci
