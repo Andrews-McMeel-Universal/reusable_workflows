@@ -28,7 +28,9 @@ jobs:
 
       - name: Use cache-next-install action
         if: ${{ inputs.runYarnInstall }}
-        uses: Andrews-McMeel-Universal/cache-next-install@v1
+        uses: Andrews-McMeel-Universal/cache-next-install@story/DEVOPS-313/fix-prettier-yarn-install
+        with:
+          install-dev-dependencies: "true"
 
       - uses: actionsx/prettier@v3
         with:
