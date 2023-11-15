@@ -26,16 +26,16 @@ jobs:
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
 
+      - name: Run yarn install
+        if: ${{ inputs.prettierPlugins }}
+        run: yarn install
+
       - uses: creyD/prettier_action@v4.3
         with:
           prettier_options: --write .
           prettier_plugins: ${{ inputs.prettierPlugins }}
-
-      - uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_user_name: amutechtest
-          commit_user_email: amu_deploy@amuniversal.com
           commit_message: Apply prettier changes
+          github_token: ${{ secrets.PAT_ACTION_CI }}
 
   lint-workflows:
     name: Workflow linter
