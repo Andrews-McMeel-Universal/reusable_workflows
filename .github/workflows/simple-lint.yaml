@@ -26,12 +26,6 @@ jobs:
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
 
-      - name: Use cache-next-install action
-        if: ${{ inputs.runYarnInstall }}
-        uses: Andrews-McMeel-Universal/cache-next-install@story/DEVOPS-313/fix-prettier-yarn-install
-        with:
-          install-dev-dependencies: "true"
-
       - uses: creyD/prettier_action@v4.3
         with:
           prettier_options: --write .
