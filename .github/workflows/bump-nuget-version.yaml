@@ -43,14 +43,9 @@ jobs:
       - name: Run Increment-Version.ps1
         if: ${{ github.actor != 'amutechtest' && steps.files-changed.outputs.models-changed == 'true' }}
         shell: pwsh
-        env:
-          ProjectName: ${{ inputs.projectName }}
-          LibraryName: ${{ inputs.libraryName }}
         run: |
-          param (
-              [string]$ProjectName,
-              [string]$LibraryName
-          )
+          $ProjectName = "${{ inputs.projectName }}"
+          $LibraryName = "${{ inputs.libraryName }}"
 
           # Get project file contents
           if ($LibraryName) {
