@@ -200,19 +200,12 @@ jobs:
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
+        id: get-envs
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
-
-      - name: Generate build args from Azure Key Vaults
-        uses: Andrews-McMeel-Universal/get-envs@v1
-        with:
-          azurecredentials: ${{ secrets.azureCredentials }}
-          environment: ${{ inputs.environment }}
-          environmentKeyVault: ${{ inputs.environmentKeyVault }}
-          setBuildArguments: true
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -228,7 +221,7 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker buildx build ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" ${{ inputs.dockerFilePath }} --load
+          docker buildx build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" ${{ inputs.dockerFilePath }} --load
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
             docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
           fi

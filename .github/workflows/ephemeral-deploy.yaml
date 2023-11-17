@@ -118,29 +118,19 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Generate .env file from Azure Key Vaults
+        id: get-envs
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
 
-      - name: Set environment variables
-        id: env-vars
+      - name: Get target port
+        id: target-port
         shell: bash
         run: |
-          ENVIRONMENT_VARIABLES=$(tr "\n" " " < .env)
           TARGET_PORT=$(find . -iname "values.yaml" -exec grep "targetPort: " {} \; | awk -F ': ' '{print $2}' | uniq)
-
           echo "targetPort=${TARGET_PORT}" >> $GITHUB_OUTPUT
-          echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
-
-      - name: Generate build args from Azure Key Vaults
-        uses: Andrews-McMeel-Universal/get-envs@v1
-        with:
-          azurecredentials: ${{ secrets.azureCredentials }}
-          environment: ${{ needs.prepare.outputs.environment }}
-          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
-          setBuildArguments: true
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -156,7 +146,7 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker buildx build ${{ env.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
+          docker buildx build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Deploy Azure Container App
@@ -169,9 +159,9 @@ jobs:
           imageToDeploy: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
           containerAppName: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
           resourceGroup: ${{ inputs.clusterResourceGroup }}
-          targetPort: ${{ steps.env-vars.outputs.targetPort }}
+          targetPort: ${{ steps.target-port.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
-          environmentVariables: ${{ steps.env-vars.outputs.environmentVariables }}
+          environmentVariables: ${{ steps.get-envs.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
 
@@ -186,7 +176,7 @@ jobs:
           echo "hostname=https://${HOSTNAME}" >> $GITHUB_OUTPUT
 
       - name: Check if app is a Next.js application
-        if: contains(steps.env-vars.outputs.environmentVariables, 'BASE_URL')
+        if: contains(steps.get-envs.outputs.environmentVariables, 'BASE_URL')
         id: check-next
         run: |
           echo "next-app=true" >> $GITHUB_OUTPUT
@@ -194,7 +184,7 @@ jobs:
     outputs:
       hostname: ${{ steps.hostname.outputs.hostname }}
       next-app: ${{ steps.check-next.outputs.next-app }}
-      targetPort: ${{ steps.env-vars.outputs.targetPort }}
+      targetPort: ${{ steps.target-port.outputs.targetPort }}
 
   update-next-deploy:
     name: Update Next.js Container App
@@ -206,18 +196,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Generate .env file from Azure Key Vaults
+        id: get-envs
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
-
-      - name: Add B2C Redirect URI
-        run: |
-          az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
-          REDIRECT_URIS=()
-          IFS=' ' read -ra REDIRECT_URIS <<< "$(echo "$(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " ")" "${{ needs.deploy.outputs.hostname }}/api/auth/callback/azureb2c" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
-          az ad app update --id "${{ env.B2C_CLIENT_ID }}" --web-redirect-uris "${REDIRECT_URIS[@]}"
 
       - name: Update Next URL variables
         id: next-vars
@@ -275,6 +259,13 @@ jobs:
           environmentVariables: ${{ steps.next-vars.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
+
+      - name: Add B2C Redirect URI
+        run: |
+          az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
+          REDIRECT_URIS=()
+          IFS=' ' read -ra REDIRECT_URIS <<< "$(echo "$(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " ")" "${{ needs.deploy.outputs.hostname }}/api/auth/callback/azureb2c" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+          az ad app update --id "${{ env.B2C_CLIENT_ID }}" --web-redirect-uris "${REDIRECT_URIS[@]}"
 
   link-deployment:
     name: Link Deployment in Jira
