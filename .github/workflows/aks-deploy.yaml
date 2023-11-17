@@ -206,6 +206,7 @@ jobs:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
+          contentTypes: BuildArg Env
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
