@@ -93,9 +93,9 @@ on:
         default: true
       enableNginxAccessLogging:
         required: false
-        type: boolean
+        type: string
         description: Enable access logging in Kubernetes ingress
-        default: false
+        default: "false"
     secrets:
       azureClusterName:
         required: true
@@ -303,7 +303,7 @@ jobs:
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
-            ingress.annotations.nginx\.ingress\.kubernetes\.io/enable-access-log=${{ inputs.enableNginxAccessLogging }}
+            ingress.annotations.nginx\.ingress\.kubernetes\.io/enable-access-log="${{ inputs.enableNginxAccessLogging }}"
 
       - name: Upload bake-manifests-bundle artifact
         uses: actions/upload-artifact@v3
