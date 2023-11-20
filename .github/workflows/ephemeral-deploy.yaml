@@ -133,6 +133,13 @@ jobs:
           TARGET_PORT=$(find . -iname "values.yaml" -exec grep "targetPort: " {} \; | awk -F ': ' '{print $2}' | uniq)
           echo "targetPort=${TARGET_PORT}" >> $GITHUB_OUTPUT
 
+      - name: Remove keys from environment variables
+        id: remove-prime-keys
+        if: contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PUBLIC_KEY') || contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PRIVATE_KEY')
+        run: |
+          ENVIRONMENT_VARIABLES=$(echo "${{ steps.get-envs.outputs.environmentVariables }}" | sed -E 's/(PRIME_PRIVATE_KEY|PRIME_PUBLIC_KEY)=[^ ]* //g')
+          echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
+
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
@@ -162,7 +169,7 @@ jobs:
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ steps.target-port.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
-          environmentVariables: ${{ steps.get-envs.outputs.environmentVariables }}
+          environmentVariables: ${{ steps.remove-prime-keys.outputs.environmentVariables || steps.get-envs.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
 
@@ -230,6 +237,13 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
+      - name: Remove keys from environment variables
+        id: remove-prime-keys
+        if: contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PUBLIC_KEY') || contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PRIVATE_KEY')
+        run: |
+          ENVIRONMENT_VARIABLES=$(echo "${{ steps.get-envs.outputs.environmentVariables }}" | sed -E 's/(PRIME_PRIVATE_KEY|PRIME_PUBLIC_KEY)=[^ ]* //g')
+          echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
         with:
@@ -257,7 +271,7 @@ jobs:
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ needs.deploy.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
-          environmentVariables: ${{ steps.next-vars.outputs.environmentVariables }}
+          environmentVariables: ${{ steps.remove-prime-keys.outputs.environmentVariables || steps.get-envs.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
 
