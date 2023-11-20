@@ -310,7 +310,7 @@ jobs:
           $response = Invoke-RestMethod -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Uri $uri -Method Get
           $comments = $response.fields.comment.comments
           foreach ($comment in $comments) {
-              if ($comment.body -match "This ticket has been linked to an ephemeral deployment. The URL is: ${{ needs.deploy.outputs.hostname }}") {
+              if ($comment.body -match "This ticket has been linked to an ephemeral deployment.") {
                   Write-Output "comment-found=true" >> $env:GITHUB_OUTPUT
                   break
               }
