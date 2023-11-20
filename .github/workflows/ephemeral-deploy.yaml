@@ -237,12 +237,14 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
-      - name: Remove keys from environment variables
+      - name: Remove keys from variables
         id: remove-prime-keys
         if: contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PUBLIC_KEY') || contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PRIVATE_KEY')
         run: |
           ENVIRONMENT_VARIABLES=$(echo "${{ steps.next-vars.outputs.environmentVariables }}" | sed -E 's/(PRIME_PRIVATE_KEY|PRIME_PUBLIC_KEY)=[^ ]* //g')
+          BUILDARGS=$(echo "${{ steps.next-vars.outputs.buildArguments }}" | sed -E 's/(PRIME_PRIVATE_KEY|PRIME_PUBLIC_KEY)=[^ ]* //g')
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
+          echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -251,7 +253,7 @@ jobs:
 
       - name: Build & Push Docker Image with updated Next.js variables
         run: |
-          docker buildx build --no-cache ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
+          docker buildx build --no-cache ${{ steps.remove-prime-keys.outputs.buildArguments || steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Login via Az module
