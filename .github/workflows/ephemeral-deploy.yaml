@@ -216,11 +216,11 @@ jobs:
         run: |
           REPOSITORY_NAME=$(echo "${{ github.event.repository.name }}" | awk -F '_' '{print $1}' | tr -d "-")
           HOSTNAME="${{ needs.deploy.outputs.hostname }}"
-          ENVIRONMENT_VARIABLES="${{ steps.get-envs.outputs.environmentVariables }}"
-          BUILDARGS="${{ steps.get-envs.outputs.buildArguments }}"
+          ENVIRONMENT_VARIABLES=""
+          BUILDARGS=""
 
           # Replace URL in ENVIRONMENT_VARIABLES
-          IFS=' ' read -r -a ENVVARS_ARRAY <<< "${ENVIRONMENT_VARIABLES}"
+          IFS=' ' read -r -a ENVVARS_ARRAY <<< "${{ steps.get-envs.outputs.environmentVariables }}"
           for VAR in "${ENVVARS_ARRAY[@]}"; do
               if echo "${VAR}" | grep -Eq "localhost|${REPOSITORY_NAME}.com";then
                   VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
@@ -229,7 +229,7 @@ jobs:
           done
 
           # Replace URL in BUILDARGS
-          IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${BUILDARGS}"
+          IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
           for VAR in "${BUILDARGS_ARRAY[@]}"; do
               if echo "${VAR}" | grep -Eq "localhost|${REPOSITORY_NAME}.com";then
                   VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
