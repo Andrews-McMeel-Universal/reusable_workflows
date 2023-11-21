@@ -289,16 +289,6 @@ jobs:
           EOF
           fi
 
-      - name: Convert enableNginxAccessLogging boolean to string
-        id: fix-nginx-access-annotation
-        run: |
-          if [[ "${{ inputs.enableNginxAccessLogging }}" == "true" ]]; then
-            ENABLE_NGINX_ACCESS_LOGGING=true
-          else
-            ENABLE_NGINX_ACCESS_LOGGING=false
-          fi
-          echo "enableNginxAccessLogging=${ENABLE_NGINX_ACCESS_LOGGING}" >> $GITHUB_OUTPUT
-
       - name: Bake Helm Templates
         id: bake
         uses: azure/k8s-bake@v2
@@ -313,7 +303,7 @@ jobs:
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
-            ingress.annotations.nginx\.ingress\.kubernetes\.io/enable-access-log:"${{ steps.fix-nginx-access-annotation.outputs.enableNginxAccessLogging }}"
+            ingress.annotations.nginx\.ingress\.kubernetes\.io/enable-access-log:'${{ inputs.enableNginxAccessLogging }}'
 
       - name: Upload bake-manifests-bundle artifact
         uses: actions/upload-artifact@v3
