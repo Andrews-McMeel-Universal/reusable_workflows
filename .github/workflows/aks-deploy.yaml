@@ -292,10 +292,10 @@ jobs:
       - name: Convert enableNginxAccessLogging boolean to string
         id: fix-nginx-access-annotation
         run: |
-          if [[ "${{ inputs.enableNginxAccessLogging }}" ]]; then
-            ENABLE_NGINX_ACCESS_LOGGING='"true"'
+          if [[ "${{ inputs.enableNginxAccessLogging }}" == "true" ]]; then
+            ENABLE_NGINX_ACCESS_LOGGING='true'
           else
-            ENABLE_NGINX_ACCESS_LOGGING='"false"'
+            ENABLE_NGINX_ACCESS_LOGGING='false'
           fi
           echo "enableNginxAccessLogging=${ENABLE_NGINX_ACCESS_LOGGING}" >> $GITHUB_OUTPUT
 
