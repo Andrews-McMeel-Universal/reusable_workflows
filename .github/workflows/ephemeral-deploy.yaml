@@ -210,6 +210,7 @@ jobs:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
+          contentTypes: BuildArg Env
 
       - name: Update Next URL variables
         id: next-vars
