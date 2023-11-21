@@ -313,7 +313,7 @@ jobs:
             image.tag:${{ inputs.dockerImageTag }}
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
-            ingress.annotations.nginx\.ingress\.kubernetes\.io/enable-access-log:${{ steps.fix-nginx-access-annotation.outputs.enableNginxAccessLogging }}
+            ingress.annotations.nginx\.ingress\.kubernetes\.io/enable-access-log:"${{ steps.fix-nginx-access-annotation.outputs.enableNginxAccessLogging }}"
 
       - name: Upload bake-manifests-bundle artifact
         uses: actions/upload-artifact@v3
