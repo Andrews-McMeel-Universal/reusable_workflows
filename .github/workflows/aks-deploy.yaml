@@ -93,9 +93,9 @@ on:
         default: true
       enableNginxAccessLogging:
         required: false
-        type: string
+        type: boolean
         description: Enable access logging in Kubernetes ingress
-        default: "false"
+        default: false
     secrets:
       azureClusterName:
         required: true
