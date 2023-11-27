@@ -222,7 +222,7 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker buildx build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" ${{ inputs.dockerFilePath }} --load
+          docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" ${{ inputs.dockerFilePath }}
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
             docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
           fi
