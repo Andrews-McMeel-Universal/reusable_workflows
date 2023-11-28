@@ -450,6 +450,7 @@ jobs:
           echo "- **Version**: ${{ needs.build.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Key Vault Name**: ${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
           echo "- **FQDN**: ${{ needs.build.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **DNS**: ${{ steps.dns.outputs.aksIngress }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Cluster**: ${{ secrets.azureClusterName }}" >> $GITHUB_STEP_SUMMARY
           echo "- **ConfigSecret**: ${{ needs.build.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
           if [[ -n "${{ needs.build.outputs.configMap }}" ]] ; then
