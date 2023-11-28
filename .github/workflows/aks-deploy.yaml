@@ -418,18 +418,18 @@ jobs:
         with:
           creds: "${{ secrets.azureCredentials }}"
 
-      - name: Create or Update Public DNS Record
-        id: dns
-        run: |
-          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
-            INGRESS="${{ secrets.azureClusterName }}-${{ inputs.environment }}"
-          else
-            INGRESS="${{ secrets.azureClusterName }}"
-          fi
-          AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
-          az network dns record-set cname set-record --resource-group "${{ inputs.dnsResourceGroup }}" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
+    #   - name: Create or Update Public DNS Record
+    #     id: dns
+    #     run: |
+    #       if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
+    #         INGRESS="${{ secrets.azureClusterName }}-${{ inputs.environment }}"
+    #       else
+    #         INGRESS="${{ secrets.azureClusterName }}"
+    #       fi
+    #       AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
+    #       az network dns record-set cname set-record --resource-group "${{ inputs.dnsResourceGroup }}" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
 
-          echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
+    #       echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
       - name: Record deployment information in Azure Storage Table
         uses: LadyCailin/azure-table-storage-upload@v1.0.1
