@@ -133,6 +133,13 @@ jobs:
           TARGET_PORT=$(find . -iname "values.yaml" -exec grep "targetPort: " {} \; | awk -F ': ' '{print $2}' | uniq)
           echo "targetPort=${TARGET_PORT}" >> $GITHUB_OUTPUT
 
+      - name: Remove keys from environment variables
+        id: remove-prime-keys
+        if: contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PUBLIC_KEY') || contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PRIVATE_KEY')
+        run: |
+          ENVIRONMENT_VARIABLES=$(echo "${{ steps.get-envs.outputs.environmentVariables }}" | sed -E 's/(PRIME_PRIVATE_KEY|PRIME_PUBLIC_KEY)=[^ ]* //g')
+          echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
+
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
@@ -162,7 +169,7 @@ jobs:
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ steps.target-port.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
-          environmentVariables: ${{ steps.get-envs.outputs.environmentVariables }}
+          environmentVariables: ${{ steps.remove-prime-keys.outputs.environmentVariables || steps.get-envs.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
 
@@ -203,6 +210,7 @@ jobs:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
+          contentTypes: BuildArg Env
 
       - name: Update Next URL variables
         id: next-vars
@@ -212,13 +220,23 @@ jobs:
           ENVIRONMENT_VARIABLES=""
           BUILDARGS=""
 
-          while IFS= read -r VAR; do
-            if echo "${VAR}" | grep -Eq "localhost|${REPOSITORY_NAME}.com";then
-              VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
-            fi
-            ENVIRONMENT_VARIABLES+="${VAR} "
-            BUILDARGS="${BUILDARGS} --build-arg ${VAR}"
-          done < <(cat .env)
+          # Replace URL in ENVIRONMENT_VARIABLES
+          IFS=' ' read -r -a ENVVARS_ARRAY <<< "${{ steps.get-envs.outputs.environmentVariables }}"
+          for VAR in "${ENVVARS_ARRAY[@]}"; do
+              if echo "${VAR}" | grep -Eq "localhost|${REPOSITORY_NAME}.com";then
+                  VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
+              fi
+              ENVIRONMENT_VARIABLES+="${VAR} "
+          done
+
+          # Replace URL in BUILDARGS
+          IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
+          for VAR in "${BUILDARGS_ARRAY[@]}"; do
+              if echo "${VAR}" | grep -Eq "localhost|${REPOSITORY_NAME}.com";then
+                  VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
+              fi
+              BUILDARGS="${BUILDARGS} --build-arg ${VAR}"
+          done
 
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
@@ -230,6 +248,15 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
+      - name: Remove keys from variables
+        id: remove-prime-keys
+        if: contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PUBLIC_KEY') || contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PRIVATE_KEY')
+        run: |
+          ENVIRONMENT_VARIABLES=$(echo "${{ steps.next-vars.outputs.environmentVariables }}" | sed -E 's/(PRIME_PRIVATE_KEY|PRIME_PUBLIC_KEY)=[^ ]* //g')
+          BUILDARGS=$(echo "${{ steps.next-vars.outputs.buildArguments }}" | sed -E 's/(PRIME_PRIVATE_KEY|PRIME_PUBLIC_KEY)=[^ ]* //g')
+          echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
+          echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
         with:
@@ -237,7 +264,7 @@ jobs:
 
       - name: Build & Push Docker Image with updated Next.js variables
         run: |
-          docker buildx build --no-cache ${{ steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
+          docker buildx build --no-cache ${{ steps.remove-prime-keys.outputs.buildArguments || steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Login via Az module
@@ -257,13 +284,13 @@ jobs:
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ needs.deploy.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
-          environmentVariables: ${{ steps.next-vars.outputs.environmentVariables }}
+          environmentVariables: ${{ steps.remove-prime-keys.outputs.environmentVariables || steps.next-vars.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
 
       - name: Add B2C Redirect URI
         run: |
-          az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
+          az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME || env.NEXT_PUBLIC_B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
           REDIRECT_URIS=()
           IFS=' ' read -ra REDIRECT_URIS <<< "$(echo "$(az ad app list --query "[?appId == '${{ env.B2C_CLIENT_ID }}'].web.redirectUris" -o tsv | tr "\t" " ")" "${{ needs.deploy.outputs.hostname }}/api/auth/callback/azureb2c" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
           az ad app update --id "${{ env.B2C_CLIENT_ID }}" --web-redirect-uris "${REDIRECT_URIS[@]}"
@@ -284,7 +311,7 @@ jobs:
           $response = Invoke-RestMethod -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Uri $uri -Method Get
           $comments = $response.fields.comment.comments
           foreach ($comment in $comments) {
-              if ($comment.body -match "This ticket has been linked to an ephemeral deployment. The URL is: ${{ needs.deploy.outputs.hostname }}") {
+              if ($comment.body -match "This ticket has been linked to an ephemeral deployment.") {
                   Write-Output "comment-found=true" >> $env:GITHUB_OUTPUT
                   break
               }
