@@ -30,9 +30,26 @@ jobs:
       - if: ${{ inputs.prettierPlugins }}
         run: yarn install
 
-      - uses: creyD/prettier_action@v4.3
+      - name: Check if prettier configuration files exists
+        id: prettier-configs
+        uses: andstor/file-existence-action@v2
+        with:
+          files: ".prettierrc.js,.prettierc.json"
+
+      - name: Run prettier with configuration files
+        uses: creyD/prettier_action@v4.3
+        if: steps.prettier-configs.outputs.files_exists == 'true'
         with:
           prettier_options: --write . --config ./.prettierrc.js --config ./.prettierrc.json
+          prettier_plugins: ${{ inputs.prettierPlugins }}
+          commit_message: Apply prettier changes
+          github_token: ${{ secrets.PAT_ACTION_CI }}
+
+      - name: Run prettier
+        uses: creyD/prettier_action@v4.3
+        if: steps.prettier-configs.outputs.files_exists != 'true'
+        with:
+          prettier_options: --write .
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: Apply prettier changes
           github_token: ${{ secrets.PAT_ACTION_CI }}
