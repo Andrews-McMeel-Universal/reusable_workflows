@@ -135,7 +135,7 @@ jobs:
 
       - name: Link Checker Results
         if: ${{ failure() }}
-        run: echo "::warning ${{steps.link-checker-report.outputs.result}}"
+        run: echo "::warning::${{steps.link-checker-report.outputs.result}}"
 
       - uses: andresz1/size-limit-action@v1
         with:

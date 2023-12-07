@@ -37,14 +37,16 @@ jobs:
 
           if [ -z "${JIRA_TICKET_ID}" ]; then
             if [ "${{ inputs.fail-on-error }}" = "true" ]; then
-                echo "::error A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
+                echo "::error::A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
                 exit 1
             else
-                echo "::warning A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
+                echo "::warning::A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
+                echo "ticket-found=false" >> $GITHUB_OUTPUT
             fi
           fi
 
       - name: Check if missing Jira issue key comment exists
+        if: ${{ steps.jira-ticket.outputs.ticket-found != 'false' }}
         id: comment
         uses: peter-evans/find-comment@v2
         with:
@@ -53,7 +55,7 @@ jobs:
           direction: last
 
       - uses: jira-tools/action-jira-linter@v1.0.1
-        if: ${{ ! steps.comment.outputs.comment-body }}
+        if: ${{ ! steps.comment.outputs.comment-body && steps.jira-ticket.outputs.ticket-found != 'false' }}
         name: Jira Lint
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
