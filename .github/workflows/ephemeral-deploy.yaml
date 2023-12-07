@@ -52,6 +52,10 @@ on:
       JIRA_TOKEN:
         required: true
 
+env:
+  githubPrBranch: ${{ github.head_ref }}
+  githubPrTitle: ${{ github.event.pull_request.title }}
+  githubPrDescription: ${{ github.event.pull_request.body }}
 
 jobs:
   prepare:
@@ -61,10 +65,6 @@ jobs:
     steps:
       - name: Retrieve Jira ticket ID
         id: jira-ticket
-        env:
-          githubPrBranch: ${{ github.head_ref }}
-          githubPrTitle: ${{ github.event.pull_request.title }}
-          githubPrDescription: ${{ github.event.pull_request.body }}
         run: |
           PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
           PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
