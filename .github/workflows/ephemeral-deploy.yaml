@@ -66,7 +66,7 @@ jobs:
         run: |
           # Use GitHub's REST API to get pull request information
           PR_NUMBER=${{ github.event.issue.number }}
-          PR_DETAILS=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          PR_DETAILS=$(curl -H "Authorization: token ${{ secrets.githubPAT }}" \
                -H "Accept: application/vnd.github.v3+json" \
                "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER")
 
