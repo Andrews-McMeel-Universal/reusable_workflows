@@ -64,7 +64,7 @@ env:
 jobs:
   prepare:
     name: Preparation Step
-    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ephemeral-deployment') }}
+    if: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' }}
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve Jira ticket ID
@@ -97,7 +97,7 @@ jobs:
 
   deploy:
     name: Deploy Azure Container Instance
-    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ephemeral-deployment')  }}
+    if: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' }}
     needs: [prepare]
     runs-on: ubuntu-latest
     environment:
