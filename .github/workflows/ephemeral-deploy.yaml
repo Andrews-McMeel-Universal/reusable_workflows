@@ -3,6 +3,10 @@ name: Ephemeral Deployment
 on:
   workflow_call:
     inputs:
+      environment:
+        required: true
+        type: string
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
       environmentKeyVaultPrefix:
         required: false
         type: string
@@ -86,21 +90,7 @@ jobs:
           REPOSITORY_NAME="${{ inputs.repositoryName }}"
           REPO_NAME_SHORT=$(echo "${REPOSITORY_NAME:0:21}" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
           echo "repositoryName=${REPO_NAME_SHORT}" >> $GITHUB_OUTPUT
-
-      - name: Get Environment
-        id: environment
-        shell: bash
-        run: |
-          DESCRIPTION="$(echo '${{ env.githubPrDescription }}' | tr -d '`$)(')"
-          ENVIRONMENT=$(echo "${DESCRIPTION}" | grep -Eo "\- \[x\] .+ Key Vaults"  | awk -F ' ' '{print $3}' | tr '[:upper:]' '[:lower:]')
-          if [ -n "${ENVIRONMENT}" ]; then
-            echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
-          else
-            echo "::notice::Unknown environment key vault. Defaulting to development key vault."
-            echo "environment=development" >> $GITHUB_OUTPUT
-          fi
     outputs:
-      environment: ${{ steps.environment.outputs.environment }}
       jiraTicketId: ${{ steps.jira-ticket.outputs.jiraTicketId }}
       jiraTicketIdLc: ${{ steps.jira-ticket.outputs.jiraTicketIdLc }}
       repositoryName: ${{ steps.repository-name.outputs.repositoryName }}
@@ -121,9 +111,9 @@ jobs:
         id: get-envs
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
-          environment: ${{ needs.prepare.outputs.environment }}
+          environment: ${{ inputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
-          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
+          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ inputs.environment }}
           contentTypes: BuildArg Env
 
       - name: Get target port
@@ -207,9 +197,9 @@ jobs:
         id: get-envs
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
-          environment: ${{ needs.prepare.outputs.environment }}
+          environment: ${{ inputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
-          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
+          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ inputs.environment }}
           contentTypes: BuildArg Env
 
       - name: Update Next URL variables
@@ -333,7 +323,7 @@ jobs:
           comment: |
             This ticket has been linked to an ephemeral deployment.
             - URL: ${{ needs.deploy.outputs.hostname }}
-            - Environment APIs: ${{ needs.prepare.outputs.environment }}
+            - Environment APIs: ${{ inputs.environment }}
 
   destroy:
     name: Destroy Azure Container Instance
@@ -344,9 +334,9 @@ jobs:
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
-          environment: ${{ needs.prepare.outputs.environment }}
+          environment: ${{ inputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
-          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
+          environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ inputs.environment }}
 
       - name: Delete Azure Resources
         run: |
