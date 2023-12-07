@@ -99,11 +99,15 @@ jobs:
           PR_TITLE=$(echo "${PR_DETAILS}" | jq -r '.title' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
           PR_DESCRIPTION=$(echo "${PR_DETAILS}" | jq -r '.body' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
 
+          echo "PR branch: ${PR_BRANCH}"
+          echo "PR title: ${PR_TITLE}"
+
           for var in ${PR_BRANCH} ${PR_TITLE} ${PR_DESCRIPTION}; do JIRA_TICKET_ID=$(echo $var | grep -E ".") && break ; done
           if [ -z "${JIRA_TICKET_ID}" ]; then
             echo "::error::A Jira issue key is missing from your branch name, pull request title, and pull request description. Please confirm it is linked properly in the pull request."
             exit 1
           fi
+          echo "Jira ticket: ${JIRA_TICKET_ID}"
           JIRA_TICKET_ID_LC=$(echo "${JIRA_TICKET_ID}" | tr '[:upper:]' '[:lower:]')
 
           echo "jiraTicketIdLc=${JIRA_TICKET_ID_LC}" >> $GITHUB_OUTPUT
