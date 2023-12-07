@@ -86,6 +86,7 @@ jobs:
         uses: dcarbone/install-jq-action@v2.1.0
 
       - name: Get Jira ticket ID from pull request information
+        id: jira-ticket
         if: ${{ github.event.issue.pull_request }}
         run: |
           # Use GitHub's REST API to get pull request information
