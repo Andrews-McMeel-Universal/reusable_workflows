@@ -37,10 +37,10 @@ jobs:
 
           if [ -z "${JIRA_TICKET_ID}" ]; then
             if [ "${{ inputs.fail-on-error }}" = "true" ]; then
-                echo "::error A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
+                echo "::error::A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
                 exit 1
             else
-                echo "::warning A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
+                echo "::warning::A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
             fi
           fi
 
