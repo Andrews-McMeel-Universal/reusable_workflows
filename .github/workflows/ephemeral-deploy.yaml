@@ -58,6 +58,30 @@ jobs:
     if: ${{ github.event_name != 'pull_request' && github.event.action != 'closed' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check if deploy comment exists
+        id: deploy-comment
+        continue-on-error: true
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          if [[ ! "${COMMENT_BODY}" =~ "/deploy" ]] ; then
+            echo "::warning::Comment does not contain '/deploy'. To deploy an ephemeral deployment, please post a comment with '/deploy [ENVIRONMENT]'"
+            exit 1
+          fi
+
+      - name: Get Environment
+        if: steps.deploy-comment.outcome == 'success'
+        id: environment
+        shell: bash
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          ENVIRONMENT="${COMMENT_BODY#/deploy }"
+          if [ -n "${ENVIRONMENT}" ]; then
+            echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
+          else
+            echo "::error::Unable to extract environment from comment. Please post a comment with '/deploy [ENVIRONMENT]'"
+            exit 1
+          fi
+
       - name: Install jq
         uses: dcarbone/install-jq-action@v2.1.0
 
@@ -91,24 +115,6 @@ jobs:
           REPOSITORY_NAME="${{ inputs.repositoryName }}"
           REPO_NAME_SHORT=$(echo "${REPOSITORY_NAME:0:21}" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
           echo "repositoryName=${REPO_NAME_SHORT}" >> $GITHUB_OUTPUT
-
-      - name: Get Environment
-        id: environment
-        shell: bash
-        run: |
-          COMMENT_BODY="${{ github.event.comment.body }}"
-          if [[ "${COMMENT_BODY}" =~ "/deploy" ]] ; then
-            ENVIRONMENT="${COMMENT_BODY#/deploy }"
-            if [ -n "${ENVIRONMENT}" ]; then
-              echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
-            else
-              echo "::error::Unable to extract environment from comment. Please post a comment with '/deploy [ENVIRONMENT]'"
-              exit 1
-            fi
-          else
-            echo "::error::Deployment environment not found. Please post a comment with '/deploy [ENVIRONMENT]'"
-            exit 1
-          fi
     outputs:
       environment: ${{ steps.environment.outputs.environment }}
       jiraTicketId: ${{ steps.jira-ticket.outputs.jiraTicketId }}
