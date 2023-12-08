@@ -60,21 +60,24 @@ env:
 jobs:
   prepare:
     name: Preparation Step
-    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ephemeral-deployment') }}
+    if: ${{ github.event.action == 'labeled' && startsWith(github.event.label.name, 'preview:') || github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'preview:') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Retrieve Jira ticket ID
+      - name: Get Jira ticket ID
         id: jira-ticket
         run: |
           PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
           PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
           PR_DESC=$(echo "${{ env.githubPrDescription }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
 
+          echo "PR branch: ${PR_BRANCH}"
+          echo "PR title: ${PR_TITLE}"
           for var in ${PR_BRANCH} ${PR_TITLE} ${PR_DESC}; do JIRA_TICKET_ID=$(echo $var | grep -E ".") && break ; done
           if [ -z "${JIRA_TICKET_ID}" ]; then
             echo "::error::A Jira issue key is missing from your branch name, pull request title, and pull request description. Please confirm it is linked properly in the pull request."
             exit 1
           fi
+          echo "Jira ticket: ${JIRA_TICKET_ID}"
           JIRA_TICKET_ID_LC=$(echo "${JIRA_TICKET_ID}" | tr '[:upper:]' '[:lower:]')
 
           echo "jiraTicketIdLc=${JIRA_TICKET_ID_LC}" >> $GITHUB_OUTPUT
@@ -91,13 +94,14 @@ jobs:
         id: environment
         shell: bash
         run: |
-          DESCRIPTION="$(echo '${{ env.githubPrDescription }}' | tr -d '`$)(')"
-          ENVIRONMENT=$(echo "${DESCRIPTION}" | grep -Eo "\- \[x\] .+ Key Vaults"  | awk -F ' ' '{print $3}' | tr '[:upper:]' '[:lower:]')
-          if [ -n "${ENVIRONMENT}" ]; then
+          LABEL=$(echo "${{ join(github.event.pull_request.labels.*.name, ' ') }}" | grep -o 'preview:[^ ]*' | head -n 1)
+          if [ -n "${LABEL}" ]; then
+            ENVIRONMENT=${LABEL#preview:}
+            echo "Environment extracted from label: ${ENVIRONMENT}"
             echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
           else
-            echo "::notice::Unknown environment key vault. Defaulting to development key vault."
-            echo "environment=development" >> $GITHUB_OUTPUT
+            echo "::error::No 'preview:[ENVIRONMENT]' label found."
+            exit 1
           fi
     outputs:
       environment: ${{ steps.environment.outputs.environment }}
@@ -107,7 +111,6 @@ jobs:
 
   deploy:
     name: Deploy Azure Container Instance
-    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'ephemeral-deployment' || github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ephemeral-deployment')  }}
     needs: [prepare]
     runs-on: ubuntu-latest
     environment:
