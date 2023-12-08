@@ -103,11 +103,19 @@ jobs:
             echo "::error::No 'preview:[ENVIRONMENT]' label found."
             exit 1
           fi
+
+      - name: Generate checksum for URL
+        id: checksum
+        run: |
+          FULL_CHECKSUM=$(echo -n '${{ steps.repository-name.outputs.repositoryName }}-${{ steps.jira-ticket.outputs.jiraTicketIdLc }}' | sha256sum | awk '{print $1}')
+          SHORT_CHECKSUM=${FULL_CHECKSUM:0:4}
+          echo "urlChecksum=${SHORT_CHECKSUM}" >> $GITHUB_OUTPUT
     outputs:
       environment: ${{ steps.environment.outputs.environment }}
       jiraTicketId: ${{ steps.jira-ticket.outputs.jiraTicketId }}
       jiraTicketIdLc: ${{ steps.jira-ticket.outputs.jiraTicketIdLc }}
       repositoryName: ${{ steps.repository-name.outputs.repositoryName }}
+      urlChecksum: ${{ steps.checksum.outputs.urlChecksum }}
 
   deploy:
     name: Deploy Azure Container Instance
@@ -168,7 +176,7 @@ jobs:
           registryUsername: ${{ secrets.registryUserName }}
           registryPassword: ${{ secrets.registryPassword }}
           imageToDeploy: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
-          containerAppName: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
+          containerAppName: ${{ needs.prepare.outputs.jiraTicketIdLc }}-${{ needs.prepare.outputs.urlChecksum }}
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ steps.target-port.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
@@ -178,12 +186,12 @@ jobs:
 
       - name: Add access restrictions to Container App ingress
         run: |
-          az containerapp ingress access-restriction set --action Allow --ip-address "${{ inputs.ingressWhitelist }}" --rule-name allow-range --name "${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}" --resource-group "${{ inputs.clusterResourceGroup }}"
+          az containerapp ingress access-restriction set --action Allow --ip-address "${{ inputs.ingressWhitelist }}" --rule-name allow-range --name "${{ needs.prepare.outputs.jiraTicketIdLc }}-${{ needs.prepare.outputs.urlChecksum }}" --resource-group "${{ inputs.clusterResourceGroup }}"
 
       - name: Get Container App Hostname
         id: hostname
         run: |
-          HOSTNAME=$(az containerapp list --query "[?name == '${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}'].properties.configuration.ingress.fqdn" -o tsv)
+          HOSTNAME=$(az containerapp list --query "[?name == '${{ needs.prepare.outputs.jiraTicketIdLc }}-${{ needs.prepare.outputs.urlChecksum }}'].properties.configuration.ingress.fqdn" -o tsv)
           echo "hostname=https://${HOSTNAME}" >> $GITHUB_OUTPUT
 
       - name: Check if app is a Next.js application
@@ -191,7 +199,6 @@ jobs:
         id: check-next
         run: |
           echo "next-app=true" >> $GITHUB_OUTPUT
-
     outputs:
       hostname: ${{ steps.hostname.outputs.hostname }}
       next-app: ${{ steps.check-next.outputs.next-app }}
@@ -283,7 +290,7 @@ jobs:
           registryUsername: ${{ secrets.registryUserName }}
           registryPassword: ${{ secrets.registryPassword }}
           imageToDeploy: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
-          containerAppName: ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }}
+          containerAppName: ${{ needs.prepare.outputs.jiraTicketIdLc }}-${{ needs.prepare.outputs.urlChecksum }}
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ needs.deploy.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
@@ -353,7 +360,7 @@ jobs:
 
       - name: Delete Azure Resources
         run: |
-          az containerapp delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.repositoryName }}-${{ needs.prepare.outputs.jiraTicketIdLc }} --yes
+          az containerapp delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.jiraTicketIdLc }}-${{ needs.prepare.outputs.urlChecksum }} --yes
           az acr repository delete -n ${{ secrets.registryHostName }} --image ${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }} --yes
 
       - name: Remove Azure B2C Redirect URI
