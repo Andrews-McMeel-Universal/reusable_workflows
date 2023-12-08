@@ -52,58 +52,27 @@ on:
       JIRA_TOKEN:
         required: true
 
+env:
+  githubPrBranch: ${{ github.head_ref }}
+  githubPrTitle: ${{ github.event.pull_request.title }}
+  githubPrDescription: ${{ github.event.pull_request.body }}
+
 jobs:
   prepare:
     name: Preparation Step
-    if: ${{ github.event_name != 'pull_request' && github.event.action != 'closed' }}
+    if: ${{ github.event.action == 'labeled' && startsWith(github.event.label.name, 'preview:') || github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'preview:') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Check if deploy comment exists
-        id: deploy-comment
-        continue-on-error: true
-        run: |
-          COMMENT_BODY="${{ github.event.comment.body }}"
-          if [[ ! "${COMMENT_BODY}" =~ "/deploy" ]] ; then
-            echo "::warning::Comment does not contain '/deploy'. To deploy an ephemeral deployment, please post a comment with '/deploy [ENVIRONMENT]'"
-            exit 1
-          fi
-
-      - name: Get Environment
-        if: steps.deploy-comment.outcome == 'success'
-        id: environment
-        shell: bash
-        run: |
-          COMMENT_BODY="${{ github.event.comment.body }}"
-          ENVIRONMENT="${COMMENT_BODY#/deploy }"
-          if [ -n "${ENVIRONMENT}" ]; then
-            echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
-          else
-            echo "::error::Unable to extract environment from comment. Please post a comment with '/deploy [ENVIRONMENT]'"
-            exit 1
-          fi
-
-      - name: Install jq
-        uses: dcarbone/install-jq-action@v2.1.0
-
-      - name: Get Jira ticket ID from pull request information
+      - name: Get Jira ticket ID
         id: jira-ticket
-        if: ${{ github.event.issue.pull_request }}
         run: |
-          # Use GitHub's REST API to get pull request information
-          PR_NUMBER=${{ github.event.issue.number }}
-          PR_DETAILS=$(curl -H "Authorization: token ${{ secrets.githubPAT }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER")
-
-          # Extract the PR branch (head ref), title, and description (body)
-          PR_BRANCH=$(echo "${PR_DETAILS}" | jq -r '.head.ref' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
-          PR_TITLE=$(echo "${PR_DETAILS}" | jq -r '.title' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
-          PR_DESCRIPTION=$(echo "${PR_DETAILS}" | jq -r '.body' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
+          PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
+          PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
+          PR_DESC=$(echo "${{ env.githubPrDescription }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
 
           echo "PR branch: ${PR_BRANCH}"
           echo "PR title: ${PR_TITLE}"
-
-          for var in ${PR_BRANCH} ${PR_TITLE} ${PR_DESCRIPTION}; do JIRA_TICKET_ID=$(echo $var | grep -E ".") && break ; done
+          for var in ${PR_BRANCH} ${PR_TITLE} ${PR_DESC}; do JIRA_TICKET_ID=$(echo $var | grep -E ".") && break ; done
           if [ -z "${JIRA_TICKET_ID}" ]; then
             echo "::error::A Jira issue key is missing from your branch name, pull request title, and pull request description. Please confirm it is linked properly in the pull request."
             exit 1
@@ -120,6 +89,20 @@ jobs:
           REPOSITORY_NAME="${{ inputs.repositoryName }}"
           REPO_NAME_SHORT=$(echo "${REPOSITORY_NAME:0:21}" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
           echo "repositoryName=${REPO_NAME_SHORT}" >> $GITHUB_OUTPUT
+
+      - name: Get Environment
+        id: environment
+        shell: bash
+        run: |
+          LABEL=$(echo "${{ join(github.event.pull_request.labels.*.name, ' ') }}" | grep -o 'preview:[^ ]*' | head -n 1)
+          if [ -n "${LABEL}" ]; then
+            ENVIRONMENT=${label#preview:}
+            echo "Environment extracted from label: ${ENVIRONMENT}"
+            echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
+          else
+            echo "::error::No 'preview:[ENVIRONMENT]' label found."
+            exit 1
+          fi
     outputs:
       environment: ${{ steps.environment.outputs.environment }}
       jiraTicketId: ${{ steps.jira-ticket.outputs.jiraTicketId }}
@@ -227,7 +210,7 @@ jobs:
         id: get-envs
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
-          environment: ${{  needs.prepare.outputs.environment }}
+          environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
           environmentKeyVault: ${{ inputs.environmentKeyVaultPrefix }}-${{ needs.prepare.outputs.environment }}
           contentTypes: BuildArg Env
