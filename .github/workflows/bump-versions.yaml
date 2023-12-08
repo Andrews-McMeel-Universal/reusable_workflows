@@ -79,7 +79,7 @@ jobs:
           }
 
           echo "release=$release" >> $env:GITHUB_ENV
-          echo "::notice::Bumping version to $release"
+          echo "Bumping version to $release"
 
       - name: Update version in package.json
         if: steps.packagejsonfile.outputs.files_exists == 'true'

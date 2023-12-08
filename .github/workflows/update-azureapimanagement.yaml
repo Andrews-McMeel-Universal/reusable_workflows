@@ -148,7 +148,7 @@ jobs:
             $ApiProductId = "${{ inputs.apiProductId }}"
             $ApiSubscriptionRequired = ${{ inputs.apiSubscriptionRequired }}
 
-            echo "::notice::SwaggerURL: $SwaggerURL"
+            echo "SwaggerURL: $SwaggerURL"
 
             if ("${{ inputs.apiId }}") {
               $ApiId = "${{ inputs.apiId }}"
