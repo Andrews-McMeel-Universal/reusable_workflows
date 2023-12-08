@@ -96,7 +96,7 @@ jobs:
         run: |
           LABEL=$(echo "${{ join(github.event.pull_request.labels.*.name, ' ') }}" | grep -o 'preview:[^ ]*' | head -n 1)
           if [ -n "${LABEL}" ]; then
-            ENVIRONMENT=${label#preview:}
+            ENVIRONMENT=${LABEL#preview:}
             echo "Environment extracted from label: ${ENVIRONMENT}"
             echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
           else
