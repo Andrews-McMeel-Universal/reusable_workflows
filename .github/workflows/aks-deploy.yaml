@@ -407,17 +407,6 @@ jobs:
             "${{ needs.build.outputs.imagePullSecret }}"
           pull-images: false
 
-  update-records:
-    name: Update deployment records
-    needs: [build, deploy]
-    runs-on: ubuntu-latest
-    continue-on-error: false
-    steps:
-      - name: Login via Az module
-        uses: azure/login@v1
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-
       - name: Create or Update Public DNS Record
         id: dns
         run: |
@@ -427,7 +416,7 @@ jobs:
             INGRESS="${{ secrets.azureClusterName }}"
           fi
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
-          # az network dns record-set cname set-record --resource-group "${{ inputs.dnsResourceGroup }}" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
+          az network dns record-set cname set-record --resource-group "${{ inputs.dnsResourceGroup }}" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
@@ -450,8 +439,6 @@ jobs:
           echo "- **Version**: ${{ needs.build.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Key Vault Name**: ${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
           echo "- **FQDN**: ${{ needs.build.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **DNS**: ${{ steps.dns.outputs.aksIngress }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Cluster**: ${{ secrets.azureClusterName }}" >> $GITHUB_STEP_SUMMARY
           echo "- **ConfigSecret**: ${{ needs.build.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
           if [[ -n "${{ needs.build.outputs.configMap }}" ]] ; then
             echo "- **ConfigMap**: ${{ needs.build.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
