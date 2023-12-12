@@ -419,19 +419,6 @@ jobs:
           az network dns record-set cname set-record --resource-group "${{ inputs.dnsResourceGroup }}" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
-    outputs:
-      aksIngress: ${{ steps.dns.outputs.aksIngress }}
-
-  update-records:
-    name: Update deployment records
-    needs: [build, deploy]
-    runs-on: ubuntu-latest
-    continue-on-error: false
-    steps:
-      - name: Login via Az module
-        uses: azure/login@v1
-        with:
-          creds: "${{ secrets.azureCredentials }}"
 
       - name: Record deployment information in Azure Storage Table
         uses: LadyCailin/azure-table-storage-upload@v1.0.1
@@ -439,7 +426,7 @@ jobs:
           table_name: "${{ inputs.appInfoTableName }}"
           partition_key: "${{ inputs.repositoryName }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ needs.deploy.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
+          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ steps.dns.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
           if_exists: "replace"
           extra_args: ""
           connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
@@ -452,8 +439,6 @@ jobs:
           echo "- **Version**: ${{ needs.build.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Key Vault Name**: ${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
           echo "- **FQDN**: ${{ needs.build.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **DNS**: ${{ needs.deploy.outputs.aksIngress }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Cluster**: ${{ secrets.azureClusterName }}" >> $GITHUB_STEP_SUMMARY
           echo "- **ConfigSecret**: ${{ needs.build.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
           if [[ -n "${{ needs.build.outputs.configMap }}" ]] ; then
             echo "- **ConfigMap**: ${{ needs.build.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
