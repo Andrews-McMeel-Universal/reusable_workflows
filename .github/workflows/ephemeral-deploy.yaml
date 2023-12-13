@@ -60,7 +60,6 @@ env:
 jobs:
   prepare:
     name: Preparation Step
-    if: ${{ github.event.action == 'labeled' && startsWith(github.event.label.name, 'preview:') || github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'preview:') }}
     runs-on: ubuntu-latest
     steps:
       - name: Get Jira ticket ID
@@ -119,6 +118,7 @@ jobs:
 
   deploy:
     name: Deploy Azure Container Instance
+    if: github.event_name == 'pull_request' && ((github.event.action == 'labeled' && startsWith(github.event.label.name, 'preview:')) || (contains(github.event.pull_request.labels.*.name, 'preview:development') || contains(github.event.pull_request.labels.*.name, 'preview:staging') || contains(github.event.pull_request.labels.*.name, 'preview:production')))
     needs: [prepare]
     runs-on: ubuntu-latest
     environment:
