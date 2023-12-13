@@ -118,7 +118,7 @@ jobs:
 
   deploy:
     name: Deploy Azure Container Instance
-    if: ${{ github.event_name == 'pull_request' && ((github.event.action == 'labeled' && startsWith(github.event.label.name, 'preview:')) || contains(github.event.pull_request.labels.*.name, 'preview:')) }}
+    if: startsWith(github.event.label.name, 'preview:') || contains(github.event.pull_request.labels.*.name, 'preview:')
     needs: [prepare]
     runs-on: ubuntu-latest
     environment:
