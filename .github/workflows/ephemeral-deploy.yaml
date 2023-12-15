@@ -82,13 +82,6 @@ jobs:
           echo "jiraTicketIdLc=${JIRA_TICKET_ID_LC}" >> $GITHUB_OUTPUT
           echo "jiraTicketId=${JIRA_TICKET_ID}" >> $GITHUB_OUTPUT
 
-      - name: Fix repository name
-        id: repository-name
-        run: |
-          REPOSITORY_NAME="${{ inputs.repositoryName }}"
-          REPO_NAME_SHORT=$(echo "${REPOSITORY_NAME:0:21}" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
-          echo "repositoryName=${REPO_NAME_SHORT}" >> $GITHUB_OUTPUT
-
       - name: Get Environment
         id: environment
         shell: bash
@@ -106,15 +99,14 @@ jobs:
       - name: Generate container app name
         id: checksum
         run: |
-          CHECKSUM=$(echo -n '${{ steps.repository-name.outputs.repositoryName }}-${{ steps.jira-ticket.outputs.jiraTicketIdLc }}' | sha256sum | awk '{print $1}')
-          URL="${{ steps.jira-ticket.outputs.jiraTicketIdLc }}-${CHECKSUM}"
-          SHORT_URL=${URL:0:32}
-          echo "containerAppName=${SHORT_URL}" >> $GITHUB_OUTPUT
+          CHECKSUM=$(echo -n '${{ inputs.repositoryName }}-${{ steps.jira-ticket.outputs.jiraTicketIdLc }}' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g' | sed 's/--/-/g' | sed 's/^-//;s/-$//' | cut -c1-31 | md5sum | cut -d' ' -f1 | sed 's/^\([0-9]\)/a\1/')
+          SHORT_CHECKSUM=${CHECKSUM:0:20}
+          CONTAINER_APP_NAME="${SHORT_CHECKSUM}-${{ steps.jira-ticket.outputs.jiraTicketIdLc }}"
+          echo "containerAppName=${CONTAINER_APP_NAME}" >> $GITHUB_OUTPUT
     outputs:
       environment: ${{ steps.environment.outputs.environment }}
       jiraTicketId: ${{ steps.jira-ticket.outputs.jiraTicketId }}
       jiraTicketIdLc: ${{ steps.jira-ticket.outputs.jiraTicketIdLc }}
-      repositoryName: ${{ steps.repository-name.outputs.repositoryName }}
       containerAppName: ${{ steps.checksum.outputs.containerAppName }}
 
   deploy:
