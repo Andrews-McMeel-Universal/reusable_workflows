@@ -107,9 +107,9 @@ jobs:
         id: checksum
         run: |
           CHECKSUM=$(echo -n '${{ steps.repository-name.outputs.repositoryName }}-${{ steps.jira-ticket.outputs.jiraTicketIdLc }}' | sha256sum | awk '{print $1}')
-          URL="${{ steps.jira-ticket.outputs.jiraTicketIdLc }}-${CHECKSUM}"
-          SHORT_URL=${URL:0:32}
-          echo "containerAppName=${SHORT_URL}" >> $GITHUB_OUTPUT
+          SHORT_CHECKSUM=${CHECKSUM:0:16}
+          CONTAINER_APP_NAME="${SHORT_CHECKSUM}-${{ steps.jira-ticket.outputs.jiraTicketIdLc }}"
+          echo "containerAppName=${CONTAINER_APP_NAME}" >> $GITHUB_OUTPUT
     outputs:
       environment: ${{ steps.environment.outputs.environment }}
       jiraTicketId: ${{ steps.jira-ticket.outputs.jiraTicketId }}
