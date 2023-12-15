@@ -175,6 +175,7 @@ jobs:
 
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
+          echo "alreadyDeployed=true" >> $GITHUB_OUTPUT
 
       - name: Remove keys from environment variables
         id: remove-prime-keys
@@ -230,10 +231,11 @@ jobs:
       hostname: ${{ steps.hostname.outputs.hostname }}
       next-app: ${{ steps.check-next.outputs.next-app }}
       targetPort: ${{ steps.target-port.outputs.targetPort }}
+      alreadyDeployed: ${{ steps.next-vars.outputs.alreadyDeployed }}
 
   update-next-deploy:
     name: Update Next.js Container App
-    if: ${{ needs.deploy.outputs.next-app == 'true' }}
+    if: ${{ needs.deploy.outputs.next-app == 'true' && needs.deploy.outputs.alreadyDeployed != 'true' }}
     needs: [prepare,deploy]
     runs-on: ubuntu-latest
     steps:
