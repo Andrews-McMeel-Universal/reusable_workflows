@@ -207,7 +207,7 @@ jobs:
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ steps.target-port.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
-          environmentVariables: ${{ steps.remove-prime-keys.outputs.environmentVariables || steps.get-envs.outputs.environmentVariables }}
+          environmentVariables: ${{ steps.remove-prime-keys.outputs.environmentVariables || steps.next-vars.outputs.environmentVariables || steps.get-envs.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
 
