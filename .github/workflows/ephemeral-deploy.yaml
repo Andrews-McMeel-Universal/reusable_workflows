@@ -192,7 +192,7 @@ jobs:
 
       - name: Build & Push Docker Image
         run: |
-          docker buildx build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
+          docker buildx build ${{ steps.remove-prime-keys.outputs.buildArguments || steps.next-vars.outputs.buildArguments || steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Deploy Azure Container App
