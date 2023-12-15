@@ -151,7 +151,7 @@ jobs:
         id: next-vars
         run: |
           BASE_URL="${{ env.BASE_URL || env.NEXT_PUBLIC_BASE_URL || env.NEXTAUTH_URL }}"
-          HOSTNAME="${{ steps.already-deployed.outputs.existingAppUrl }}"
+          HOSTNAME="${{ steps.check-deploy.outputs.existingAppUrl }}"
           ENVIRONMENT_VARIABLES=""
           BUILDARGS=""
 
