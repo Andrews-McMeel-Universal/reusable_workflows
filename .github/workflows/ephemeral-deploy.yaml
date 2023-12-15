@@ -170,7 +170,7 @@ jobs:
               if echo "${VAR}" | grep -Eq "localhost|${BASE_URL}";then
                   VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
               fi
-              BUILDARGS="${BUILDARGS} --build-arg ${VAR}"
+              BUILDARGS="${BUILDARGS} ${VAR}"
           done
 
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
