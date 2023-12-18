@@ -137,6 +137,46 @@ jobs:
           TARGET_PORT=$(find . -iname "values.yaml" -exec grep "targetPort: " {} \; | awk -F ': ' '{print $2}' | uniq)
           echo "targetPort=${TARGET_PORT}" >> $GITHUB_OUTPUT
 
+      - name: Check if Next.js app has already been deployed
+        if: contains(steps.get-envs.outputs.environmentVariables, 'BASE_URL')
+        id: check-deploy
+        run: |
+          HOSTNAME=$(az containerapp list --query "[?name == '${{ needs.prepare.outputs.containerAppName }}'].properties.configuration.ingress.fqdn" -o tsv)
+          if [[ -n "${HOSTNAME}" ]]; then
+            echo "existingAppUrl=https://${HOSTNAME}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update Next URL variables with existing container app URL
+        if: contains(steps.get-envs.outputs.environmentVariables, 'BASE_URL') && steps.check-deploy.outputs.existingAppUrl
+        id: next-vars
+        run: |
+          BASE_URL="${{ env.BASE_URL || env.NEXT_PUBLIC_BASE_URL || env.NEXTAUTH_URL }}"
+          HOSTNAME="${{ steps.check-deploy.outputs.existingAppUrl }}"
+          ENVIRONMENT_VARIABLES=""
+          BUILDARGS=""
+
+          # Replace URL in ENVIRONMENT_VARIABLES
+          IFS=' ' read -r -a ENVVARS_ARRAY <<< "${{ steps.get-envs.outputs.environmentVariables }}"
+          for VAR in "${ENVVARS_ARRAY[@]}"; do
+              if echo "${VAR}" | grep -Eq "localhost|${BASE_URL}";then
+                  VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
+              fi
+              ENVIRONMENT_VARIABLES+="${VAR} "
+          done
+
+          # Replace URL in BUILDARGS
+          IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
+          for VAR in "${BUILDARGS_ARRAY[@]}"; do
+              if echo "${VAR}" | grep -Eq "localhost|${BASE_URL}";then
+                  VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
+              fi
+              BUILDARGS="${BUILDARGS} ${VAR}"
+          done
+
+          echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
+          echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
+          echo "alreadyDeployed=true" >> $GITHUB_OUTPUT
+
       - name: Remove keys from environment variables
         id: remove-prime-keys
         if: contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PUBLIC_KEY') || contains(steps.get-envs.outputs.environmentVariables, 'PRIME_PRIVATE_KEY')
@@ -151,14 +191,9 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-        with:
-          install: true
-
       - name: Build & Push Docker Image
         run: |
-          docker buildx build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
+          docker buildx build ${{ steps.remove-prime-keys.outputs.buildArguments || steps.next-vars.outputs.buildArguments || steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
           docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
 
       - name: Deploy Azure Container App
@@ -173,7 +208,7 @@ jobs:
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ steps.target-port.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
-          environmentVariables: ${{ steps.remove-prime-keys.outputs.environmentVariables || steps.get-envs.outputs.environmentVariables }}
+          environmentVariables: ${{ steps.remove-prime-keys.outputs.environmentVariables || steps.next-vars.outputs.environmentVariables || steps.get-envs.outputs.environmentVariables }}
           ingress: external
           disableTelemetry: true
 
@@ -196,10 +231,11 @@ jobs:
       hostname: ${{ steps.hostname.outputs.hostname }}
       next-app: ${{ steps.check-next.outputs.next-app }}
       targetPort: ${{ steps.target-port.outputs.targetPort }}
+      alreadyDeployed: ${{ steps.next-vars.outputs.alreadyDeployed }}
 
   update-next-deploy:
     name: Update Next.js Container App
-    if: ${{ needs.deploy.outputs.next-app == 'true' }}
+    if: ${{ needs.deploy.outputs.next-app == 'true' && needs.deploy.outputs.alreadyDeployed != 'true' }}
     needs: [prepare,deploy]
     runs-on: ubuntu-latest
     steps:
@@ -218,7 +254,7 @@ jobs:
       - name: Update Next URL variables
         id: next-vars
         run: |
-          REPOSITORY_NAME=$(echo "${{ github.event.repository.name }}" | awk -F '_' '{print $1}' | tr -d "-")
+          BASE_URL="${{ env.BASE_URL || env.NEXT_PUBLIC_BASE_URL || env.NEXTAUTH_URL }}"
           HOSTNAME="${{ needs.deploy.outputs.hostname }}"
           ENVIRONMENT_VARIABLES=""
           BUILDARGS=""
@@ -226,7 +262,7 @@ jobs:
           # Replace URL in ENVIRONMENT_VARIABLES
           IFS=' ' read -r -a ENVVARS_ARRAY <<< "${{ steps.get-envs.outputs.environmentVariables }}"
           for VAR in "${ENVVARS_ARRAY[@]}"; do
-              if echo "${VAR}" | grep -Eq "localhost|${REPOSITORY_NAME}.com";then
+              if echo "${VAR}" | grep -Eq "localhost|${BASE_URL}";then
                   VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
               fi
               ENVIRONMENT_VARIABLES+="${VAR} "
@@ -235,7 +271,7 @@ jobs:
           # Replace URL in BUILDARGS
           IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
           for VAR in "${BUILDARGS_ARRAY[@]}"; do
-              if echo "${VAR}" | grep -Eq "localhost|${REPOSITORY_NAME}.com";then
+              if echo "${VAR}" | grep -Eq "localhost|${BASE_URL}";then
                   VAR=$(echo "${VAR}" | awk -F '=' '{print $1}' | sed "s|$|=${HOSTNAME}|g")
               fi
               BUILDARGS="${BUILDARGS} --build-arg ${VAR}"
@@ -243,13 +279,6 @@ jobs:
 
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
-
-      - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1
-        with:
-          login-server: ${{ secrets.registryHostName }}
-          username: ${{ secrets.registryUserName }}
-          password: ${{ secrets.registryPassword }}
 
       - name: Remove keys from variables
         id: remove-prime-keys
@@ -260,10 +289,12 @@ jobs:
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+      - name: Login to Azure Container Registry
+        uses: Azure/docker-login@v1
         with:
-          install: true
+          login-server: ${{ secrets.registryHostName }}
+          username: ${{ secrets.registryUserName }}
+          password: ${{ secrets.registryPassword }}
 
       - name: Build & Push Docker Image with updated Next.js variables
         run: |
