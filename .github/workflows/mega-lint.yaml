@@ -38,6 +38,7 @@ jobs:
   lint-cupcake:
     name: Run MegaLinter Cupcake
     if: ${{ inputs.LINT_FLAVOR == 'cupcake' }}
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -104,6 +105,7 @@ jobs:
   lint-dotnet:
     name: Run MegaLinter Dotnet
     if: ${{ inputs.LINT_FLAVOR == 'dotnet' }}
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
