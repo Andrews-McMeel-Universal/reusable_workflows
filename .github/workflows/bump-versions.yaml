@@ -112,7 +112,7 @@ jobs:
             - `**/Charts.yaml`
             - `**/package.json`
           labels: |
-            maintenance
+            ${{ inputs.releaseType }}
 
       - name: Auto Approve Version Update PR
         uses: hmarr/auto-approve-action@v3
