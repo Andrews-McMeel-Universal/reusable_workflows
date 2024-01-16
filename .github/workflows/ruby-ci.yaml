@@ -13,9 +13,9 @@ on:
         description: "Apt packages to install"
       INSTALL_NODE:
         required: false
-        type: boolean
+        type: string
         description: "Whether to install Node.js or not"
-        default: false
+        default: 'false'
       NODE_VERSION:
         required: false
         type: string
@@ -45,7 +45,7 @@ jobs:
 
       - name: Set up Node
         uses: actions/setup-node@v3
-        if: ${{ inputs.INSTALL_NODE == true }}
+        if: ${{ inputs.INSTALL_NODE == 'true' }}
         with:
           node-version: ${{ inputs.NODE_VERSION }}
 
