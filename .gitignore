@@ -766,3 +766,4 @@ terraform/.terraform/
 terraform/*.tfstate*
 terraform/*.tfplan
 terraform/variables.tf
+terraform/*.key

@@ -44,10 +44,31 @@ updates:
       - "front-end"
       - "dependencies"
     versioning-strategy: increase
-    open-pull-requests-limit: 10
     commit-message:
       # Prefix all commit messages with 'npm'
       prefix: "npm"
+    # Create a group of dependencies to be updated together in one pull request
+    groups:
+      # Specify a name for the group, which will be used in pull request titles
+      # and branch names
+      dependencies-major:
+        # Open a PR with all major version updates from "dependencies" in package.json
+        dependency-type: "production"
+        update-types:
+        - "major"
+      dependencies-minor:
+        # Open a PR with all minor version updates from "dependencies" in package.json
+        dependency-type: "production"
+        update-types:
+        - "minor"
+      dependencies-patch:
+        # Open a PR with all patch version updates from "dependencies" in package.json
+        dependency-type: "production"
+        update-types:
+        - "patch"
+      devDependencies:
+        # Open a PR with all updates from "devDependencies" in package.json
+        dependency-type: "development"
 
   - package-ecosystem: bundler
     directory: "/"
