@@ -9,9 +9,9 @@ on:
         description: Type of release
       environmentCharts:
         required: false
-        type: boolean
+        type: string
         description: Set to true if the repository has separate Helm chart directories for each environment
-        default: false
+        default: 'false'
     secrets:
       PAT_ACTION_CI:
         required: false
@@ -29,7 +29,7 @@ jobs:
         uses: thebritican/fetch-latest-release@v2.0.0
 
       - name: Get Chart.yaml appVersion
-        if: inputs.environmentCharts == false
+        if: inputs.environmentCharts == 'false'
         id: chartyaml
         uses: rmeneely/get-yaml-value@v1
         with:
@@ -37,7 +37,7 @@ jobs:
           varlist: appVersion
 
       - name: Get Environment Chart.yaml appVersion
-        if: inputs.environmentCharts == true
+        if: inputs.environmentCharts == 'true'
         id: environmentchartyaml
         uses: rmeneely/get-yaml-value@v1
         with:
