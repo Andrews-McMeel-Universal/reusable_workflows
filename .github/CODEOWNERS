@@ -25,10 +25,6 @@
 # **/*.tsx                        @Andrews-McMeel-Universal/front-end-engineers
 # .nvmrc                          @Andrews-McMeel-Universal/front-end-engineers
 # .npmrc                          @Andrews-McMeel-Universal/front-end-engineers
-# yarn.lock                       @Andrews-McMeel-Universal/front-end-engineers
-# Gemfile.lock                    @Andrews-McMeel-Universal/front-end-engineers
-# Gemfile                         @Andrews-McMeel-Universal/front-end-engineers
-# package*.json                   @Andrews-McMeel-Universal/front-end-engineers
 # public/                         @Andrews-McMeel-Universal/front-end-engineers
 # src/                            @Andrews-McMeel-Universal/front-end-engineers
 # .storybook/                     @Andrews-McMeel-Universal/front-end-engineers
@@ -56,9 +52,10 @@
 
 # DevOps
 .github/                        @Andrews-McMeel-Universal/devops-engineers
-deployments/                    @Andrews-McMeel-Universal/devops-engineers
-*.ps1                           @Andrews-McMeel-Universal/devops-engineers
-Secrets-example.json            @Andrews-McMeel-Universal/devops-engineers
+deployments/**/templates/       @Andrews-McMeel-Universal/devops-engineers
+deployments/**/.helmignore      @Andrews-McMeel-Universal/devops-engineers
+deployments/**/values.yaml      @Andrews-McMeel-Universal/devops-engineers
+*-Secrets.ps1                   @Andrews-McMeel-Universal/devops-engineers
 Dockerfile                      @Andrews-McMeel-Universal/devops-engineers
 docker-compose.yml              @Andrews-McMeel-Universal/devops-engineers
 .nvmrc*                         @Andrews-McMeel-Universal/devops-engineers

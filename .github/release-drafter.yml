@@ -1,0 +1,94 @@
+name-template: '$RESOLVED_VERSION'
+tag-template: '$RESOLVED_VERSION'
+categories:
+  - title: 🐛 Fixes
+    labels:
+      - 'bug'
+  - title: 📝 Documentation
+    labels:
+      - 'documentation'
+  - title: 🔨 Maintenance
+    labels: 
+      - 'tools'
+      - 'tests'
+      - 'dependencies'
+  - title: 🔐 DevOps
+    labels:
+      - 'sync'
+      - 'devops'
+exclude-labels:
+  - 'skip-changelog'
+change-template: '- $TITLE by @$AUTHOR in #$NUMBER'
+change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
+exclude-contributors:
+  - 'dependabot[bot]'
+  - 'amutechtest'
+  - 'github-actions'
+autolabeler:
+  - label: 'documentation'
+    files:
+      - '**/*.md'
+  - label: 'dependencies'
+    files:
+      - "{yarn,Gemfile}.lock"
+      - "package*.json"
+      - "Gemfile"
+      - ".ruby-{version,gemset}"
+      - "**/*.csproj"
+      - "**/pnpm-lock.yaml"
+      - ".yarn/"
+      - ".{npm,nvm}rc"
+  - label: 'front-end'
+    files:
+      - "**/*.{js,js.html,jsx,ts,tsx,html,css,less,scss,sass,otf,eot,ttf,woff*}"
+      - "public/"
+      - "src/"
+      - "wp-content/"
+      - ".storybook/"
+      - "package.json"
+      - "!/.vscode"
+      - "!/.devcontainer"
+      - "!**/*.test.js"
+  - label: 'back-end'
+    files:
+      - "**/*.{cs,sln,csproj,rb,ru}"
+  - label: 'tools'
+    files:
+      - "/.vscode"
+      - "/.devcontainer"
+      - "stylelint.config.js"
+      - ".{prettierrc,size-limit,eslintrc}.js"
+      - ".{yamllint,yarnrc,mega-linter,solargraph,postcssrc,erb-lint,rubocop}.yml"
+      - ".{jscpd,markdownlint,babel.config,prettierrc,eslintrc,stylelintrc}.json"
+  - label: 'tests'
+    files:
+      - "playwright/**"
+      - "cypress/**"
+      - ".spec.*"
+      - "*.test.js"
+      - "{jest,playwright}.*.js"
+  - label: 'devops'
+    files:
+      - ".github/"
+      - "deployments/"
+      - "*.ps1"
+      - "Secrets-example.json"
+      - "docker-compose.yml"
+      - "Dockerfile"
+version-resolver:
+  major:
+    labels:
+      - 'major'
+  minor:
+    labels:
+      - 'minor'
+  patch:
+    labels:
+      - 'patch'
+  default: patch
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...$RESOLVED_VERSION
