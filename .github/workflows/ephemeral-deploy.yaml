@@ -322,6 +322,10 @@ jobs:
           ingress: external
           disableTelemetry: true
 
+      - name: Set minimum replicas to 1
+        run: |
+          az containerapp update --name "${{ needs.prepare.outputs.containerAppName }}" --resource-group "${{ inputs.clusterResourceGroup }}" --min-replicas 1
+
       - name: Add B2C Redirect URI
         run: |
           az login --service-principal --username "${{ env.B2C_CLIENT_ID }}" --password "${{ env.B2C_CLIENT_SECRET }}" --tenant "${{ env.B2C_TENANT_NAME || env.NEXT_PUBLIC_B2C_TENANT_NAME }}.onmicrosoft.com" --allow-no-subscriptions
