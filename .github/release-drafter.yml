@@ -75,6 +75,7 @@ autolabeler:
       - "Secrets-example.json"
       - "docker-compose.yml"
       - "Dockerfile"
+include-pre-releases: true
 version-resolver:
   major:
     labels:
