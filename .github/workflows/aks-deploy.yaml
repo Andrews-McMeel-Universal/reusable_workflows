@@ -11,21 +11,11 @@ on:
         required: false
         type: string
         description: "AKS Key vault."
-      repositoryName:
-        required: false
-        type: string
-        description: "GitHub Repository Name."
-        default: "${{ github.event.repository.name }}"
       clusterResourceGroup:
         required: false
         type: string
         description: "AKS Cluster Resource Group."
         default: "AMU_AKS_201"
-      dnsResourceGroup:
-        required: false
-        type: string
-        description: "DNS Resource Group."
-        default: "AMU_DNS_RG"
       chartsPath:
         required: false
         type: string
@@ -36,31 +26,11 @@ on:
         type: string
         description: "Relative path to Dockerfile."
         default: "."
-      dockerImageName:
-        required: false
-        type: string
-        description: "Docker image name."
-        default: "${{ github.event.repository.name }}"
-      dockerImageTag:
-        required: false
-        type: string
-        description: "Docker image tag."
-        default: "${{ github.event.release.tag_name || github.sha }}"
       maximumReplicas:
         required: false
         type: string
         description: "Maximum number of replicas for the application HPA."
         default: "30"
-      storageAccountName:
-        required: false
-        type: string
-        description: "Storage Account for application information table."
-        default: "amucloudapps"
-      appInfoTableName:
-        required: false
-        type: string
-        description: "Application information storage table."
-        default: "DeployedApplications"
       deploymentTimeout:
         required: false
         type: number
@@ -208,6 +178,19 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           contentTypes: BuildArg Env
 
+      - name: Build Docker Image
+        run: docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}" ${{ inputs.dockerFilePath }}
+
+      - name: Tag Docker Image
+        run: |
+          if [[ "${{ inputs.environment }}" == "production" ]] ; then
+            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:latest"
+          fi
+          if [[ "${{ github.event.release.tag_name || github.sha }}" == "${{ github.event.release.tag_name }}" ]]; then
+            MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
+            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${MAJOR_RELEASE}"
+          fi
+
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
@@ -215,17 +198,8 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
-      - name: Build & Push Docker Image
-        run: |
-          docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" ${{ inputs.dockerFilePath }}
-          if [[ "${{ inputs.environment }}" == "production" ]] ; then
-            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:latest"
-          fi
-          if [[ "${{ inputs.dockerImageTag }}" == "${{ github.event.release.tag_name }}" ]]; then
-            MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            docker tag "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}" "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${MAJOR_RELEASE}"
-          fi
-          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
+      - name: Push Docker Image
+        run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
 
       - name: Create values override file
         run: |
@@ -294,8 +268,8 @@ jobs:
           helm-version: "latest"
           overrideFiles: ./values-override.yaml
           overrides: |
-            image.repository:${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}
-            image.tag:${{ inputs.dockerImageTag }}
+            image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
+            image.tag:${{ github.event.release.tag_name || github.sha }}
             ingress.host:${{ env.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
 
@@ -366,7 +340,7 @@ jobs:
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
-      - name: Add GitHub secrets to k8s
+      - name: Update environment variables Kubernetes Secret
         shell: pwsh
         run: |
           if (kubectl get secret | Select-String "${{ needs.build.outputs.configSecret }}") {
@@ -374,6 +348,9 @@ jobs:
           }
           kubectl create secret generic "${{ needs.build.outputs.configSecret }}" --from-env-file .env
 
+      - name: Update basic web authentication Kubernetes secret
+        shell: pwsh
+        run: |
           if ( "${{ inputs.webAuthentication }}" -eq "true") {
               if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
                   Write-Output "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
@@ -402,7 +379,7 @@ jobs:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ needs.build.outputs.manifestsBundle }}
           images: |
-            "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ inputs.dockerImageTag }}"
+            "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}"
           imagepullsecrets: |
             "${{ needs.build.outputs.imagePullSecret }}"
           pull-images: false
@@ -416,20 +393,20 @@ jobs:
             INGRESS="${{ secrets.azureClusterName }}"
           fi
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
-          az network dns record-set cname set-record --resource-group "${{ inputs.dnsResourceGroup }}" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
+          az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
       - name: Record deployment information in Azure Storage Table
         uses: LadyCailin/azure-table-storage-upload@v1.0.1
         with:
-          table_name: "${{ inputs.appInfoTableName }}"
-          partition_key: "${{ inputs.repositoryName }}"
+          table_name: "DeployedApplications"
+          partition_key: "${{ github.event.repository.name }}"
           row_key: "${{ inputs.environment }}"
           data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ steps.dns.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
           if_exists: "replace"
           extra_args: ""
-          connection_string: "AccountName=${{ inputs.storageAccountName }};AccountKey=${{ secrets.storageAccountKey }}"
+          connection_string: "AccountName=amucloudapps;AccountKey=${{ secrets.storageAccountKey }}"
 
       - name: Create deployment summary
         run: |
