@@ -35,11 +35,11 @@ jobs:
         id: prettier-configs
         uses: andstor/file-existence-action@v2
         with:
-          files: ".prettierrc.js,.prettierc.json"
+          files: ".prettierrc.js, .prettierrc.json"
 
       - name: Run prettier with configuration files
         uses: creyD/prettier_action@v4.3
-        if: ${{ steps.prettier-configs.outputs.files_exists }}
+        if: ${{ steps.prettier-configs.outputs.files_exists == 'true' }}
         with:
           prettier_options: --write . --config ./.prettierrc.js --config ./.prettierrc.json --ignore-path ./.prettierignore
           prettier_plugins: ${{ inputs.prettierPlugins }}
@@ -50,7 +50,7 @@ jobs:
 
       - name: Run prettier
         uses: creyD/prettier_action@v4.3
-        if: ${{ ! steps.prettier-configs.outputs.files_exists }}
+        if: ${{ steps.prettier-configs.outputs.files_exists != 'true' }}
         with:
           prettier_options: --write . --ignore-path ./.prettierignore
           prettier_plugins: ${{ inputs.prettierPlugins }}
