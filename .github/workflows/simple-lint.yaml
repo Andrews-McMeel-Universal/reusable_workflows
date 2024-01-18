@@ -37,7 +37,7 @@ jobs:
         with:
           files: ".prettierrc.js"
 
-      - name: Check if .prettierrc.json files exists
+      - name: Check if .prettierrc.json file exists
         id: prettier-config-json
         uses: andstor/file-existence-action@v2
         with:
@@ -48,17 +48,15 @@ jobs:
         if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' || steps.prettier-config-json.outputs.files_exists == 'true' }}
         with:
           prettier_options: --write . --config ./.prettierrc.js --config ./.prettierrc.json --ignore-path ./.prettierignore
-          prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
           github_token: ${{ secrets.PAT_ACTION_CI }}
           only_changed: true
 
-      - name: Run prettier
+      - name: Run prettier without configuration files
         uses: creyD/prettier_action@v4.3
         if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
         with:
           prettier_options: --write . --ignore-path ./.prettierignore
-          prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
           github_token: ${{ secrets.PAT_ACTION_CI }}
           only_changed: true
