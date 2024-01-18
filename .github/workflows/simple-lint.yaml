@@ -27,8 +27,9 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI }}
           ref: ${{ github.head_ref }}
 
-      - if: ${{ inputs.prettierPlugins }}
-        run: yarn install --production=false || NODE_ENV=development yarn install
+      - name: Install prettier modules
+        if: ${{ inputs.prettierPlugins }}
+        run: yarn add ${{ inputs.prettierPlugins }}
 
       - name: Check if prettier configuration files exists
         id: prettier-configs
@@ -42,9 +43,10 @@ jobs:
         with:
           prettier_options: --write . --config ./.prettierrc.js --config ./.prettierrc.json --ignore-path ./.prettierignore
           prettier_plugins: ${{ inputs.prettierPlugins }}
-          commit_message: Apply prettier changes
+          commit_message: "[Simple Linter] Apply prettier changes"
           github_token: ${{ secrets.PAT_ACTION_CI }}
           only_changed: true
+          working_directory: ${{ github.workspace }}
 
       - name: Run prettier
         uses: creyD/prettier_action@v4.3
@@ -52,9 +54,10 @@ jobs:
         with:
           prettier_options: --write . --ignore-path ./.prettierignore
           prettier_plugins: ${{ inputs.prettierPlugins }}
-          commit_message: Apply prettier changes
+          commit_message: "[Simple Linter] Apply prettier changes"
           github_token: ${{ secrets.PAT_ACTION_CI }}
           only_changed: true
+          working_directory: ${{ github.workspace }}
 
   lint-workflows:
     name: Workflow linter
