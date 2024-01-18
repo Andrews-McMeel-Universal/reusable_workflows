@@ -31,6 +31,15 @@ jobs:
         if: ${{ inputs.prettierPlugins }}
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
 
+      - name: Set prettier plugin arguments
+        id: prettier-plugins
+        if: ${{ inputs.prettierPlugins }}
+        run: |
+          for PLUGIN in (${{ inputs.prettierPlugins }}); do
+            PRETTIER_PLUGINS="$PRETTIER_PLUGINS --plugin $PLUGIN"
+          done
+          echo "prettierPlugins=$PRETTIER_PLUGINS" >> $GITHUB_OUTPUT
+
       - name: Check if .prettierrc.js file exists
         id: prettier-config-js
         uses: andstor/file-existence-action@v2
@@ -47,13 +56,13 @@ jobs:
         uses: actionsx/prettier@v3
         if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' }}
         with:
-          args: --write . --ignore-path ./.prettierignore --config ./.prettierrc.js
+          args: --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
 
       - name: Run prettier with .prettierrc.json configuration
         uses: actionsx/prettier@v3
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
         with:
-          args: --write . --ignore-path ./.prettierignore --config ./.prettierrc.json
+          args: --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
 
       - name: Run prettier without any configuration files
         uses: actionsx/prettier@v3
