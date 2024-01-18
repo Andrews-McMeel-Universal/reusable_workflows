@@ -54,11 +54,21 @@ jobs:
 
       - name: Run prettier with .prettierrc.js configuration
         if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' }}
-        run: yarn run prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+        uses: creyD/prettier_action@v4.3
+        with:
+          prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+          prettier_plugins: ${{ inputs.prettierPlugins }}
+          commit_message: "[Simple Linter] Apply prettier changes"
+          only_changed: true
 
       - name: Run prettier with .prettierrc.json configuration
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
-        run: yarn run prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+        uses: creyD/prettier_action@v4.3
+        with:
+          prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+          prettier_plugins: ${{ inputs.prettierPlugins }}
+          commit_message: "[Simple Linter] Apply prettier changes"
+          only_changed: true
 
       - name: Run prettier without any configuration files
         uses: actionsx/prettier@v3
