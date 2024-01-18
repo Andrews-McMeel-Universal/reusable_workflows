@@ -27,9 +27,9 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI }}
           ref: ${{ github.head_ref }}
 
-      - name: Install prettier modules
+      - name: Run yarn install
         if: ${{ inputs.prettierPlugins }}
-        run: NODE_ENV=development yarn install
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
 
       - name: Check if .prettierrc.js file exists
         id: prettier-config-js
