@@ -31,15 +31,21 @@ jobs:
         if: ${{ inputs.prettierPlugins }}
         run: yarn add ${{ inputs.prettierPlugins }}
 
-      - name: Check if prettier configuration files exists
-        id: prettier-configs
+      - name: Check if .prettierrc.js file exists
+        id: prettier-config-js
         uses: andstor/file-existence-action@v2
         with:
-          files: ".prettierrc.js, .prettierrc.json"
+          files: ".prettierrc.js"
+
+      - name: Check if .prettierrc.json files exists
+        id: prettier-config-json
+        uses: andstor/file-existence-action@v2
+        with:
+          files: ".prettierrc.json"
 
       - name: Run prettier with configuration files
         uses: creyD/prettier_action@v4.3
-        if: ${{ steps.prettier-configs.outputs.files_exists == 'true' }}
+        if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' || steps.prettier-config-json.outputs.files_exists == 'true' }}
         with:
           prettier_options: --write . --config ./.prettierrc.js --config ./.prettierrc.json --ignore-path ./.prettierignore
           prettier_plugins: ${{ inputs.prettierPlugins }}
@@ -50,7 +56,7 @@ jobs:
 
       - name: Run prettier
         uses: creyD/prettier_action@v4.3
-        if: ${{ steps.prettier-configs.outputs.files_exists != 'true' }}
+        if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
         with:
           prettier_options: --write . --ignore-path ./.prettierignore
           prettier_plugins: ${{ inputs.prettierPlugins }}
