@@ -38,7 +38,7 @@ jobs:
 
       - name: Run prettier with configuration files
         uses: creyD/prettier_action@v4.3
-        if: steps.prettier-configs.outputs.files_exists
+        if: ${{ steps.prettier-configs.outputs.files_exists }}
         with:
           prettier_options: --write . --config ./.prettierrc.js --config ./.prettierrc.json
           prettier_plugins: ${{ inputs.prettierPlugins }}
@@ -47,7 +47,7 @@ jobs:
 
       - name: Run prettier
         uses: creyD/prettier_action@v4.3
-        if: ! steps.prettier-configs.outputs.files_exists
+        if: ${{ ! steps.prettier-configs.outputs.files_exists }}
         with:
           prettier_options: --write .
           prettier_plugins: ${{ inputs.prettierPlugins }}
