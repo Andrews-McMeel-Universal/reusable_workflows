@@ -29,7 +29,9 @@ jobs:
 
       - name: Install prettier modules
         if: ${{ inputs.prettierPlugins }}
-        run: yarn add ${{ inputs.prettierPlugins }}
+        env:
+          NODE_ENV: development
+        run: yarn install
 
       - name: Check if .prettierrc.js file exists
         id: prettier-config-js
