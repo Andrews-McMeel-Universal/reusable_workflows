@@ -71,14 +71,12 @@ jobs:
           only_changed: true
 
       - name: Run prettier without any configuration files
-        uses: actionsx/prettier@v3
         if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
+        uses: creyD/prettier_action@v4.3
         with:
-          args: --write . --ignore-path ./.prettierignore
-
-      - uses: stefanzweifel/git-auto-commit-action@v4
-        with:
+          prettier_options: --write . --ignore-path ./.prettierignore
           commit_message: "[Simple Linter] Apply prettier changes"
+          only_changed: true
 
   lint-workflows:
     name: Workflow linter
