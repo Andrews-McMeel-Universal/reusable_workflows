@@ -43,18 +43,21 @@ jobs:
         with:
           files: ".prettierrc.json"
 
-      - uses: actionsx/prettier@v3
+      - name: Run prettier with .prettierrc.js configuration
+        uses: actionsx/prettier@v3
         if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' }}
         with:
           args: --write .  --ignore-path ./.prettierignore --config ./.prettierrc.js
 
-      - uses: actionsx/prettier@v3
+      - name: Run prettier with .prettierrc.json configuration
+        uses: actionsx/prettier@v3
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
         with:
           args: --write .  --ignore-path ./.prettierignore --config ./.prettierrc.json
 
-      - uses: actionsx/prettier@v3
-        if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' || steps.prettier-config-json.outputs.files_exists != 'true' }}
+      - name: Run prettier without any configuration files
+        uses: actionsx/prettier@v3
+        if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
         with:
           args: --write . --ignore-path ./.prettierignore
 
