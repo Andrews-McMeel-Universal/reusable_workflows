@@ -29,7 +29,7 @@ jobs:
 
       - name: Run yarn install
         if: ${{ inputs.prettierPlugins }}
-        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+        uses: Andrews-McMeel-Universal/cache-yarn-install@bug/DEVOPS-376/prettier-not-respecting-config-files-pt2
 
       - name: Set prettier plugin arguments
         id: prettier-plugins
