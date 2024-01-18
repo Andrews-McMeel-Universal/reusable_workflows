@@ -36,7 +36,7 @@ jobs:
         if: ${{ inputs.prettierPlugins }}
         run: |
           PLUGINS=(${{ inputs.prettierPlugins }})
-          for PLUGIN in ${PLUGINS[*]}; do
+          for PLUGIN in "${PLUGINS[@]}"; do
             PRETTIER_PLUGINS="$PRETTIER_PLUGINS --plugin $PLUGIN"
           done
           echo "prettierPlugins=$PRETTIER_PLUGINS" >> $GITHUB_OUTPUT
