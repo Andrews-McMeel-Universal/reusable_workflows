@@ -74,7 +74,8 @@ jobs:
         if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
         uses: creyD/prettier_action@v4.3
         with:
-          prettier_options: --write . --ignore-path ./.prettierignore
+          prettier_options: --write . --ignore-path ./.prettierignore ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+          prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed: true
 
