@@ -52,7 +52,6 @@ jobs:
           commit_message: "[Simple Linter] Apply prettier changes"
           github_token: ${{ secrets.PAT_ACTION_CI }}
           only_changed: true
-          working_directory: ${{ github.workspace }}
 
       - name: Run prettier
         uses: creyD/prettier_action@v4.3
@@ -63,7 +62,6 @@ jobs:
           commit_message: "[Simple Linter] Apply prettier changes"
           github_token: ${{ secrets.PAT_ACTION_CI }}
           only_changed: true
-          working_directory: ${{ github.workspace }}
 
   lint-workflows:
     name: Workflow linter
