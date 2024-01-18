@@ -29,9 +29,7 @@ jobs:
 
       - name: Install prettier modules
         if: ${{ inputs.prettierPlugins }}
-        env:
-          NODE_ENV: development
-        run: yarn install
+        run: NODE_ENV=development yarn install
 
       - name: Check if .prettierrc.js file exists
         id: prettier-config-js
@@ -49,13 +47,13 @@ jobs:
         uses: actionsx/prettier@v3
         if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' }}
         with:
-          args: --write .  --ignore-path ./.prettierignore --config ./.prettierrc.js
+          args: --write . --ignore-path ./.prettierignore --config ./.prettierrc.js
 
       - name: Run prettier with .prettierrc.json configuration
         uses: actionsx/prettier@v3
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
         with:
-          args: --write .  --ignore-path ./.prettierignore --config ./.prettierrc.json
+          args: --write . --ignore-path ./.prettierignore --config ./.prettierrc.json
 
       - name: Run prettier without any configuration files
         uses: actionsx/prettier@v3
