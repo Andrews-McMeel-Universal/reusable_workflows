@@ -28,7 +28,7 @@ jobs:
           ref: ${{ github.head_ref }}
 
       - if: ${{ inputs.prettierPlugins }}
-        run: yarn install --production=false
+        run: yarn install --production=false || NODE_ENV=development yarn install
 
       - name: Check if prettier configuration files exists
         id: prettier-configs
