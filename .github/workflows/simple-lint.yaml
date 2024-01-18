@@ -29,7 +29,7 @@ jobs:
 
       - name: Run yarn install
         if: ${{ inputs.prettierPlugins }}
-        uses: Andrews-McMeel-Universal/cache-yarn-install@bug/DEVOPS-376/prettier-not-respecting-config-files-pt2
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
 
       - name: Set prettier plugin arguments
         id: prettier-plugins
@@ -53,16 +53,12 @@ jobs:
           files: ".prettierrc.json"
 
       - name: Run prettier with .prettierrc.js configuration
-        uses: actionsx/prettier@v3
         if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' }}
-        with:
-          args: --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+        run: yarn run prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
 
       - name: Run prettier with .prettierrc.json configuration
-        uses: actionsx/prettier@v3
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
-        with:
-          args: --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+        run: yarn run prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
 
       - name: Run prettier without any configuration files
         uses: actionsx/prettier@v3
