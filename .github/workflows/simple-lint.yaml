@@ -27,9 +27,19 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI }}
           ref: ${{ github.head_ref }}
 
-      - name: Install prettier modules
+      - name: Run yarn install
         if: ${{ inputs.prettierPlugins }}
-        run: yarn add ${{ inputs.prettierPlugins }}
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+
+      - name: Set prettier plugin arguments
+        id: prettier-plugins
+        if: ${{ inputs.prettierPlugins }}
+        run: |
+          PLUGINS=(${{ inputs.prettierPlugins }})
+          for PLUGIN in "${PLUGINS[@]}"; do
+            PRETTIER_PLUGINS="$PRETTIER_PLUGINS --plugin $PLUGIN"
+          done
+          echo "prettierPlugins=$PRETTIER_PLUGINS" >> $GITHUB_OUTPUT
 
       - name: Check if .prettierrc.js file exists
         id: prettier-config-js
@@ -37,30 +47,37 @@ jobs:
         with:
           files: ".prettierrc.js"
 
-      - name: Check if .prettierrc.json files exists
+      - name: Check if .prettierrc.json file exists
         id: prettier-config-json
         uses: andstor/file-existence-action@v2
         with:
           files: ".prettierrc.json"
 
-      - name: Run prettier with configuration files
+      - name: Run prettier with .prettierrc.js configuration
+        if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' }}
         uses: creyD/prettier_action@v4.3
-        if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' || steps.prettier-config-json.outputs.files_exists == 'true' }}
         with:
-          prettier_options: --write . --config ./.prettierrc.js --config ./.prettierrc.json --ignore-path ./.prettierignore
+          prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
-          github_token: ${{ secrets.PAT_ACTION_CI }}
           only_changed: true
 
-      - name: Run prettier
+      - name: Run prettier with .prettierrc.json configuration
+        if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
         uses: creyD/prettier_action@v4.3
-        if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
         with:
-          prettier_options: --write . --ignore-path ./.prettierignore
+          prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
-          github_token: ${{ secrets.PAT_ACTION_CI }}
+          only_changed: true
+
+      - name: Run prettier without any configuration files
+        if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
+        uses: creyD/prettier_action@v4.3
+        with:
+          prettier_options: --write . --ignore-path ./.prettierignore ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+          prettier_plugins: ${{ inputs.prettierPlugins }}
+          commit_message: "[Simple Linter] Apply prettier changes"
           only_changed: true
 
   lint-workflows:
