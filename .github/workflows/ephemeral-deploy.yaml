@@ -190,6 +190,17 @@ jobs:
           ENVIRONMENT_VARIABLES=$(echo "${{ steps.next-vars.outputs.environmentVariables || steps.get-envs.outputs.environmentVariables }}" | sed -E 's/(PRIME_PRIVATE_KEY|PRIME_PUBLIC_KEY)=[^ ]* //g')
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
 
+      - name: Build Docker Image
+        id: build-image
+        run: |
+          docker buildx build ${{ steps.remove-prime-keys.outputs.buildArguments || steps.next-vars.outputs.buildArguments || steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
+          IMAGE_CHECKSUM=$(docker image ls -q "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}")
+          echo "imageChecksum=${IMAGE_CHECKSUM}" >> $GITHUB_OUTPUT
+
+      - name: Tag Docker Image
+        run: |
+          docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
+
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
@@ -197,10 +208,8 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
-      - name: Build & Push Docker Image
-        run: |
-          docker buildx build ${{ steps.remove-prime-keys.outputs.buildArguments || steps.next-vars.outputs.buildArguments || steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
-          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
+      - name: Push Docker Image
+        run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
 
       - name: Deploy Azure Container App
         uses: azure/container-apps-deploy-action@v1
@@ -209,7 +218,7 @@ jobs:
           registryUrl: ${{ secrets.registryHostName }}
           registryUsername: ${{ secrets.registryUserName }}
           registryPassword: ${{ secrets.registryPassword }}
-          imageToDeploy: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
+          imageToDeploy: ${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}
           containerAppName: ${{ needs.prepare.outputs.containerAppName }}
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ steps.target-port.outputs.targetPort }}
@@ -289,6 +298,17 @@ jobs:
           echo "environmentVariables=${ENVIRONMENT_VARIABLES}" >> $GITHUB_OUTPUT
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
 
+      - name: Build & Push Docker Image with updated Next.js variables
+        id: build-image
+        run: |
+          docker buildx build --no-cache ${{ steps.remove-prime-keys.outputs.buildArguments || steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
+          IMAGE_CHECKSUM=$(docker image ls -q "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}")
+          echo "imageChecksum=${IMAGE_CHECKSUM}" >> $GITHUB_OUTPUT
+
+      - name: Tag Docker Image
+        run: |
+          docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
+
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
         with:
@@ -296,10 +316,8 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
-      - name: Build & Push Docker Image with updated Next.js variables
-        run: |
-          docker buildx build --no-cache ${{ steps.remove-prime-keys.outputs.buildArguments || steps.next-vars.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}" ${{ inputs.dockerFilePath }} --load
-          docker push -a "${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}"
+      - name: Push Docker Image
+        run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
 
       - name: Login via Az module
         uses: azure/login@v1
@@ -313,7 +331,7 @@ jobs:
           registryUrl: ${{ secrets.registryHostName }}
           registryUsername: ${{ secrets.registryUserName }}
           registryPassword: ${{ secrets.registryPassword }}
-          imageToDeploy: ${{ secrets.registryHostName }}/${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }}
+          imageToDeploy: ${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}
           containerAppName: ${{ needs.prepare.outputs.containerAppName }}
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ needs.deploy.outputs.targetPort }}
@@ -389,7 +407,10 @@ jobs:
       - name: Delete Azure Resources
         run: |
           az containerapp delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.containerAppName }} --yes
-          az acr repository delete -n ${{ secrets.registryHostName }} --image ${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }} --yes
+          IMAGES=$(az acr repository show-tags --name "${{ secrets.registryHostName }}" --repository "${{ github.event.repository.name }}" --output tsv | grep "${{ needs.prepare.outputs.jiraTicketId }}")
+          for IMAGE in "${IMAGES[@]}"; do 
+            az acr repository delete -n "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${IMAGE}" --yes
+          done
 
       - name: Remove Azure B2C Redirect URI
         if: ${{ env.NEXT_PUBLIC_BASE_URL || env.BASE_URL || env.NEXTAUTH_URL }}
