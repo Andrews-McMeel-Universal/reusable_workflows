@@ -407,10 +407,7 @@ jobs:
       - name: Delete Azure Resources
         run: |
           az containerapp delete --resource-group ${{ inputs.clusterResourceGroup }} --name ${{ needs.prepare.outputs.containerAppName }} --yes
-          IMAGES=$(az acr repository show-tags --name "${{ secrets.registryHostName }}" --repository "${{ github.event.repository.name }}" --output tsv | grep "${{ needs.prepare.outputs.jiraTicketId }}")
-          for IMAGE in "${IMAGES[@]}"; do 
-            az acr repository delete -n "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${IMAGE}" --yes
-          done
+          az acr repository delete -n ${{ secrets.registryHostName }} --image ${{ inputs.dockerImageName }}:${{ needs.prepare.outputs.jiraTicketId }} --yes
 
       - name: Remove Azure B2C Redirect URI
         if: ${{ env.NEXT_PUBLIC_BASE_URL || env.BASE_URL || env.NEXTAUTH_URL }}
