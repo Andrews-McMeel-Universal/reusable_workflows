@@ -227,6 +227,10 @@ jobs:
           ingress: external
           disableTelemetry: true
 
+      - name: Set minimum replicas to 1
+        run: |
+          az containerapp update --name "${{ needs.prepare.outputs.containerAppName }}" --resource-group "${{ inputs.clusterResourceGroup }}" --min-replicas 1
+
       - name: Add access restrictions to Container App ingress
         run: |
           az containerapp ingress access-restriction set --action Allow --ip-address "${{ inputs.ingressWhitelist }}" --rule-name allow-range --name "${{ needs.prepare.outputs.containerAppName }}" --resource-group "${{ inputs.clusterResourceGroup }}"
