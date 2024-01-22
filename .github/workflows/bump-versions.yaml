@@ -26,6 +26,7 @@ jobs:
 
       - name: Get latest release
         id: latestrelease
+        continue-on-error: true
         uses: thebritican/fetch-latest-release@v2.0.0
 
       - name: Get Chart.yaml appVersion
