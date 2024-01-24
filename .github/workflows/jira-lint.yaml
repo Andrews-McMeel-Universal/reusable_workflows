@@ -6,13 +6,13 @@ on:
   workflow_call:
     inputs:
       fail-on-error:
-        type: boolean
+        type: string
         description: A Boolean which, if set to true, fails the GitHub Action when an error occurs. Default true.
-        default: true
+        default: 'true'
       skip-comments:
-        type: boolean
+        type: string
         description: A Boolean if set to true then action-jira-linter will skip adding lint comments for PR title.
-        default: false
+        default: 'false'
     secrets:
       JIRA_TOKEN:
         required: true
@@ -77,5 +77,5 @@ jobs:
             Approved
             Resolved
           skip-branches: "^(main|development|staging|production|dev)$"
-          fail-on-error: ${{ inputs.fail-on-error || 'false' }}
-          skip-comments: ${{ inputs.skip-comments || 'true' }}
+          fail-on-error: ${{ inputs.fail-on-error }}
+          skip-comments: ${{ inputs.skip-comments }}
