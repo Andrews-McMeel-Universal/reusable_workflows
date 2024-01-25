@@ -66,6 +66,10 @@ on:
         type: string
         description: Enable access logging in Kubernetes ingress
         default: "false"
+      tagToDeploy:
+        required: false
+        type: string
+        description: Enable access logging in Kubernetes ingress
     secrets:
       azureClusterName:
         required: true
@@ -91,6 +95,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.tagToDeploy || github.ref }}
 
       - name: Extract Helm values
         id: setenvs
