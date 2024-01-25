@@ -23,6 +23,11 @@ on:
         required: false
         type: string
         description: "URL of the B2C Product."
+      checkoutRef:
+        required: false
+        type: string
+        description: "The branch, tag, or SHA to checkout"
+        default: ${{ github.ref }}
     secrets:
       azureCredentials:
         required: true
@@ -61,6 +66,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.checkoutRef }}
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1

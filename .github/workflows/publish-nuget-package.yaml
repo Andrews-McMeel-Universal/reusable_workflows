@@ -15,6 +15,11 @@ on:
         required: false
         type: string
         description: Shared Library Name
+      checkoutRef:
+        required: false
+        type: string
+        description: "The branch, tag, or SHA to checkout"
+        default: ${{ github.ref }}
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -26,6 +31,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.checkoutRef }}
 
       - name: Get Project Name
         id: project-name
