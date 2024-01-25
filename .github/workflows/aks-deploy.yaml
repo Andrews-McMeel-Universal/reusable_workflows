@@ -66,6 +66,11 @@ on:
         type: string
         description: Enable access logging in Kubernetes ingress
         default: "false"
+      checkoutRef:
+        required: false
+        type: string
+        description: "The branch, tag or SHA to checkout"
+        default: ${{ github.ref }}
     secrets:
       azureClusterName:
         required: true
@@ -91,6 +96,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.checkoutRef }}
 
       - name: Extract Helm values
         id: setenvs

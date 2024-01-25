@@ -21,6 +21,11 @@ on:
         default: "."
         description: "set this to the path to your web app project, defaults to the repository root"
         type: string
+      checkoutRef:
+        required: false
+        type: string
+        description: "The branch, tag, or SHA to checkout"
+        default: ${{ github.ref }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -54,8 +59,10 @@ jobs:
     env:
       PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
     steps:
-      - name: Checkout GitHub Action
+      - name: Checkout
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.checkoutRef }}
 
       - name: Setup application platform
         uses: actions/setup-dotnet@v3

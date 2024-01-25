@@ -19,6 +19,11 @@ on:
         type: string
         description: WordPress engine site destination path
         required: true
+      checkoutRef:
+        required: false
+        type: string
+        description: "The branch, tag, or SHA to checkout"
+        default: ${{ github.ref }}
     secrets:
       WPENGINE_ED25514:
         required: true
@@ -33,7 +38,9 @@ jobs:
       url: https://${{ inputs.WPE_ENV_NAME }}.wpengine.com
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.checkoutRef }}
 
       - name: Deploy to WP Engine
         uses: wpengine/github-action-wpe-site-deploy@v3
