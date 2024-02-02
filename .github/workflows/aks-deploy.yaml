@@ -71,6 +71,11 @@ on:
         type: string
         description: "The branch, tag or SHA to checkout"
         default: ${{ github.ref }}
+      githubRunner:
+        required: false
+        type: string
+        description: "The type of runner to use"
+        default: "ubuntu-latest"
     secrets:
       azureClusterName:
         required: true
@@ -92,7 +97,7 @@ on:
 jobs:
   build:
     name: Build Docker Image
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.githubRunner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -306,7 +311,7 @@ jobs:
   deploy:
     name: AKS Deploy
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.githubRunner }}
     continue-on-error: false
     environment:
       name: ${{ inputs.environment }}
