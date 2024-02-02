@@ -311,8 +311,7 @@ jobs:
   deploy:
     name: AKS Deploy
     needs: [build]
-    runs-on: ${{ inputs.githubRunner }}
-    continue-on-error: false
+    runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.environment }}
       url: https://${{ needs.build.outputs.ingress }}
