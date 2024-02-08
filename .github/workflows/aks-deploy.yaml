@@ -351,29 +351,27 @@ jobs:
         with:
           k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
 
-      - name: Update environment variables Kubernetes Secret
-        shell: pwsh
+      - name: Update .env Kubernetes secret
         run: |
-          if (kubectl get secret | Select-String "${{ needs.build.outputs.configSecret }}") {
+          if kubectl get secret | grep -q "${{ needs.build.outputs.configSecret }}"; then
               kubectl delete secret "${{ needs.build.outputs.configSecret }}"
-          }
+          fi
           kubectl create secret generic "${{ needs.build.outputs.configSecret }}" --from-env-file .env
 
       - name: Update basic web authentication Kubernetes secret
-        shell: pwsh
         run: |
-          if ( "${{ inputs.webAuthentication }}" -eq "true") {
-              if (!"${{ secrets.webAuthenticationUsername }}" -or !"${{ secrets.webAuthenticationPassword }}") {
-                  Write-Output "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
+          if [[ "${{ inputs.webAuthentication }}" == "true" ]]; then
+              if [[ -z "${{ secrets.webAuthenticationUsername }}" ]] || [[ -z "${{ secrets.webAuthenticationPassword }}" ]]; then
+                  echo "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
                   exit 1
-              }
-
-              if (kubectl get secret | Select-String "${{ needs.build.outputs.appName }}-basic-auth") {
+              fi
+          
+              if kubectl get secret | grep -q "${{ needs.build.outputs.appName }}-basic-auth"; then
                   kubectl delete secret "${{ needs.build.outputs.appName }}-basic-auth"
-              }
+              fi
               htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
               kubectl create secret generic "${{ needs.build.outputs.appName }}-basic-auth" --from-file=auth
-          }
+          fi
 
       - name: Create K8s Image Pull Secret
         uses: Azure/k8s-create-secret@v4
