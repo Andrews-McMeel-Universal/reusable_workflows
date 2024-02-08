@@ -356,7 +356,7 @@ jobs:
           if kubectl get secret | grep -q "${{ needs.build.outputs.configSecret }}"; then
               kubectl delete secret "${{ needs.build.outputs.configSecret }}"
           fi
-          kubectl create secret generic "${{ needs.build.outputs.configSecret }}" --from-env-file ${{ github.workspace }}/.env
+          kubectl create secret generic "${{ needs.build.outputs.configSecret }}" --validate='warn' --from-env-file ${{ github.workspace }}/.env
 
       - name: Update basic web authentication Kubernetes secret
         run: |
