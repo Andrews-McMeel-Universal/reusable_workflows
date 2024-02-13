@@ -374,7 +374,7 @@ jobs:
         uses: Azure/k8s-deploy@v4
         with:
           namespace: ${{ steps.namespace.outputs.namespace }}
-          manifests: ${{ needs.build.outputs.manifestsBundle }}
+          manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
             "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}"
           imagepullsecrets: |
