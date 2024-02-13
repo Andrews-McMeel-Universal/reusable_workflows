@@ -75,7 +75,7 @@ on:
         required: false
         type: string
         description: "The type of runner to use"
-        default: "ubuntu-latest"
+        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
     secrets:
       azureClusterName:
         required: true
