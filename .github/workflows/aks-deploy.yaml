@@ -231,6 +231,11 @@ jobs:
       name: ${{ inputs.environment }}
       url: https://${{ needs.build.outputs.ingress }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.checkoutRef }}
+
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
