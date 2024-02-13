@@ -212,12 +212,40 @@ jobs:
 
       - name: Push Docker Image
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
+    outputs:
+      appName: ${{ env.appName }}
+      appVersion: ${{ env.appVersion }}
+      appHealthCheck: ${{ env.appHealthCheck }}
+      configMap: ${{ env.configMap }}
+      configSecret: ${{ env.configSecret }}
+      ingress: ${{ env.ingress }}
+      domainName: ${{ env.domainName }}
+      hostName: ${{ env.hostName }}
+      imagePullSecret: ${{ env.imagePullSecret }}
+      date: ${{ env.date }}
+      ingressWhitelist: ${{ env.ingressWhitelist }}
+      adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
+      release: ${{ env.release }}
+
+  deploy:
+    name: AKS Deploy
+    needs: [build]
+    runs-on: ${{ inputs.githubRunner }}
+    continue-on-error: false
+    environment:
+      name: ${{ inputs.environment }}
+      url: https://${{ needs.build.outputs.ingress }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.checkoutRef }}
 
       - name: Create values override file
         run: |
           WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
-          INGRESS_WHITELIST="${{ env.ingressWhitelist }}"
-          ADMIN_INGRESS_WHITELIST="${{ env.adminIngressWhitelist }}"
+          INGRESS_WHITELIST="${{ needs.build.outputs.ingressWhitelist }}"
+          ADMIN_INGRESS_WHITELIST="${{ needs.build.outputs.adminIngressWhitelist }}"
           echo "::debug::WEB_AUTHENTICATION=$WEB_AUTHENTICATION"
           echo "::debug::INGRESS_WHITELIST=$INGRESS_WHITELIST"
           echo "::debug::ADMIN_INGRESS_WHITELIST=$ADMIN_INGRESS_WHITELIST"
@@ -231,7 +259,7 @@ jobs:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
-              nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
+              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.build.outputs.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           adminingress:
             annotations:
@@ -245,7 +273,7 @@ jobs:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
               nginx.ingress.kubernetes.io/auth-type: "basic"
-              nginx.ingress.kubernetes.io/auth-secret: "${{ env.appName }}-basic-auth"
+              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.build.outputs.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           EOF
             fi
@@ -276,51 +304,14 @@ jobs:
         with:
           renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
-          releaseName: ${{ env.release }}
+          releaseName: ${{ needs.build.outputs.release }}
           helm-version: "latest"
           overrideFiles: ./values-override.yaml
           overrides: |
             image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
             image.tag:${{ github.event.release.tag_name || github.sha }}
-            ingress.host:${{ env.ingress }}
+            ingress.host:${{ needs.build.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
-
-      - name: Upload bake-manifests-bundle artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: bake-manifests-bundle
-          path: ${{ steps.bake.outputs.manifestsBundle }}
-          retention-days: 1
-
-    outputs:
-      manifestsBundle: ${{ steps.bake.outputs.manifestsBundle }}
-      appName: ${{ env.appName }}
-      appVersion: ${{ env.appVersion }}
-      appHealthCheck: ${{ env.appHealthCheck }}
-      configMap: ${{ env.configMap }}
-      configSecret: ${{ env.configSecret }}
-      ingress: ${{ env.ingress }}
-      domainName: ${{ env.domainName }}
-      hostName: ${{ env.hostName }}
-      imagePullSecret: ${{ env.imagePullSecret }}
-      date: ${{ env.date }}
-      ingressWhitelist: ${{ env.ingressWhitelist }}
-      adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
-      release: ${{ env.release }}
-
-  deploy:
-    name: AKS Deploy
-    needs: [build]
-    runs-on: ${{ inputs.githubRunner }}
-    environment:
-      name: ${{ inputs.environment }}
-      url: https://${{ needs.build.outputs.ingress }}
-    steps:
-      - name: Download bake-manifests-bundle artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: bake-manifests-bundle
-          path: ${{ needs.build.outputs.manifestsBundle }}
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -386,7 +377,7 @@ jobs:
         uses: Azure/k8s-deploy@v4
         with:
           namespace: ${{ steps.namespace.outputs.namespace }}
-          manifests: ${{ needs.build.outputs.manifestsBundle }}
+          manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
             "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}"
           imagepullsecrets: |
