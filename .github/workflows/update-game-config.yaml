@@ -11,15 +11,6 @@ on:
         type: string
         description: "The branch, tag, or SHA to checkout"
         default: ${{ github.ref }}
-      dbConnectionString:
-        required: true
-        type: string
-      storageAccountContainer:
-        required: true
-        type: string
-      storageAccountKey:
-        required: true
-        type: string
     secrets:
       AZURE_CREDENTIALS:
         required: true
