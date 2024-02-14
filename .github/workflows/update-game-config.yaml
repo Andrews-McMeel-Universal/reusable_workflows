@@ -41,10 +41,10 @@ jobs:
       - name: Update Game Configs
         shell: pwsh
         run: |
-          $StorageAccountName = "gameconfigs",
-          $StorageAccountTable = "GameConfigs",
-          $UpdatedBy = "AMU Agents",
-          $CDNBasePath = "gameconfigs.amuniversal.com",
+          $StorageAccountName = "gameconfigs"
+          $StorageAccountTable = "GameConfigs"
+          $UpdatedBy = "AMU Agents"
+          $CDNBasePath = "gameconfigs.amuniversal.com"
           $CacheControl = "max-age=86400"
 
           Import-Module SimplySql
