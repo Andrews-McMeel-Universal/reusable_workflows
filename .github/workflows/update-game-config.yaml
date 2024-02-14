@@ -96,7 +96,7 @@ jobs:
           }
           
           # Remove Existing Storage Blobs
-          Write-Host "Removing existing blobs in '"${{ env.STORAGE_ACCOUNT_CONTAINER }}"' container." -ForegroundColor DarkGray
+          Write-Host "Removing existing blobs in '${{ env.STORAGE_ACCOUNT_CONTAINER }}' container." -ForegroundColor DarkGray
           Get-AzStorageBlob -Container "${{ env.STORAGE_ACCOUNT_CONTAINER }}" -Context $StorageContext | Remove-AzStorageBlob
           
           # Remove entries in GameConfigs table.
@@ -145,7 +145,7 @@ jobs:
                           -Metadata $BlobMetaData -Force
           
                       # Update Database
-                      $UriPath = "$CDNBasePath/"${{ env.STORAGE_ACCOUNT_CONTAINER }}"/$BlobName"
+                      $UriPath = "$CDNBasePath/${{ env.STORAGE_ACCOUNT_CONTAINER }}/$BlobName"
                       $UpdateDate = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
           
                       $InsertQuery = "INSERT INTO ""GameConfigs"" (""ConfigName"", ""UriPath"", ""MimeType"", ""OriginalFileName"", ""FeatureId"", ""CreatedDate"", ""CreatedBy"", `
