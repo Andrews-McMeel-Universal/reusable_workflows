@@ -41,7 +41,7 @@ jobs:
       - name: Install SimplySql PowerShell module
         shell: pwsh
         run: |
-          Install-Module -Name SimplySql -Force -AllowClobber
+          Install-Module -Name SimplySql -RequiredVersion 1.9.1 -Force -AllowClobber
 
       - name: Install Azure PowerShell module
         shell: pwsh
