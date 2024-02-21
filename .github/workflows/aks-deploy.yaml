@@ -185,11 +185,11 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           contentTypes: BuildArg Env
 
-      - name: Extract Docker metadata
-        id: meta
+      - name: Extract Docker docker-metadatadata
+        id: docker-metadata
         uses: docker/metadata-action@v4
         with:
-          images: ${{ secrets.AMUAPPIMAGES201_HOSTNAME }}/${{ steps.helm-values.outputs.appName }}
+          images: ${{ secrets.registryHostName }}/${{ github.event.repository.name }}
           tags: |
             type=raw,value=${{ github.sha }}
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
@@ -209,8 +209,8 @@ jobs:
         with:
           context: ${{ inputs.dockerFilePath }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.docker-metadata.outputs.tags }}
+          labels: ${{ steps.docker-metadata.outputs.labels }}
           build-args: ${{ steps.get-envs.outputs.buildArguments }}
 
     outputs:
