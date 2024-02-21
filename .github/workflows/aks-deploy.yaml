@@ -100,7 +100,7 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Extract Helm values
-        id: setenvs
+        id: helm-values
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Confirm:$false -Force
@@ -162,19 +162,19 @@ jobs:
           }
           Write-Output "This application's hostname is $hostName.$domainName"
 
-          Write-Output "appName=$appName" >> $env:GITHUB_ENV
-          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
-          Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
-          Write-Output "configMap=$configMap" >> $env:GITHUB_ENV
-          Write-Output "configSecret=$configSecret" >> $env:GITHUB_ENV
-          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
-          Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
-          Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
-          Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
-          Write-Output "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
-          Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
-          Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
-          Write-Output "release=$release" >> $env:GITHUB_ENV
+          Write-Output "appName=$appName" >> $env:GITHUB_OUTPUT
+          Write-Output "appVersion=$appVersion" >> $env:GITHUB_OUTPUT
+          Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_OUTPUT
+          Write-Output "configMap=$configMap" >> $env:GITHUB_OUTPUT
+          Write-Output "configSecret=$configSecret" >> $env:GITHUB_OUTPUT
+          Write-Output "ingress=$ingress" >> $env:GITHUB_OUTPUT
+          Write-Output "domainName=$domainName" >> $env:GITHUB_OUTPUT
+          Write-Output "hostName=$hostName" >> $env:GITHUB_OUTPUT
+          Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_OUTPUT
+          Write-Output "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_OUTPUT
+          Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_OUTPUT
+          Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_OUTPUT
+          Write-Output "release=$release" >> $env:GITHUB_OUTPUT
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -185,18 +185,17 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           contentTypes: BuildArg Env
 
-      - name: Build Docker Image
-        run: docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}" ${{ inputs.dockerFilePath }}
-
-      - name: Tag Docker Image
-        run: |
-          if [[ "${{ inputs.environment }}" == "production" ]] ; then
-            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:latest"
-          fi
-          if [[ "${{ github.event.release.tag_name || github.sha }}" == "${{ github.event.release.tag_name }}" ]]; then
-            MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${MAJOR_RELEASE}"
-          fi
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ secrets.AMUAPPIMAGES201_HOSTNAME }}/${{ steps.helm-values.outputs.appName }}
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=raw,value=${{ github.event.release.tag_name }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}
 
       - name: Login to Azure Container Registry
         uses: Azure/docker-login@v1
@@ -205,22 +204,29 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
-      - name: Push Docker Image
-        run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
+      - name: Build & Push Docker Image
+        uses: docker/build-push-action@v3
+        with:
+          context: ${{ inputs.dockerFilePath }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ steps.get-envs.outputs.buildArguments }}
+
     outputs:
-      appName: ${{ env.appName }}
-      appVersion: ${{ env.appVersion }}
-      appHealthCheck: ${{ env.appHealthCheck }}
-      configMap: ${{ env.configMap }}
-      configSecret: ${{ env.configSecret }}
-      ingress: ${{ env.ingress }}
-      domainName: ${{ env.domainName }}
-      hostName: ${{ env.hostName }}
-      imagePullSecret: ${{ env.imagePullSecret }}
-      date: ${{ env.date }}
-      ingressWhitelist: ${{ env.ingressWhitelist }}
-      adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
-      release: ${{ env.release }}
+      appName: ${{ steps.helm-values.outputs.appName }}
+      appVersion: ${{ steps.helm-values.outputs.appVersion }}
+      appHealthCheck: ${{ steps.helm-values.outputs.appHealthCheck }}
+      configMap: ${{ steps.helm-values.outputs.configMap }}
+      configSecret: ${{ steps.helm-values.outputs.configSecret }}
+      ingress: ${{ steps.helm-values.outputs.ingress }}
+      domainName: ${{ steps.helm-values.outputs.domainName }}
+      hostName: ${{ steps.helm-values.outputs.hostName }}
+      imagePullSecret: ${{ steps.helm-values.outputs.imagePullSecret }}
+      date: ${{ steps.helm-values.outputs.date }}
+      ingressWhitelist: ${{ steps.helm-values.outputs.ingressWhitelist }}
+      adminIngressWhitelist: ${{ steps.helm-values.outputs.adminIngressWhitelist }}
+      release: ${{ steps.helm-values.outputs.release }}
 
   deploy:
     name: AKS Deploy
