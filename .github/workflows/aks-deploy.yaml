@@ -193,9 +193,13 @@ jobs:
           IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
           for VAR in "${BUILDARGS_ARRAY[@]}"; do
             VAR=$(echo $VAR | sed 's|--build-arg| |g')
-            # Add double quotes around the key and the value, and separate them with a colon
-            VAR="\"${VAR//=/\":\"}\","
-            BUILDARGS="${BUILDARGS}${VAR}"
+            # Trim the spaces
+            VAR=$(echo $VAR | xargs)
+            if [ ! -z "$VAR" ]; then
+              # Add double quotes around the key and the value, and separate them with a colon
+              VAR="\"${VAR//=/\":\"}\","
+              BUILDARGS="${BUILDARGS}${VAR}"
+            fi
           done
 
           # Remove the trailing comma and wrap the build arguments in curly braces to form a JSON object
