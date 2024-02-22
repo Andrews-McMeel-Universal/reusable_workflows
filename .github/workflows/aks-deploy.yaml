@@ -193,9 +193,8 @@ jobs:
           IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
           for VAR in "${BUILDARGS_ARRAY[@]}"; do
             # Remove the --build-arg prefix
-            VAR=$(echo $VAR | sed 's|--build-arg||g')
-            # Add double quotes around the key and the value, and separate them with a colon
-            VAR="${VAR//=/\":\"}"
+            VAR=$(echo $VAR | sed 's|--build-arg ||g')
+            # Add to BUILDARGS
             BUILDARGS="${BUILDARGS} ${VAR}"
           done
 
