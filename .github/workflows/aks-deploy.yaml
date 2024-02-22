@@ -192,10 +192,14 @@ jobs:
 
           IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
           for VAR in "${BUILDARGS_ARRAY[@]}"; do
-            # Remove the --build-arg prefix
-            VAR=$(echo $VAR | sed 's|--build-arg ||g')
-            # Add to BUILDARGS
-            BUILDARGS="${BUILDARGS} ${VAR}"
+            VAR=$(echo $VAR | sed 's|--build-arg||g') # remove prefix and trailing space
+            if [ ! -z "$VAR" ]; then
+                if [ -z "$BUILDARGS" ]; then
+                    BUILDARGS="${VAR}" # first argument
+                else
+                    BUILDARGS="${BUILDARGS}\n${VAR}" # append each argument on a new line
+                fi
+            fi
           done
 
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
