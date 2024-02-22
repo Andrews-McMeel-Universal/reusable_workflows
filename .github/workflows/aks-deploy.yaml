@@ -193,8 +193,8 @@ jobs:
           IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
           for VAR in "${BUILDARGS_ARRAY[@]}"; do
             VAR=$(echo $VAR | sed 's|--build-arg | |g')
-            BUILDARGS="${BUILDARGS}
-          ${VAR}"
+            BUILDARGS=$(echo "${BUILDARGS}
+          ${VAR}" | sed 's| ||g')
           done
 
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
