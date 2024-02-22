@@ -193,10 +193,12 @@ jobs:
           IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
           for VAR in "${BUILDARGS_ARRAY[@]}"; do
             VAR=$(echo $VAR | sed 's|--build-arg| |g')
-            BUILDARGS=$(echo "${BUILDARGS}
-          ${VAR}" | sed 's| ||g')
+            BUILDARGS="${BUILDARGS} \"${VAR}\","
           done
-
+      
+          # Remove the trailing comma and wrap the build arguments in square brackets to form a JSON array
+          BUILDARGS="[${BUILDARGS%,}]"
+      
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
           echo "buildArguments=${BUILDARGS}"
 
@@ -226,7 +228,7 @@ jobs:
           push: true
           tags: ${{ steps.docker-metadata.outputs.tags }}
           labels: ${{ steps.docker-metadata.outputs.labels }}
-          build-args: ${{ steps.build-args.outputs.buildArguments }}
+          build-args: ${{ fromJson(steps.build-args.outputs.buildArguments) }}
 
     outputs:
       appName: ${{ steps.helm-values.outputs.appName }}
