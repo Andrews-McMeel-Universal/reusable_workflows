@@ -188,7 +188,7 @@ jobs:
       - name: Update Build Arguments
         id: build-args
         run: |
-          echo "buildArguments=$(echo '${{ steps.get-envs.outputs.buildArguments }}' | sed 's| --build-arg |\n|g' | base64)" >> $GITHUB_ENV
+          echo "buildArguments=$(echo '${{ steps.get-envs.outputs.buildArguments }}' | sed 's/ --build-arg / /g' | tr ' ' '\n' | base64)" >> $GITHUB_ENV
 
       - name: Extract Docker metadata
         id: docker-metadata
