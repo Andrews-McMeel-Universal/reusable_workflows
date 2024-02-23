@@ -202,7 +202,7 @@ jobs:
             fi
           done
 
-          echo "buildArguments=${BUILDARGS}" >> $GITHUB_OUTPUT
+          echo "buildArguments=${BUILDARGS}" >> $GITHUB_ENV
           echo "buildArguments=${BUILDARGS}"
 
       - name: Extract Docker metadata
@@ -232,7 +232,7 @@ jobs:
           tags: ${{ steps.docker-metadata.outputs.tags }}
           labels: ${{ steps.docker-metadata.outputs.labels }}
           build-args: |
-            ${{ steps.build-args.outputs.buildArguments }}
+            ${{ env.buildArguments }}
 
     outputs:
       appName: ${{ steps.helm-values.outputs.appName }}
