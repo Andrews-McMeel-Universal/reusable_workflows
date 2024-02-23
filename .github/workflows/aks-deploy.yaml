@@ -197,7 +197,7 @@ jobs:
                 if [ -z "$BUILDARGS" ]; then
                     BUILDARGS="${VAR}" # first argument
                 else
-                    BUILDARGS="${BUILDARGS}\n${VAR}" # append each argument on a new line
+                    BUILDARGS="${BUILDARGS}"$'\n'"${VAR}" # append each argument on a new line
                 fi
             fi
           done
