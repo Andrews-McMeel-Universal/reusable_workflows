@@ -202,6 +202,7 @@ jobs:
             fi
           done
 
+          BUILDARGS=$(printf '%b' "${BUILDARGS}") # format string with newline characters
           echo "buildArguments=${BUILDARGS}" >> $GITHUB_ENV
           echo "buildArguments=${BUILDARGS}"
 
