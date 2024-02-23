@@ -202,7 +202,7 @@ jobs:
             fi
           done
 
-          echo "buildArguments=[$(echo -n "${BUILDARGS}" | jq -Rs .)]" >> $GITHUB_ENV
+          echo "buildArguments=[$(echo -n "${BUILDARGS}" | jq -Rs .)]" >> $GITHUB_OUTPUT
 
       - name: Extract Docker metadata
         id: docker-metadata
