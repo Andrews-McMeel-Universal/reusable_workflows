@@ -197,12 +197,12 @@ jobs:
                 if [ -z "$BUILDARGS" ]; then
                     BUILDARGS="${VAR}" # first argument
                 else
-                    BUILDARGS="${BUILDARGS}\n${VAR}" # append each argument on a new line
+                    BUILDARGS="${BUILDARGS},${VAR}" # append each argument with a comma
                 fi
             fi
           done
 
-          echo "buildArguments=$(echo -e "${BUILDARGS}" | base64)" >> $GITHUB_OUTPUT
+          echo "buildArguments=$(echo "${BUILDARGS}" | tr ',' '\n' | base64)" >> $GITHUB_ENV
 
       - name: Extract Docker metadata
         id: docker-metadata
@@ -227,7 +227,7 @@ jobs:
         id: decode
         uses: akiojin/decode-base64-github-action@v0.1.0
         with:
-          base64: ${{ steps.build-args.outputs.buildArguments }}
+          base64: ${{ env.buildArguments }}
 
       - name: Build & Push Docker Image
         uses: docker/build-push-action@v3
@@ -236,8 +236,7 @@ jobs:
           push: true
           tags: ${{ steps.docker-metadata.outputs.tags }}
           labels: ${{ steps.docker-metadata.outputs.labels }}
-          build-args: |
-            ${{ steps.decode.outputs.decoded }}
+          build-args: ${{ steps.decode.outputs.decoded }}
 
 
     outputs:
