@@ -202,9 +202,7 @@ jobs:
             fi
           done
 
-          BUILDARGS=$(printf '%b' "${BUILDARGS}") # format string with newline characters
-          echo "buildArguments=${BUILDARGS}" >> $GITHUB_ENV
-          echo "buildArguments=${BUILDARGS}"
+          echo "buildArguments=[$(echo -n "${BUILDARGS}" | jq -Rs .)]" >> $GITHUB_ENV
 
       - name: Extract Docker metadata
         id: docker-metadata
@@ -233,7 +231,7 @@ jobs:
           tags: ${{ steps.docker-metadata.outputs.tags }}
           labels: ${{ steps.docker-metadata.outputs.labels }}
           build-args: |
-            ${{ join('\n', steps.build-args.outputs.buildArguments) }}
+            ${{ fromJson(steps.build-args.outputs.buildArguments) }}
 
     outputs:
       appName: ${{ steps.helm-values.outputs.appName }}
