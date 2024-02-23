@@ -233,7 +233,7 @@ jobs:
           tags: ${{ steps.docker-metadata.outputs.tags }}
           labels: ${{ steps.docker-metadata.outputs.labels }}
           build-args: |
-            ${{ env.buildArguments }}
+            ${{ join('\n', steps.build-args.outputs.buildArguments) }}
 
     outputs:
       appName: ${{ steps.helm-values.outputs.appName }}
