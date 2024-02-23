@@ -202,7 +202,7 @@ jobs:
             fi
           done
 
-          echo "buildArguments=${BUILDARGS}" >> $GITHUB_ENV
+          echo "buildArguments=$(echo -n "${BUILDARGS}" | base64)" >> $GITHUB_OUTPUT
 
       - name: Extract Docker metadata
         id: docker-metadata
@@ -223,6 +223,12 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
+      - name: Decode build arguments
+        id: decode
+        uses: akiojin/decode-base64-github-action@v0.1.0
+        with:
+          base64: ${{ steps.build-args.outputs.buildArguments }}
+
       - name: Build & Push Docker Image
         uses: docker/build-push-action@v3
         with:
@@ -230,7 +236,9 @@ jobs:
           push: true
           tags: ${{ steps.docker-metadata.outputs.tags }}
           labels: ${{ steps.docker-metadata.outputs.labels }}
-          build-args: ${{ env.buildArguments }}
+          build-args: |
+            ${{ steps.decode.outputs.decoded }}
+
 
     outputs:
       appName: ${{ steps.helm-values.outputs.appName }}
