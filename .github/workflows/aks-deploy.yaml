@@ -188,21 +188,7 @@ jobs:
       - name: Update Build Arguments
         id: build-args
         run: |
-          BUILDARGS=""
-
-          IFS=' ' read -r -a BUILDARGS_ARRAY <<< "${{ steps.get-envs.outputs.buildArguments }}"
-          for VAR in "${BUILDARGS_ARRAY[@]}"; do
-            VAR=$(echo $VAR | sed 's|--build-arg||g') # remove prefix and trailing space
-            if [ ! -z "$VAR" ]; then
-                if [ -z "$BUILDARGS" ]; then
-                    BUILDARGS="${VAR}" # first argument
-                else
-                    BUILDARGS="${BUILDARGS},${VAR}" # append each argument with a comma
-                fi
-            fi
-          done
-
-          echo "buildArguments=$(echo "${BUILDARGS}" | tr ',' '\n' | base64)" >> $GITHUB_ENV
+          echo "buildArguments=$(echo '${{ steps.get-envs.outputs.buildArguments }}' | sed 's| --build-arg |\n|g' | base64)" >> $GITHUB_ENV
 
       - name: Extract Docker metadata
         id: docker-metadata
