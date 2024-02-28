@@ -23,10 +23,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 2
+
+      - name: Check for existing version bump commit
+        id: check-version-bump
+        run: |
+          if git log --oneline | grep -q "Bump ${{ inputs.libraryName }} Nuget Version"; then
+            echo "version-bump-exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "version-bump-exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check modified files
+        if: ${{ steps.check-version-bump.outputs.version-bump-exists == 'false' }}
         id: files-changed
         run: |
           while IFS= read -r FILE; do
@@ -38,10 +46,10 @@ jobs:
             if echo "${FILE}" | grep -Eq "${PROJECT_PATH}" ; then
               echo "models-changed=true" >> $GITHUB_OUTPUT
             fi
-          done < <(git diff --name-only HEAD^ HEAD)
+          done < <(git diff --name-only development...HEAD)
 
       - name: Run Increment-Version.ps1
-        if: ${{ github.actor != 'amutechtest' && steps.files-changed.outputs.models-changed == 'true' }}
+        if: ${{ steps.files-changed.outputs.models-changed == 'true' && steps.check-version-bump.outputs.version-bump-exists == 'false' }}
         shell: pwsh
         run: |
           $ProjectName = "${{ inputs.projectName }}"
@@ -87,7 +95,7 @@ jobs:
           }
 
       - name: Commit Changes
-        if: ${{ ! inputs.libraryName }}
+        if: ${{ ! inputs.libraryName && steps.check-version-bump.outputs.version-bump-exists == 'false' }}
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_user_name: amutechtest
@@ -95,7 +103,7 @@ jobs:
           commit_message: ⬆️ Bump Nuget version
 
       - name: Commit Changes
-        if: ${{ inputs.libraryName }}
+        if: ${{ inputs.libraryName && steps.check-version-bump.outputs.version-bump-exists == 'false' }}
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_user_name: amutechtest
