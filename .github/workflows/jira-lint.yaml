@@ -30,8 +30,8 @@ jobs:
       - name: Retrieve Jira issue key from PR
         id: jira-ticket
         run: |
-          PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
-          PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
+          PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eio "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
+          PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eio "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
 
           for var in ${PR_BRANCH} ${PR_TITLE}; do JIRA_TICKET_ID=$(echo $var | grep -E ".") && break ; done
 
