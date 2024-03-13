@@ -337,6 +337,7 @@ jobs:
           registryPassword: ${{ secrets.registryPassword }}
           imageToDeploy: ${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}
           containerAppName: ${{ needs.prepare.outputs.containerAppName }}
+          containerAppEnvironment: ${{ needs.prepare.outputs.containerAppName }}-env
           resourceGroup: ${{ inputs.clusterResourceGroup }}
           targetPort: ${{ needs.deploy.outputs.targetPort }}
           location: ${{ inputs.azureResourceLocation }}
