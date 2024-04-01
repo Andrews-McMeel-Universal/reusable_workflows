@@ -1,17 +1,20 @@
 name-template: '$RESOLVED_VERSION'
 tag-template: '$RESOLVED_VERSION'
 categories:
+  - title: 🚀 Features
+    labels:
+      - 'feature'
+      - 'epic'
+      - 'story'
   - title: 🐛 Fixes
     labels:
       - 'bug'
-  - title: 📝 Documentation
-    labels:
-      - 'documentation'
   - title: 🔨 Maintenance
     labels: 
       - 'tools'
       - 'tests'
       - 'dependencies'
+      - 'documentation'
   - title: 🔐 DevOps
     labels:
       - 'sync'
@@ -40,18 +43,19 @@ autolabeler:
       - ".{npm,nvm}rc"
   - label: 'front-end'
     files:
-      - "**/*.{js,js.html,jsx,ts,tsx,html,css,less,scss,sass,otf,eot,ttf,woff*}"
+      - "**/*.{js,js.html,jsx,ts,tsx,html,css,less,scss,sass,otf,eot,ttf,woff*,erb}"
       - "public/"
       - "src/"
       - "wp-content/"
-      - ".storybook/"
       - "package.json"
       - "!/.vscode"
       - "!/.devcontainer"
       - "!**/*.test.js"
   - label: 'back-end'
     files:
-      - "**/*.{cs,sln,csproj,rb,ru}"
+      - "**/*.{cs,sln,csproj,ru}"
+      - "appsettings.*json"
+      - "CodeCoverage.runsettings"
   - label: 'tools'
     files:
       - "/.vscode"
@@ -60,13 +64,13 @@ autolabeler:
       - ".{prettierrc,size-limit,eslintrc}.js"
       - ".{yamllint,yarnrc,mega-linter,solargraph,postcssrc,erb-lint,rubocop}.yml"
       - ".{jscpd,markdownlint,babel.config,prettierrc,eslintrc,stylelintrc}.json"
-  - label: 'tests'
-    files:
       - "playwright/**"
       - "cypress/**"
       - ".spec.*"
       - "*.test.js"
       - "{jest,playwright}.*.js"
+      - ".storybook/"
+      - ".browserlistrc"
   - label: 'devops'
     files:
       - ".github/"
@@ -80,12 +84,19 @@ version-resolver:
   major:
     labels:
       - 'major'
+      - 'epic'
+      - 'feature'
   minor:
     labels:
       - 'minor'
+      - 'story'
+      - 'maintenance'
+      - 'research'
   patch:
     labels:
       - 'patch'
+      - 'bug'
+      - 'sync'
   default: patch
 template: |
   ## What's Changed

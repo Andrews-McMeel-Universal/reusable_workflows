@@ -51,11 +51,6 @@ updates:
     groups:
       # Specify a name for the group, which will be used in pull request titles
       # and branch names
-      dependencies-major:
-        # Open a PR with all major version updates from "dependencies" in package.json
-        dependency-type: "production"
-        update-types:
-        - "major"
       dependencies-minor:
         # Open a PR with all minor version updates from "dependencies" in package.json
         dependency-type: "production"
