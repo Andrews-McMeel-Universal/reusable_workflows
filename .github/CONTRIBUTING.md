@@ -1,21 +1,21 @@
 # Contributing
 
-New branches should always be associated with a Jira ticket. The branch should be prefixed with the issue key and a short description, like so: `jiraIssueType/AMUPRODUCT-1234/hyphenated-issue-summary`.
+## Branch Naming Convention
 
-## Jira Smart Commits
+When creating a new branch, it should be associated with a Jira ticket. The branch name should follow this format: `jiraIssueType/AMUPRODUCT-1234/hyphenated-issue-summary`.
 
-In scenarios where creating a separate branch for each Jira ticket is not exactly feasible, you can still trigger our automation by using what are called [smart commits](https://confluence.atlassian.com/fisheye/using-smart-commits-960155400.html).
+## Using Jira Smart Commits
 
-To use Jira smart commits, you would include the Jira issue key for each commit like so: `[AMUPRODUCT-1234], [AMUPRODUCT-1235] Knocked out the 4 copy edits needed`
+In cases where creating a separate branch for each Jira ticket isn't practical, you can use [smart commits](https://confluence.atlassian.com/fisheye/using-smart-commits-960155400.html) to trigger our automation. Include the Jira issue key in each commit message like this: `[AMUPRODUCT-1234], [AMUPRODUCT-1235] Implemented the 4 required copy edits`.
 
-## Creating Pull Requests
+## Pull Request Process
 
-Once you have committed your effort in a separate branch, you will need to raise a pull request in Github. While filling out the Pull Request, **Please** follow the pull request template format and write a brief description of any technical details and Jira tickets that are related to the PR.
+After committing your changes in a separate branch, you'll need to create a pull request (PR) on Github. When creating the PR, adhere to the provided PR template format and include a concise description of the technical details and related Jira tickets.
 
-The recommended title for the pull request is typically just the branch name. Again, if a single issue per branch is not feasible, including a brief title of the effort is acceptable.
+The PR title should ideally be the branch name. If multiple issues are addressed in a single branch, a brief, descriptive title is acceptable.
 
-You do not need to fill in the reviewers or assignees. Our CODEOWNERS automation takes care of who will need to review it. As long as a AMU software engineer reviews it and the other checks pass, they will take care of merging the pull request into staging and production.
+You don't need to specify reviewers or assignees. Our CODEOWNERS automation determines who will review your PR. Once an AMU software engineer reviews and approves your PR, and all checks pass, they will merge your PR into the staging and production branches.
 
-> NOTE: On every PR, we do run tests and automatically format the code with Prettier.
+> **NOTE:** Every PR triggers tests and automatic code formatting with Prettier.
 
-> NOTE: A PR will not be able to be merged until at least 1 reviewer with write access has approved it and all tests are passing. If a PR is updated with a new commit, stale reviews will be dismissed.
+> **NOTE:** A PR can't be merged until at least one reviewer with write access approves it and all tests pass. If a PR is updated with a new commit, previous reviews will be dismissed.

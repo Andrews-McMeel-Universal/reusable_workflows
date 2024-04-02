@@ -35,14 +35,15 @@ src/design-system-package/dist/**
 wp-content/
 
 # Games
-*Game/
+/*Game/
 
 # Dotnet
-*Service/
-*.Library/
-*.Tests/
-*.WebAPI/
-*.sln
-*.csproj
-*.lutconfig
-.editorconfig
+/*Service/
+/*.Library/
+/*.Tests/
+/*.WebAPI/
+**/*.sln
+**/*.csproj
+**/*.cs
+/*.lutconfig
+/.editorconfig
