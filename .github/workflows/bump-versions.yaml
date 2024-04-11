@@ -27,7 +27,7 @@ on:
 
 jobs:
   bump-version:
-    name: Bump Versions to next ${{ inputs.releaseType }}
+    name: Bump Versions ${{ inputs.releaseType }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -123,7 +123,7 @@ jobs:
         id: branchexists
         run: |
           export BRANCHES=$(git branch -r)
-          if [[ $(echo $BRANCHES | "maintenance/bump-version/${{ inputs.version || env.release }}") ]] ; then
+          if echo "$BRANCHES" | grep -q "maintenance/bump-version/${{ inputs.version || env.release }}"; then
             echo "branch-exists=true" >> $GITHUB_OUTPUT
           fi
 
