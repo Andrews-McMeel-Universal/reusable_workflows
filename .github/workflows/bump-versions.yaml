@@ -118,8 +118,17 @@ jobs:
           commit_user_email: amu_deploy@amuniversal.com
           commit_message: ⬆️ Bump version
 
-      - name: Create Pull Request
+      - name: Check if branch exists
         if: ${{ inputs.updateAction == 'create-pr' }}
+        id: branchexists
+        run: |
+          export BRANCHES=$(git branch -r)
+          if [[ $(echo $BRANCHES | "maintenance/bump-version/${{ inputs.version || env.release }}") ]] ; then
+            echo "branch-exists=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: ${{ inputs.updateAction == 'create-pr' && steps.branchexists.outputs.branch-exists != 'true' }}
         id: cpr
         uses: peter-evans/create-pull-request@v4
         with:
