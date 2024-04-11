@@ -122,7 +122,7 @@ jobs:
         if: ${{ inputs.updateAction == 'create-pr' }}
         id: branchexists
         run: |
-          export BRANCHES=$(git branch -r)
+          export BRANCHES=$(git -P branch -r)
           if echo "$BRANCHES" | grep -q "maintenance/bump-version/${{ inputs.version || env.release }}"; then
             echo "branch-exists=true" >> $GITHUB_OUTPUT
           fi
