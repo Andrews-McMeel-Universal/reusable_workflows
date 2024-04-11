@@ -98,7 +98,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: '"version": .*'
-          replace: '"version": "${{ inputs.release || env.release }}",'
+          replace: '"version": "${{ inputs.version || env.release }}",'
           regex: true
           include: "**package.json"
 
@@ -106,7 +106,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "appVersion: .*"
-          replace: "appVersion: ${{ inputs.release || env.release }}"
+          replace: "appVersion: ${{ inputs.version || env.release }}"
           regex: true
           include: "**Chart.yaml"
 
@@ -123,13 +123,13 @@ jobs:
         id: cpr
         uses: peter-evans/create-pull-request@v4
         with:
-          commit-message: "⬆️ Version bump: ${{ inputs.release || env.release }}"
-          branch: maintenance/bump-version/${{ inputs.release || env.release }}
+          commit-message: "⬆️ Version bump: ${{ inputs.version || env.release }}"
+          branch: maintenance/bump-version/${{ inputs.version || env.release }}
           committer: AMU Automations <amu_deploy@amuniversal.com>
           delete-branch: true
-          title: "⬆️ Version bump: ${{ inputs.release || env.release }}"
+          title: "⬆️ Version bump: ${{ inputs.version || env.release }}"
           body: |
-            Updating version to ${{ inputs.release || env.release }} in:
+            Updating version to ${{ inputs.version || env.release }} in:
             - `**/Charts.yaml`
             - `**/package.json`
           labels: |
