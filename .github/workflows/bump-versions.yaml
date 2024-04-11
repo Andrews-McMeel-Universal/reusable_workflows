@@ -16,6 +16,11 @@ on:
         required: false
         type: string
         description: The version to bump to. If not provided, the next version will be calculated based on the latest release
+      updateAction:
+        required: false
+        type: string
+        description: The action to perform. Default is create-pr
+        default: 'create-pr'
     secrets:
       PAT_ACTION_CI:
         required: false
@@ -105,7 +110,16 @@ jobs:
           regex: true
           include: "**Chart.yaml"
 
+      - name: Commit Changes
+        if: ${{ inputs.updateAction == 'create-commit' }}
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_user_name: amutechtest
+          commit_user_email: amu_deploy@amuniversal.com
+          commit_message: ⬆️ Bump version
+
       - name: Create Pull Request
+        if: ${{ inputs.updateAction == 'create-pr' }}
         id: cpr
         uses: peter-evans/create-pull-request@v4
         with:
@@ -122,6 +136,7 @@ jobs:
             ${{ inputs.releaseType }}
 
       - name: Auto Approve Version Update PR
+        if: ${{ inputs.updateAction == 'create-pr' }}
         uses: hmarr/auto-approve-action@v3
         with:
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
