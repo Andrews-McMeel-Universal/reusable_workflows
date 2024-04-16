@@ -24,10 +24,11 @@ env:
 jobs:
   jira-lint:
     name: Run Jira Lint
-    if: ${{ github.actor != 'amutechtest' && github.actor != 'dependabot[bot]' && !contains(github.head_ref, 'sync') && !contains(github.event.pull_request.labels.*.name, 'disable-jira-linter') }}
+    if: ${{ github.actor != 'amutechtest' && github.actor != 'dependabot[bot]' && !contains(github.head_ref, 'sync') }}
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve Jira issue key from PR
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'disable-jira-linter') }}
         id: jira-ticket
         run: |
           PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eio "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
@@ -46,7 +47,7 @@ jobs:
           fi
 
       - name: Check if missing Jira issue key comment exists
-        if: ${{ steps.jira-ticket.outputs.ticket-found != 'false' }}
+        if: ${{ steps.jira-ticket.outputs.ticket-found != 'false' && !contains(github.event.pull_request.labels.*.name, 'disable-jira-linter') }}
         id: comment
         uses: peter-evans/find-comment@v2
         with:
@@ -55,7 +56,7 @@ jobs:
           direction: last
 
       - uses: jira-tools/action-jira-linter@v1.0.1
-        if: ${{ ! steps.comment.outputs.comment-body && steps.jira-ticket.outputs.ticket-found != 'false' }}
+        if: ${{ ! steps.comment.outputs.comment-body && steps.jira-ticket.outputs.ticket-found != 'false' && !contains(github.event.pull_request.labels.*.name, 'disable-jira-linter') }}
         name: Jira Lint
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
