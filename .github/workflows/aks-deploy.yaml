@@ -191,16 +191,17 @@ jobs:
           contentTypes: BuildArg Env
 
       - name: Build Docker Image
-        run: docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}" ${{ inputs.dockerFilePath }}
+        run: docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" ${{ inputs.dockerFilePath }}
 
       - name: Tag Docker Image
         run: |
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
-            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:latest"
+            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:latest"
           fi
-          if [[ "${{ github.event.release.tag_name || github.sha }}" == "${{ github.event.release.tag_name }}" ]]; then
+          if [[ "${{ github.event.release.tag_name }}" != "" ]]; then
+            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name }}"
             MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${MAJOR_RELEASE}"
+            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${MAJOR_RELEASE}"
           fi
 
       - name: Login to Azure Container Registry
@@ -309,7 +310,7 @@ jobs:
           overrideFiles: ./values-override.yaml
           overrides: |
             image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
-            image.tag:${{ github.event.release.tag_name || github.sha }}
+            image.tag:${{ github.sha }}
             ingress.host:${{ needs.build.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
 
@@ -379,7 +380,7 @@ jobs:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name || github.sha }}"
+            "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}"
           imagepullsecrets: |
             "${{ needs.build.outputs.imagePullSecret }}"
           pull-images: false
