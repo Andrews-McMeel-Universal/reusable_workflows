@@ -403,7 +403,11 @@ jobs:
 
       - name: Untag previous ACR image
         run: |
-          az acr repository untag --name "${{ secrets.registryHostName }}" --image "${{ steps.get-current-image.outputs.currentImage }}"
+          if [[ "${{ steps.get-current-image.outputs.currentImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
+            az acr repository untag --name "${{ secrets.registryHostName }}" --image "${{ steps.get-current-image.outputs.currentImage }}"
+          else
+            echo "Deployment image is the same as the current image. Skipping untagging."
+          fi
 
       - name: Disable write access for newly deployed image
         run: |
