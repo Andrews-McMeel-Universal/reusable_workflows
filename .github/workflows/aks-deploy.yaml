@@ -190,6 +190,13 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           contentTypes: BuildArg Env
 
+      - name: Login to Azure Container Registry
+        uses: Azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.registryHostName }}
+          username: ${{ secrets.registryUserName }}
+          password: ${{ secrets.registryPassword }}
+
       - name: Build Docker Image
         run: docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" ${{ inputs.dockerFilePath }}
 
@@ -203,13 +210,6 @@ jobs:
             MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
             docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${MAJOR_RELEASE}"
           fi
-
-      - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1
-        with:
-          login-server: ${{ secrets.registryHostName }}
-          username: ${{ secrets.registryUserName }}
-          password: ${{ secrets.registryPassword }}
 
       - name: Push Docker Image
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
