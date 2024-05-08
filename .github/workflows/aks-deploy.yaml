@@ -200,7 +200,10 @@ jobs:
       - name: Unlock previous ACR image
         run: |
           PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ inputs.environment }}" --query "digest" -o tsv | awk -F ':' '{print $2}')
-          az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
+          if [[ -n "$PREVIOUS_MANIFEST" ]]; then
+            echo "Unlocking previous manifest: ${PREVIOUS_MANIFEST}"
+            az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
+          fi
 
       - name: Build Docker Image
         run: docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" ${{ inputs.dockerFilePath }}
