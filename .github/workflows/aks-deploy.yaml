@@ -197,6 +197,10 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
+      - name: Unlock previous ACR image
+        run: |
+          az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ inputs.environment }}" --delete-enabled true --write-enabled true
+
       - name: Build Docker Image
         run: docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" ${{ inputs.dockerFilePath }}
 
@@ -204,12 +208,14 @@ jobs:
         run: |
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
             docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:latest"
+            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:stable"
           fi
           if [[ "${{ github.event.release.tag_name }}" != "" ]]; then
             docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name }}"
             MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
             docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${MAJOR_RELEASE}"
           fi
+          docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ inputs.environment }}"
 
       - name: Push Docker Image
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
@@ -373,6 +379,12 @@ jobs:
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ needs.build.outputs.imagePullSecret }}"
 
+      - name: Get current image tag used in deployment
+        id: get-current-image
+        run: |
+          CURRENT_IMAGE=$(kubectl get deployment "${{ needs.build.outputs.appName }}" -n "${{ steps.namespace.outputs.namespace }}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}')
+          echo "currentImage=${CURRENT_IMAGE}" >> $GITHUB_OUTPUT
+
       - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v4
@@ -384,6 +396,14 @@ jobs:
           imagepullsecrets: |
             "${{ needs.build.outputs.imagePullSecret }}"
           pull-images: false
+
+      - name: Untag previous ACR image
+        run: |
+          az acr repository untag --name "${{ secrets.registryHostName }}" --image "${{ steps.get-current-image.outputs.currentImage }}"
+
+      - name: Disable write access for newly deployed image
+        run: |
+          az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}" --delete-enabled false --write-enabled false
 
       - name: Create or Update Public DNS Record
         id: dns
