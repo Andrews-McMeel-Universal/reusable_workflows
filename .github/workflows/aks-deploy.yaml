@@ -412,7 +412,7 @@ jobs:
       - name: Disable write access for newly deployed image
         run: |
           IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}" --query "digest" -o tsv)
-          az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${IMAGE_MANIFEST}" --delete-enabled false --write-enabled false
+          az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --delete-enabled false --write-enabled false
 
       - name: Create or Update Public DNS Record
         id: dns
