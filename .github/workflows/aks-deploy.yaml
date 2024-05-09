@@ -209,26 +209,24 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          REGISTRY_REPOSITORY="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
-          IMAGE_NAME="${REGISTRY_REPOSITORY}:${{ github.sha }}"
+          IMAGE_NAME="${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}"
           docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${IMAGE_NAME}" ${{ inputs.dockerFilePath }}
 
       - name: Tag Docker Image
         run: |
-          REGISTRY_REPOSITORY="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
-            docker tag "${IMAGE_NAME}" "${REGISTRY_REPOSITORY}:latest"
-            docker tag "${IMAGE_NAME}" "${REGISTRY_REPOSITORY}:stable"
+            docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:latest"
+            docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:stable"
           fi
           if [[ "${{ github.event.release.tag_name }}" != "" ]]; then
-            docker tag "${IMAGE_NAME}" "${REGISTRY_REPOSITORY}:${{ github.event.release.tag_name }}"
+            docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name }}"
             MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            docker tag "${IMAGE_NAME}" "${REGISTRY_REPOSITORY}:${MAJOR_RELEASE}"
+            docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${MAJOR_RELEASE}"
           fi
-          docker tag "${IMAGE_NAME}" "${REGISTRY_REPOSITORY}:${{ inputs.environment }}"
+          docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ inputs.environment }}"
 
       - name: Push Docker Image
-        run: docker push -a "${REGISTRY_REPOSITORY}"
+        run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
     outputs:
       appName: ${{ env.appName }}
       appVersion: ${{ env.appVersion }}
