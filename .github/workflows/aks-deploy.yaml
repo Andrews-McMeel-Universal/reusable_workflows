@@ -209,21 +209,24 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          IMAGE_NAME="${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}"
+          REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
+          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}"
           docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${IMAGE_NAME}" ${{ inputs.dockerFilePath }}
 
       - name: Tag Docker Image
         run: |
+          REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
+          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}"
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
-            docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:latest"
-            docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:stable"
+            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:latest"
+            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:stable"
           fi
           if [[ "${{ github.event.release.tag_name }}" != "" ]]; then
-            docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name }}"
+            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:${{ github.event.release.tag_name }}"
             MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${MAJOR_RELEASE}"
+            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:${MAJOR_RELEASE}"
           fi
-          docker tag "${IMAGE_NAME}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ inputs.environment }}"
+          docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:${{ inputs.environment }}"
 
       - name: Push Docker Image
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
