@@ -215,6 +215,7 @@ jobs:
 
       - name: Tag Docker Image
         run: |
+          REGISTRY_REPOSITORY="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
             docker tag "${IMAGE_NAME}" "${REGISTRY_REPOSITORY}:latest"
             docker tag "${IMAGE_NAME}" "${REGISTRY_REPOSITORY}:stable"
