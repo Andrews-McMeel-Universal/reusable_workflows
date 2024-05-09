@@ -197,19 +197,36 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
+      - name: Unlock previous ACR image
+        run: |
+          PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ inputs.environment }}" --query "digest" -o tsv)
+          if [[ -n "$PREVIOUS_MANIFEST" ]]; then
+            echo "Unlocking previous manifest: ${PREVIOUS_MANIFEST}"
+            az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
+          else
+            echo "Previous manifest could not be found. Skipping unlocking."
+          fi
+
       - name: Build Docker Image
-        run: docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" ${{ inputs.dockerFilePath }}
+        run: |
+          REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
+          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}"
+          docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${IMAGE_NAME}" ${{ inputs.dockerFilePath }}
 
       - name: Tag Docker Image
         run: |
+          REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
+          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}"
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
-            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:latest"
+            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:latest"
+            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:stable"
           fi
           if [[ "${{ github.event.release.tag_name }}" != "" ]]; then
-            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.event.release.tag_name }}"
+            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:${{ github.event.release.tag_name }}"
             MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${MAJOR_RELEASE}"
+            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:${MAJOR_RELEASE}"
           fi
+          docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:${{ inputs.environment }}"
 
       - name: Push Docker Image
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
@@ -373,6 +390,16 @@ jobs:
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ needs.build.outputs.imagePullSecret }}"
 
+      - name: Get current image tag used in deployment
+        id: get-current-image
+        run: |
+          CURRENT_IMAGE=$(kubectl get deployment "${{ needs.build.outputs.appName }}" -n "${{ steps.namespace.outputs.namespace }}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}')
+          if [ -z "${CURRENT_IMAGE}" ]; then
+            echo "Failed to get current image"
+            exit 1
+          fi
+          echo "currentImage=${CURRENT_IMAGE}" >> $GITHUB_OUTPUT
+
       - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: Azure/k8s-deploy@v4
@@ -384,6 +411,23 @@ jobs:
           imagepullsecrets: |
             "${{ needs.build.outputs.imagePullSecret }}"
           pull-images: false
+
+      - name: Untag previous ACR image
+        run: |
+          if [[ "${{ steps.get-current-image.outputs.currentImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
+            az acr repository untag --name "${{ secrets.registryHostName }}" --image "${{ steps.get-current-image.outputs.currentImage }}"
+          else
+            echo "Deployment image is the same as the current image. Skipping untagging."
+          fi
+
+      - name: Disable write access for newly deployed image
+        run: |
+          IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}" --query "digest" -o tsv)
+          if [ -z "${IMAGE_MANIFEST}" ]; then
+            echo "Failed to get current image manifest"
+            exit 1
+          fi
+          az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --delete-enabled false --write-enabled false
 
       - name: Create or Update Public DNS Record
         id: dns
