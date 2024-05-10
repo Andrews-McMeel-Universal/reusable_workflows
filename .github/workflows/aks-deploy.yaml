@@ -408,7 +408,7 @@ jobs:
           if [[ -n "$PREVIOUS_MANIFEST" ]] && [[ "${{ steps.get-previous-image.outputs.previousImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
             echo "Unlocking previous manifest: ${PREVIOUS_MANIFEST}"
             az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
-            az acr repository untag --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}"
+            az acr repository untag --name "${{ secrets.registryHostName }}" --image "${{ steps.get-current-image.outputs.currentImage }}"
           elif [[ "${{ steps.get-previous-image.outputs.previousImage }}" == "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
             echo "Deployment image is the same as the current image. Skipping unlocking."
           else
