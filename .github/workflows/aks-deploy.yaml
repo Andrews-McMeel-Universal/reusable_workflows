@@ -197,16 +197,6 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
-      - name: Unlock previous ACR image
-        run: |
-          PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ inputs.environment }}" --query "digest" -o tsv || true)
-          if [[ -n "$PREVIOUS_MANIFEST" ]]; then
-            echo "Unlocking previous manifest: ${PREVIOUS_MANIFEST}"
-            az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
-          else
-            echo "Previous manifest could not be found. Skipping unlocking."
-          fi
-
       - name: Build Docker Image
         run: |
           REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
@@ -390,15 +380,15 @@ jobs:
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ needs.build.outputs.imagePullSecret }}"
 
-      - name: Get current image tag used in deployment
-        id: get-current-image
+      - name: Get previous image tag used in deployment
+        id: get-previous-image
         run: |
-          CURRENT_IMAGE=$(kubectl get deployment "${{ needs.build.outputs.appName }}" -n "${{ steps.namespace.outputs.namespace }}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}')
-          if [ -z "${CURRENT_IMAGE}" ]; then
-            echo "Failed to get current image"
+          PREVIOUS_IMAGE=$(kubectl get deployment "${{ needs.build.outputs.appName }}" -n "${{ steps.namespace.outputs.namespace }}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}')
+          if [ -z "${PREVIOUS_IMAGE}" ]; then
+            echo "Failed to get previous image"
             exit 1
           fi
-          echo "currentImage=${CURRENT_IMAGE}" >> $GITHUB_OUTPUT
+          echo "previousImage=${PREVIOUS_IMAGE}" >> $GITHUB_OUTPUT
 
       - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
@@ -412,12 +402,17 @@ jobs:
             "${{ needs.build.outputs.imagePullSecret }}"
           pull-images: false
 
-      - name: Untag previous ACR image
+      - name: Unlock and untag previous ACR image
         run: |
-          if [[ "${{ steps.get-current-image.outputs.currentImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
-            az acr repository untag --name "${{ secrets.registryHostName }}" --image "${{ steps.get-current-image.outputs.currentImage }}"
+          PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ steps.get-previous-image.outputs.previousImage }}" --query "digest" -o tsv || true)
+          if [[ -n "$PREVIOUS_MANIFEST" ]] && [[ "${{ steps.get-previous-image.outputs.previousImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
+            echo "Unlocking previous manifest: ${PREVIOUS_MANIFEST}"
+            az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
+            az acr repository untag --name "${{ secrets.registryHostName }}" --image "${{ steps.get-previous-image.outputs.previousImage }}"
+          elif [[ "${{ steps.get-previous-image.outputs.previousImage }}" == "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
+            echo "Deployment image is the same as the current image. Skipping unlocking."
           else
-            echo "Deployment image is the same as the current image. Skipping untagging."
+            echo "Previous manifest could not be found. Skipping unlocking."
           fi
 
       - name: Disable write access for newly deployed image
