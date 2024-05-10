@@ -199,7 +199,7 @@ jobs:
 
       - name: Unlock previous ACR image
         run: |
-          PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ inputs.environment }}" --query "digest" -o tsv)
+          PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ inputs.environment }}" --query "digest" -o tsv || true)
           if [[ -n "$PREVIOUS_MANIFEST" ]]; then
             echo "Unlocking previous manifest: ${PREVIOUS_MANIFEST}"
             az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
