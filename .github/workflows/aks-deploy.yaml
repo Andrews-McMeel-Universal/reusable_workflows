@@ -203,6 +203,16 @@ jobs:
           IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}"
           docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${IMAGE_NAME}" ${{ inputs.dockerFilePath }}
 
+      - name: Enable write access for newly deployed image
+        run: |
+          IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}" --query "digest" -o tsv || echo "")
+          if [ -z "${IMAGE_MANIFEST}" ]; then
+            echo "Failed to get current image manifest, proceeding with deployment"
+          else
+            echo "Current image manifest found: ${IMAGE_MANIFEST}"
+            az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --write-enabled true
+          fi
+
       - name: Tag Docker Image
         run: |
           REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
@@ -385,8 +395,9 @@ jobs:
         run: |
           PREVIOUS_IMAGE=$(kubectl get deployment "${{ needs.build.outputs.appName }}" -n "${{ steps.namespace.outputs.namespace }}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}')
           if [ -z "${PREVIOUS_IMAGE}" ]; then
-            echo "Failed to get previous image"
-            exit 1
+            echo "No previous image found, proceeding with deployment"
+          else
+            echo "Previous image found: ${PREVIOUS_IMAGE}"
           fi
           echo "previousImage=${PREVIOUS_IMAGE}" >> $GITHUB_OUTPUT
 
@@ -403,6 +414,7 @@ jobs:
           pull-images: false
 
       - name: Unlock and untag previous ACR image
+        if: ${{ steps.get-previous-image.outputs.previousImage != '' }}
         run: |
           PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ steps.get-previous-image.outputs.previousImage }}" --query "digest" -o tsv || true)
           if [[ -n "$PREVIOUS_MANIFEST" ]] && [[ "${{ steps.get-previous-image.outputs.previousImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
