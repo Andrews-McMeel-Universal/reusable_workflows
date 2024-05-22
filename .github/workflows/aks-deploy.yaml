@@ -203,13 +203,13 @@ jobs:
           IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}"
           docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${IMAGE_NAME}" ${{ inputs.dockerFilePath }}
 
-      - name: Enable write access for newly deployed image
+      - name: Enable write access if image has already been deployed
         run: |
           IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}" --query "digest" -o tsv || echo "")
           if [ -z "${IMAGE_MANIFEST}" ]; then
-            echo "Failed to get current image manifest, proceeding with deployment"
+            echo "Failed to get current image manifest, proceeding with deployment."
           else
-            echo "Current image manifest found: ${IMAGE_MANIFEST}"
+            echo "Enabling write access for image manifest."
             az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --write-enabled true
           fi
 
