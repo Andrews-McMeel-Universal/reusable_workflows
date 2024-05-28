@@ -18,7 +18,7 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/labeler@v4
+      - uses: actions/labeler@v5
         with:
           repo-token: ${{ secrets.PAT_ACTION_CI }}
           sync-labels: true
@@ -29,7 +29,7 @@ jobs:
     name: Check for "do not merge" label
     runs-on: ubuntu-latest
     steps:
-      - uses: mheap/github-action-required-labels@v3
+      - uses: mheap/github-action-required-labels@v5
         with:
           mode: exactly
           count: 0

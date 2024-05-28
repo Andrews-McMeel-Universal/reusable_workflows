@@ -47,7 +47,7 @@ jobs:
 
       - name: Check if package.json exists
         id: packagejsonfile
-        uses: andstor/file-existence-action@v2
+        uses: andstor/file-existence-action@v3
         with:
           files: "package.json"
 
@@ -101,7 +101,7 @@ jobs:
 
       - name: Create Pull Request
         id: cpr
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v6
         with:
           commit-message: "⬆️ Version bump: ${{ env.release }}"
           branch: maintenance/bump-version/${{ env.release }}
@@ -116,7 +116,7 @@ jobs:
             ${{ inputs.releaseType }}
 
       - name: Auto Approve Version Update PR
-        uses: hmarr/auto-approve-action@v3
+        uses: hmarr/auto-approve-action@v4.0.0
         with:
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
           github-token: ${{ secrets.PAT_ACTION_CI }}

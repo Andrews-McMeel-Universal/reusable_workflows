@@ -43,13 +43,13 @@ jobs:
 
       - name: Check if .prettierrc.js file exists
         id: prettier-config-js
-        uses: andstor/file-existence-action@v2
+        uses: andstor/file-existence-action@v3
         with:
           files: ".prettierrc.js"
 
       - name: Check if .prettierrc.json file exists
         id: prettier-config-json
-        uses: andstor/file-existence-action@v2
+        uses: andstor/file-existence-action@v3
         with:
           files: ".prettierrc.json"
 

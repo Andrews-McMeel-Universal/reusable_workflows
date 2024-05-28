@@ -212,7 +212,7 @@ jobs:
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
 
       - name: Deploy Azure Container App
-        uses: azure/container-apps-deploy-action@v1
+        uses: azure/container-apps-deploy-action@v2
         timeout-minutes: 20
         with:
           registryUrl: ${{ secrets.registryHostName }}
@@ -330,7 +330,7 @@ jobs:
 
       - name: Deploy Azure Container App with updated Next.js variables
         timeout-minutes: 20
-        uses: azure/container-apps-deploy-action@v1
+        uses: azure/container-apps-deploy-action@v2
         with:
           registryUrl: ${{ secrets.registryHostName }}
           registryUsername: ${{ secrets.registryUserName }}
@@ -423,7 +423,7 @@ jobs:
           az ad app update --id "${{ env.B2C_CLIENT_ID }}"  --web-redirect-uris "${REDIRECT_URIS[@]}"
 
       - name: Delete deployment environment
-        uses: strumwolf/delete-deployment-environment@v2
+        uses: strumwolf/delete-deployment-environment@v3
         with:
           token: ${{ secrets.githubPAT }}
           environment: ${{ needs.prepare.outputs.jiraTicketId }}

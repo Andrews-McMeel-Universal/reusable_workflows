@@ -65,7 +65,7 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Setup application platform
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ inputs.DOTNET_VERSION }}
 
@@ -86,7 +86,7 @@ jobs:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Whitelist Boley IPs
-        uses: azure/CLI@v1
+        uses: azure/cli@v2
         with:
           inlineScript: |
             set -eu
@@ -120,7 +120,7 @@ jobs:
           echo "ipv4=$(curl https://ipecho.net/plain ; echo)" >> $GITHUB_OUTPUT
 
       - name: Whitelist GitHub Runner IP
-        uses: azure/CLI@v1
+        uses: azure/cli@v2
         with:
           inlineScript: |
             set -eu
@@ -150,7 +150,7 @@ jobs:
             sleep 5
 
       - name: Deploy Azure Functions
-        uses: Azure/functions-action@v1
+        uses: azure/functions-action@v1
         with:
           app-name: ${{ inputs.AZURE_FUNCTIONAPP_NAME }}
           slot-name: ${{ inputs.environment }}
@@ -159,7 +159,7 @@ jobs:
 
       - name: Remove GitHub Runner IP from Whitelist
         if: always()
-        uses: azure/CLI@v1
+        uses: azure/cli@v2
         with:
           inlineScript: |
             set -eu
