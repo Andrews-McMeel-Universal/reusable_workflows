@@ -180,6 +180,12 @@ jobs:
           Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           Write-Output "release=$release" >> $env:GITHUB_ENV
+          
+      - name: Login via Az module
+        uses: azure/login@v1
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -330,6 +336,12 @@ jobs:
             image.tag:${{ github.sha }}
             ingress.host:${{ needs.build.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
+
+      - name: Login via Az module
+        uses: azure/login@v1
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
