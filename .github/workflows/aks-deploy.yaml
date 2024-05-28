@@ -100,7 +100,7 @@ jobs:
     runs-on: ${{ inputs.githubRunner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.checkoutRef }}
 
@@ -197,7 +197,7 @@ jobs:
           contentTypes: BuildArg Env
 
       - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1
+        uses: azure/docker-login@v2
         with:
           login-server: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
@@ -261,7 +261,7 @@ jobs:
       url: https://${{ needs.build.outputs.ingress }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.checkoutRef }}
 
@@ -324,7 +324,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v2
+        uses: azure/k8s-bake@v3
         with:
           renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
@@ -338,7 +338,7 @@ jobs:
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
 
       - name: Login via Az module
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
@@ -351,7 +351,7 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
       - name: Set target AKS cluster
-        uses: Azure/aks-set-context@v3.2
+        uses: azure/aks-set-context@v4
         with:
           cluster-name: ${{ secrets.azureClusterName }}
           resource-group: ${{ inputs.clusterResourceGroup }}
@@ -395,7 +395,7 @@ jobs:
           fi
 
       - name: Create K8s Image Pull Secret
-        uses: Azure/k8s-create-secret@v4
+        uses: azure/k8s-create-secret@v5
         with:
           container-registry-url: ${{ secrets.registryHostName }}
           container-registry-username: ${{ secrets.registryUserName  }}
@@ -415,7 +415,7 @@ jobs:
 
       - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
-        uses: Azure/k8s-deploy@v4
+        uses: azure/k8s-deploy@v5
         with:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}

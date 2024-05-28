@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.checkoutRef }}
 
@@ -60,7 +60,7 @@ jobs:
           clientSecret: ${{ env.AZURE_B2C_CLIENT_SECRET }}
 
       - name: Upload Auth Assets
-        uses: azure/powershell@v1
+        uses: azure/powershell@v2
         with:
           inlineScript: |
             if ("${{ inputs.environment }}" -match "production") {

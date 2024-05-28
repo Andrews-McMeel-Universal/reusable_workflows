@@ -119,7 +119,7 @@ jobs:
       url: ${{ steps.hostname.outputs.hostname }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -202,7 +202,7 @@ jobs:
           docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
 
       - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1
+        uses: azure/docker-login@v2
         with:
           login-server: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
@@ -253,7 +253,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -314,7 +314,7 @@ jobs:
           docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
 
       - name: Login to Azure Container Registry
-        uses: Azure/docker-login@v1
+        uses: azure/docker-login@v2
         with:
           login-server: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
@@ -324,7 +324,7 @@ jobs:
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
 
       - name: Login via Az module
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           creds: "${{ secrets.azureCredentials }}"
 

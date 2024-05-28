@@ -21,7 +21,7 @@ jobs:
     if: ${{ github.actor == 'dependabot[bot]' && inputs.autoApprove != 'false' || github.actor == 'dependabot[bot]' && inputs.autoMerge != 'false' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # The approval step will fail if there's no metadata.
       - name: Retrieve dependabot metadata
