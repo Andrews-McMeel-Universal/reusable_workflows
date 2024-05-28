@@ -33,11 +33,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Login to Azure
-        uses: Andrews-McMeel-Universal/cache-azure-login@v1
-        with:
-          azureCredentials: "${{ secrets.AZURE_CREDENTIALS }}"
-
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
