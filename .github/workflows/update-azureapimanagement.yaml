@@ -68,31 +68,12 @@ jobs:
   update-api-management:
     name: Update API Management Service
     runs-on: ubuntu-latest
-    env:
-      azureCredentials: ${{ secrets.azureCredentials }}
-      azurePassword: ${{ secrets.azurePassword }}
-      azureSubscription: ${{ secrets.azureSubscription }}
     steps:
       - name: Login via Az module
-        if: ${{ env.azureCredentials }}
         uses: azure/login@v1
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
-
-      - name: Login via PowerShell
-        if: ${{ inputs.azureUser && env.azurePassword && env.azureSubscription }}
-        uses: azure/powershell@v1
-        with:
-          azPSVersion: "latest"
-          inlineScript: |
-            $User = "${{ inputs.azureUser }}"
-            $Password = ConvertTo-SecureString -String "${{ secrets.azurePassword }}" -AsPlainText -Force
-            $Subscription = "${{ secrets.azureSubscription }}"
-            $Credential = New-Object -TypeName "System.Management.Automation.PSCredential" -ArgumentList $User,$Password
-            $ResourceGroup = "${{ inputs.apiServiceResourceGroup }}"
-            $ServiceName = "${{ inputs.apiServiceName }}"
-            Connect-AzAccount -Subscription $Subscription -Credential $Credential
 
       - name: Retrieve Application information
         id: getappinfo
