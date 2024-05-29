@@ -324,7 +324,7 @@ jobs:
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
 
       - name: Login via Az module
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           creds: "${{ secrets.azureCredentials }}"
 
