@@ -77,7 +77,7 @@ jobs:
 
       - name: Retrieve Application information
         id: getappinfo
-        uses: azure/powershell@v1
+        uses: azure/powershell@v2
         with:
           azPSVersion: "latest"
           inlineScript: |
@@ -118,7 +118,7 @@ jobs:
             echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
 
       - name: Update Azure API Management
-        uses: azure/powershell@v1
+        uses: azure/powershell@v2
         with:
           azPSVersion: "latest"
           inlineScript: |

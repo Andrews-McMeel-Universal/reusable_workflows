@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -40,7 +40,7 @@ jobs:
           environment: ${{ inputs.environment }}
 
       - name: Setup application platform
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ inputs.DOTNET_VERSION }}
 
@@ -51,7 +51,7 @@ jobs:
       # Installs dependencies if the cache was broken
       - name: Cache dependencies
         id: install-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ${{ github.workspace }}/.nuget/packages

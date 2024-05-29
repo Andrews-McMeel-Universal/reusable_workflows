@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           ref: ${{ github.head_ref }}
@@ -43,13 +43,13 @@ jobs:
 
       - name: Check if .prettierrc.js file exists
         id: prettier-config-js
-        uses: andstor/file-existence-action@v2
+        uses: andstor/file-existence-action@v3
         with:
           files: ".prettierrc.js"
 
       - name: Check if .prettierrc.json file exists
         id: prettier-config-json
-        uses: andstor/file-existence-action@v2
+        uses: andstor/file-existence-action@v3
         with:
           files: ".prettierrc.json"
 
@@ -85,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download actionlint
         id: get_actionlint

@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
@@ -34,7 +34,7 @@ jobs:
         run: yarn lint:styles
 
       - name: Push Linting Fixes
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use cache-yarn-install action
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
@@ -79,7 +79,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use cache-yarn-install action
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
@@ -99,7 +99,7 @@ jobs:
       - name: Run Playwright tests
         run: yarn test:integration:ci
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: playwright-report

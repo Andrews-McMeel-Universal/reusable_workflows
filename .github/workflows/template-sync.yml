@@ -16,12 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch or tag
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
 
       - name: actions-template-sync
-        uses: AndreasAugustin/actions-template-sync@v1.1.1
+        uses: AndreasAugustin/actions-template-sync@v2
         with:
           github_token: ${{ secrets.PAT_ACTION_CI }}
           source_repo_path: Andrews-McMeel-Universal/.github
