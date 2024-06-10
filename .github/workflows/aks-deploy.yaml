@@ -200,12 +200,12 @@ jobs:
       - name: Build Docker Image
         run: |
           REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
-          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}"
+          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}-${{ inputs.environment }}"
           docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${IMAGE_NAME}" ${{ inputs.dockerFilePath }}
 
       - name: Enable write access if image has already been deployed
         run: |
-          IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}" --query "digest" -o tsv || echo "")
+          IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" --query "digest" -o tsv || echo "")
           if [ -z "${IMAGE_MANIFEST}" ]; then
             echo "Failed to get current image manifest, proceeding with deployment."
           else
@@ -216,7 +216,7 @@ jobs:
       - name: Tag Docker Image
         run: |
           REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
-          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}"
+          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}-${{ inputs.environment }}"
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
             docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:latest"
             docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:stable"
@@ -327,7 +327,7 @@ jobs:
           overrideFiles: ./values-override.yaml
           overrides: |
             image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
-            image.tag:${{ github.sha }}
+            image.tag:${{ github.sha }}-${{ inputs.environment }}
             ingress.host:${{ needs.build.outputs.ingress }}
             autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
 
@@ -408,7 +408,7 @@ jobs:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}"
+            "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
           imagepullsecrets: |
             "${{ needs.build.outputs.imagePullSecret }}"
           pull-images: false
@@ -417,7 +417,7 @@ jobs:
         if: ${{ steps.get-previous-image.outputs.previousImage != '' }}
         run: |
           PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ steps.get-previous-image.outputs.previousImage }}" --query "digest" -o tsv || true)
-          if [[ -n "$PREVIOUS_MANIFEST" ]] && [[ "${{ steps.get-previous-image.outputs.previousImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
+          if [[ -n "$PREVIOUS_MANIFEST" ]] && [[ "${{ steps.get-previous-image.outputs.previousImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" ]]; then
             echo "Unlocking previous manifest: ${PREVIOUS_MANIFEST}"
             az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
             while read -r TAG; do
@@ -429,7 +429,7 @@ jobs:
                 echo "Skipping untagging ${{ github.event.repository.name }}:${TAG}"
               fi
             done < <(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}" --query "tags" -o tsv)
-          elif [[ "${{ steps.get-previous-image.outputs.previousImage }}" == "${{ github.event.repository.name }}:${{ github.sha }}" ]]; then
+          elif [[ "${{ steps.get-previous-image.outputs.previousImage }}" == "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" ]]; then
             echo "Deployment image is the same as the current image. Skipping unlocking."
           else
             echo "Previous manifest could not be found. Skipping unlocking."
@@ -437,10 +437,9 @@ jobs:
 
       - name: Disable delete access for newly deployed image
         run: |
-          IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}" --query "digest" -o tsv)
+          IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" --query "digest" -o tsv)
           if [ -z "${IMAGE_MANIFEST}" ]; then
             echo "Failed to get current image manifest"
-            exit 1
           fi
           az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --delete-enabled false
 
