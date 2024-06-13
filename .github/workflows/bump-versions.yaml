@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       releaseType:
-        required: true
+        required: false
         type: string
         description: Type of release
       environmentCharts:
@@ -12,25 +12,30 @@ on:
         type: string
         description: Set to true if the repository has separate Helm chart directories for each environment
         default: 'false'
+      version:
+        required: false
+        type: string
+        description: The version to bump to. If not provided, the next version will be calculated based on the latest release
     secrets:
       PAT_ACTION_CI:
         required: false
 
 jobs:
   bump-version:
-    name: Bump Versions to next ${{ inputs.releaseType }}
+    name: Bump Version - ${{ inputs.version || inputs.releaseType }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Get latest release
+        if: ${{ ! inputs.version }}
         id: latestrelease
         continue-on-error: true
         uses: thebritican/fetch-latest-release@v2.0.0
 
       - name: Get Chart.yaml appVersion
-        if: inputs.environmentCharts == 'false'
+        if: ${{ inputs.environmentCharts == 'false' && ! inputs.version }}
         id: chartyaml
         uses: rmeneely/get-yaml-value@v1
         with:
@@ -38,7 +43,7 @@ jobs:
           varlist: appVersion
 
       - name: Get Environment Chart.yaml appVersion
-        if: inputs.environmentCharts == 'true'
+        if: ${{ inputs.environmentCharts == 'true' && ! inputs.version }}
         id: environmentchartyaml
         uses: rmeneely/get-yaml-value@v1
         with:
@@ -52,7 +57,7 @@ jobs:
           files: "package.json"
 
       - name: Get package.json version
-        if: steps.packagejsonfile.outputs.files_exists == 'true'
+        if: ${{ steps.packagejsonfile.outputs.files_exists == 'true' && ! inputs.version }}
         id: packagejson
         uses: notiz-dev/github-action-json-property@v0.2.0
         with:
@@ -60,6 +65,7 @@ jobs:
           prop_path: "version"
 
       - name: Gets next semantic release
+        if: ${{ ! inputs.version }}
         shell: pwsh
         run: |
           [Version]$a = "${{ steps.packagejson.outputs.prop || '0.0.0' }}"
@@ -87,7 +93,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: '"version": .*'
-          replace: '"version": "${{ env.release }}",'
+          replace: '"version": "${{ inputs.version || env.release }}",'
           regex: true
           include: "**package.json"
 
@@ -95,7 +101,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "appVersion: .*"
-          replace: "appVersion: ${{ env.release }}"
+          replace: "appVersion: ${{ inputs.version || env.release }}"
           regex: true
           include: "**Chart.yaml"
 
@@ -103,13 +109,13 @@ jobs:
         id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "⬆️ Version bump: ${{ env.release }}"
-          branch: maintenance/bump-version/${{ env.release }}
+          commit-message: "⬆️ Version bump: ${{ inputs.version || env.release }}"
+          branch: maintenance/bump-version/${{ inputs.version || env.release }}
           committer: AMU Automations <amu_deploy@amuniversal.com>
           delete-branch: true
-          title: "⬆️ Version bump: ${{ env.release }}"
+          title: "⬆️ Version bump: ${{ inputs.version || env.release }}"
           body: |
-            Updating version to ${{ env.release }} in:
+            Updating version to ${{ inputs.version || env.release }} in:
             - `**/Charts.yaml`
             - `**/package.json`
           labels: |
