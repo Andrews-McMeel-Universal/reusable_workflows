@@ -131,6 +131,7 @@ jobs:
           $appVersion = $chartConfig.appVersion
           $appHealthCheck = $appconfig.deployment.healthCheckPath
           $configMap = $appConfig.deployment.configMap
+          $maxReplicas = $appConfig.autoscaling.maxReplicas
           $configSecret = $appConfig.deployment.secret
           $imagePullSecret = "$appName-pull-secret"
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
@@ -180,6 +181,7 @@ jobs:
           Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
           Write-Output "release=$release" >> $env:GITHUB_ENV
+          Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -244,6 +246,7 @@ jobs:
       ingressWhitelist: ${{ env.ingressWhitelist }}
       adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
       release: ${{ env.release }}
+      maxReplicas: ${{ env.maxReplicas }}
 
   deploy:
     name: AKS Deploy
@@ -329,7 +332,7 @@ jobs:
             image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             ingress.host:${{ needs.build.outputs.ingress }}
-            autoscaling.maxReplicas:${{ inputs.maximumReplicas }}
+            autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas || inputs.maximumReplicas }}
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
