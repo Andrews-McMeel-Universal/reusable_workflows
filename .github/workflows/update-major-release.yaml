@@ -29,7 +29,9 @@ jobs:
           git config user.email github-actions@github.com
 
       - name: Tag new target
-        run: git tag -f ${{ github.event.inputs.major_version }} ${{ github.event.inputs.target }}
+        run: |
+          git tag -f ${{ github.event.inputs.major_version }} ${{ github.event.inputs.target }}
+          git tag -f latest ${{ github.event.inputs.target }}
 
       - name: Push new tag
         run: git push origin ${{ github.event.inputs.major_version }} --force
