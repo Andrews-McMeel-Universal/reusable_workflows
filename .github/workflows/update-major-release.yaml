@@ -34,4 +34,6 @@ jobs:
           git tag -f latest ${{ github.event.inputs.target }}
 
       - name: Push new tag
-        run: git push origin ${{ github.event.inputs.major_version }} --force
+        run: |
+          git push origin ${{ github.event.inputs.major_version }} --force
+          git push origin latest --force
