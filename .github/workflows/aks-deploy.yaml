@@ -482,3 +482,14 @@ jobs:
           if [[ -n "${{ needs.build.outputs.configMap }}" ]] ; then
             echo "- **ConfigMap**: ${{ needs.build.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Send Deployment report to Teams
+        uses: skitionek/notify-microsoft-teams@master
+        if: always()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_DEPLOYMENT_WEBHOOK }}
+          needs: ${{ toJson(needs) }}
+          job: ${{ toJson(job) }}
+          steps: ${{ toJson(steps) }}
+          overwrite: "{title: `Deployment Status - ${{ needs.build.outputs.appName }} for ${{ inputs.environment }} environment`}"
+        
