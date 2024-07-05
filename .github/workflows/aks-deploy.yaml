@@ -494,7 +494,6 @@ jobs:
         with:
           webhook_url: ${{ inputs.deploymentWebhook }}
           needs: ${{ toJson(needs) }}
-          job: ${{ toJson(job) }}
           steps: ${{ toJson(steps) }}
-          overwrite: "{title: `Deployment Status - ${{ needs.build.outputs.appName }} for ${{ inputs.environment }} environment`}"
+          overwrite: "{title: `${{ needs.build.outputs.appName }} Deployment - ${{ inputs.environment }}`}"
         
