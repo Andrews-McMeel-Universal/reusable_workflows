@@ -392,6 +392,7 @@ jobs:
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
           secret-name: "${{ needs.build.outputs.imagePullSecret }}"
+          namespace: ${{ steps.namespace.outputs.namespace }}
 
       - name: Get previous image tag used in deployment
         id: get-previous-image
