@@ -106,6 +106,7 @@ jobs:
 
             # Get the fully qualified domain name (FQDN) of the service from previous steps
             $serviceFqdn = "${{ steps.getappinfo.outputs.applicationIngressFqdn }}"
+            $ServiceURL = "https://$serviceFqdn"
 
             # Create a context object for API management operations
             $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
