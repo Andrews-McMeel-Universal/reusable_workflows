@@ -118,7 +118,7 @@ jobs:
             Write-Output "Default API Swagger URL: $SwaggerURL"
 
             # Import the API using the Swagger URL
-            Import-AzApiManagementApi -Context $Context -SpecificationUrl $swaggerUrl -SpecificationFormat OpenApi -Path $ApiId -ApiId "$ApiId" -ApiVersion "" -ApiVersionSetId $ApiVersionSet.Id
+            Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId "$ApiId" -ApiVersion "" -ApiVersionSetId $ApiVersionSet.Id
 
             # Retrieve the imported API object
             $Api = Get-AzApiManagementApi -Context $Context -ApiId $ApiId
@@ -136,17 +136,17 @@ jobs:
                 $version = $_
 
                 # Construct the Swagger URL for each version
-                $swaggerUrl = "https://$serviceFqdn/swagger/v$version/swagger.json"
+                $SwaggerURL = "https://$serviceFqdn/swagger/v$version/swagger.json"
 
                 # Generate a unique API ID for each version
                 $versionedApiId = "$ApiId-v$version"
 
                 try {
                     # Attempt to request the Swagger URL
-                    $Response = Invoke-WebRequest -URI $swaggerUrl -ErrorAction Stop
+                    $Response = Invoke-WebRequest -URI $SwaggerURL -ErrorAction Stop
                     if ($Response.StatusCode -eq 200) {
                         # Import the versioned API if the Swagger definition is found
-                        Import-AzApiManagementApi -Context $Context -SpecificationUrl $swaggerUrl -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
+                        Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
 
                         # Retrieve and update the API object
                         $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
