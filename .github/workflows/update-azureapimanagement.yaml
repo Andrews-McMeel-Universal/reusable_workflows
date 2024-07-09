@@ -32,6 +32,9 @@ jobs:
     name: Update API Management Service
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Login via Az module
         uses: azure/login@v2
         with:
@@ -135,34 +138,24 @@ jobs:
             1..3 | ForEach-Object {
                 $version = $_
 
-                # Construct the Swagger URL for each version
-                $SwaggerURL = "https://$serviceFqdn/swagger/v$version/swagger.json"
+                # Check if the versioned API exists
+                if (Test-Path -Path (Get-ChildItem -Directory -Recurse -Filter "V${version}" | Select-Object -First 1)) {
+                    # Construct the Swagger URL for each version
+                    $SwaggerURL = "https://$serviceFqdn/swagger/v$version/swagger.json"
 
-                # Generate a unique API ID for each version
-                $versionedApiId = "$ApiId-v$version"
+                    # Generate a unique API ID for each version
+                    $versionedApiId = "$ApiId-v$version"
 
-                try {
-                    # Attempt to request the Swagger URL
-                    $Response = Invoke-WebRequest -URI $SwaggerURL -ErrorAction Stop
-                    if ($Response.StatusCode -eq 200) {
-                        # Import the versioned API if the Swagger definition is found
-                        Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
+                    # Import the versioned API
+                    Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
 
-                        # Retrieve and update the API object
-                        $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
-                        $Api.ServiceURL = $ServiceURL
-                        $Api.SubscriptionRequired = $ApiSubscriptionRequired
+                    # Retrieve and update the API object
+                    $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
+                    $Api.ServiceURL = $ServiceURL
+                    $Api.SubscriptionRequired = $ApiSubscriptionRequired
 
-                        Set-AzApiManagementApi -InputObject $Api
-
-                        # Associate the versioned API with a product
-                        Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
-                    }
-                    else {
-                        Write-Output "No API definition found for version v${version}."
-                    }
-                }
-                catch {
-                    Write-Output "Error importing API definition for version v${version}: $_"
+                    # Associate the versioned API with a product
+                    Set-AzApiManagementApi -InputObject $Api
+                    Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
                 }
             }
