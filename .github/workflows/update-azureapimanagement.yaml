@@ -139,7 +139,8 @@ jobs:
                 $version = $_
 
                 # Check if the versioned API exists
-                if (Test-Path -Path (Get-ChildItem -Directory -Recurse -Filter "V${version}" -ErrorAction SilentlyContinue | Select-Object -First 1)) {
+                $apiDirectory = Get-ChildItem -Directory -Recurse -Filter "V${version}" -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($apiDirectory -and (Test-Path -Path $apiDirectory.FullName)) {
                     # Construct the Swagger URL for each version
                     $SwaggerURL = "https://$serviceFqdn/swagger/v$version/swagger.json"
 
