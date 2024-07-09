@@ -114,7 +114,7 @@ jobs:
             }
 
             # Construct the Swagger URL for the default API specification
-            $SwaggerURL = "https://$serviceFqdn/${{ inputs.defaultApiSpecificationPath }}"
+            $SwaggerURL = "https://$serviceFqdn${{ inputs.defaultApiSpecificationPath }}"
             Write-Output "Default API Swagger URL: $SwaggerURL"
 
             # Import the API using the Swagger URL
