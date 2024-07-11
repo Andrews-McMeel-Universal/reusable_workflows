@@ -26,6 +26,11 @@ on:
         type: string
         description: "The branch, tag, or SHA to checkout"
         default: ${{ github.ref }}
+      deploymentWebhook:
+        required: false
+        type: string
+        description: "The webhook URL for the deployment status"
+        default: ${{ vars.MSTEAMS_DEPLOYMENT_WEBHOOK }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -180,3 +185,12 @@ jobs:
             else
                 exit 1
             fi
+
+      - name: Send Deployment report to Teams
+        uses: skitionek/notify-microsoft-teams@master
+        if: always() && ${{ inputs.environment != 'development' }}
+        with:
+          webhook_url: ${{ inputs.deploymentWebhook }}
+          needs: ${{ toJson(needs) }}
+          job: ${{ toJson(job) }}
+          overwrite: "{title: `${{ github.event.repository.name }} ${{ github.event.release.tag_name }} Deployment - ${{ inputs.environment }}`}"
