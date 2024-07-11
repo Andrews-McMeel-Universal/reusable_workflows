@@ -111,18 +111,12 @@ jobs:
             # Create a context object for API management operations
             $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
 
-            # Retrieve the API Version Set
-            $apiVersionSet = Get-AzApiManagementApiVersionSet -Context $Context | Where-Object { $_.DisplayName -eq $ApiId }
-            if (-not $apiVersionSet) { # Corrected variable name here
-                $apiVersionSet = New-AzApiManagementApiVersionSet -Context $Context -Name $ApiId -Scheme Segment -Description "$ApiId API"
-            }
-
             # Construct the Swagger URL for the default API specification
             $SwaggerURL = "https://$serviceFqdn${{ inputs.apiSpecificationPath }}"
             Write-Output "Default API Swagger URL: $SwaggerURL"
 
             # Import the API using the Swagger URL
-            Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId "$ApiId" -ApiVersion "" -ApiVersionSetId $ApiVersionSet.Id
+            Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId "$ApiId"
 
             # Retrieve the imported API object
             $Api = Get-AzApiManagementApi -Context $Context -ApiId $ApiId
@@ -134,33 +128,3 @@ jobs:
             # Update default API version
             Set-AzApiManagementApi -InputObject $Api
             Add-AzApiManagementApiToProduct -Context $Context -ApiId $ApiId -ProductId $ApiProductId
-
-            # Update API versions
-            1..3 | ForEach-Object {
-                $version = $_
-
-                # Check if the versioned API exists
-                $apiDirectory = Get-ChildItem -Directory -Recurse -Filter "V${version}" -ErrorAction SilentlyContinue | Select-Object -First 1
-                if ($apiDirectory -and (Test-Path -Path $apiDirectory.FullName)) {
-                    # Construct the Swagger URL for each version
-                    $SwaggerURL = "https://$serviceFqdn/swagger/v$version/swagger.json"
-
-                    # Generate a unique API ID for each version
-                    $versionedApiId = "$ApiId-v$version"
-
-                    # Import the versioned API
-                    Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
-
-                    # Retrieve and update the API object
-                    $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
-                    $Api.ServiceURL = $ServiceURL
-                    $Api.SubscriptionRequired = $ApiSubscriptionRequired
-
-                    # Associate the versioned API with a product
-                    Set-AzApiManagementApi -InputObject $Api
-                    Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
-                }
-                else {
-                    Write-Output "Version V$version does not exist in this repository."
-                }
-            }
