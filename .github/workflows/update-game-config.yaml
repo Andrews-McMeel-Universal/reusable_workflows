@@ -192,4 +192,4 @@ jobs:
           webhook_url: ${{ inputs.deploymentWebhook }}
           needs: ${{ toJson(needs) }}
           job: ${{ toJson(job) }}
-          overwrite: "{title: `${{ github.event.repository.name }} ${{ github.event.release.tag_name }} Deployment - ${{ inputs.environment }}`}"
+          overwrite: "{title: `${{ github.event.repository.name }} ${{ github.event.release.tag_name || '-' }} Deployment - ${{ inputs.environment }}`}"
