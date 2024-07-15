@@ -62,7 +62,7 @@ jobs:
           CACHE_CLEAR: TRUE
 
       - name: Send Failed Deployment report to Teams
-        if: failure() && ${{ inputs.environment != 'development' }}
+        if: failure() && (inputs.environment != 'development')
         uses: jdcargile/ms-teams-notification@v1.4
         with:
           github-token: ${{ github.token }} # this will use the runner's token.
@@ -73,7 +73,7 @@ jobs:
           verbose-logging: true
 
       - name: Send Succeeded Deployment report to Teams
-        if: success() && ${{ inputs.environment != 'development' }}
+        if: success() && (inputs.environment != 'development')
         uses: jdcargile/ms-teams-notification@v1.4
         with:
           github-token: ${{ github.token }} # this will use the runner's token.
