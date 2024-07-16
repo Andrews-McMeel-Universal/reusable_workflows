@@ -16,6 +16,11 @@ on:
         type: string
         description: "The branch, tag, or SHA to checkout"
         default: ${{ github.ref }}
+      deploymentWebhook:
+        required: false
+        type: string
+        description: "The webhook URL for the deployment status"
+        default: ${{ vars.MSTEAMS_DEPLOYMENT_WEBHOOK }}
     secrets:
       azureCredentials:
         required: true
@@ -72,3 +77,25 @@ jobs:
             $DistPath = Join-Path (Get-Location) "dist"
             ./deployments/scripts/Deploy-B2C-Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName $ContainerName -DistPath $DistPath
           azPSVersion: "latest"
+
+      - name: Send Failed Deployment report to Teams
+        if: failure() && (inputs.environment != 'development')
+        uses: jdcargile/ms-teams-notification@v1.4
+        with:
+          github-token: ${{ github.token }} # this will use the runner's token.
+          ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
+          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Failed ${{ inputs.environment }} Deployment"
+          notification-color: 17a2b8
+          timezone: America/Chicago
+          verbose-logging: true
+
+      - name: Send Succeeded Deployment report to Teams
+        if: success() && (inputs.environment != 'development')
+        uses: jdcargile/ms-teams-notification@v1.4
+        with:
+          github-token: ${{ github.token }} # this will use the runner's token.
+          ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
+          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Successful ${{ inputs.environment }} Deployment"
+          notification-color: 28a745
+          timezone: America/Chicago
+          verbose-logging: true

@@ -76,6 +76,11 @@ on:
         type: string
         description: "The type of runner to use"
         default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
+      deploymentWebhook:
+        required: false
+        type: string
+        description: "The webhook URL for the deployment status"
+        default: ${{ vars.MSTEAMS_DEPLOYMENT_WEBHOOK }}
     secrets:
       azureClusterName:
         required: true
@@ -483,3 +488,25 @@ jobs:
           if [[ -n "${{ needs.build.outputs.configMap }}" ]] ; then
             echo "- **ConfigMap**: ${{ needs.build.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Send Failed Deployment report to Teams
+        if: failure() && (inputs.environment != 'development')
+        uses: jdcargile/ms-teams-notification@v1.4
+        with:
+          github-token: ${{ github.token }} # this will use the runner's token.
+          ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
+          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Failed ${{ inputs.environment }} Deployment"
+          notification-color: 17a2b8
+          timezone: America/Chicago
+          verbose-logging: true
+
+      - name: Send Succeeded Deployment report to Teams
+        if: success() && (inputs.environment != 'development')
+        uses: jdcargile/ms-teams-notification@v1.4
+        with:
+          github-token: ${{ github.token }} # this will use the runner's token.
+          ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
+          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Successful ${{ inputs.environment }} Deployment"
+          notification-color: 28a745
+          timezone: America/Chicago
+          verbose-logging: true
