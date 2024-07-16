@@ -12,48 +12,11 @@ on:
         type: string
         description: "Relative Path to Open API Specification."
         default: "/swagger/v1/swagger.json"
-      apiId:
-        required: false
-        type: string
-        description: "API Name for Azure API Management."
-      apiProductId:
-        required: false
-        type: string
-        description: "Azure API Management Product Name for API."
-        default: "AZ-WebServices"
-      apiSubscriptionRequired:
-        required: false
-        type: boolean
-        description: "Is a subcription required to access the API."
-        default: true
-      apiServiceName:
-        required: false
-        type: string
-        description: "Name of API Management Service."
-      apiServiceResourceGroup:
-        required: false
-        type: string
-        description: "API Service Resource Group."
-      azureUser:
-        required: false
-        type: string
-        description: "Azure user with credentials to add APIs."
-        default: "amu_deploy@amuniversal.com"
       repositoryName:
         required: false
         type: string
         description: "GitHub Repository Name."
         default: ${{ github.event.repository.name }}
-      storageAccountName:
-        required: false
-        type: string
-        description: "Storage Account for application information table."
-        default: "amucloudapps"
-      appInfoTableName:
-        required: false
-        type: string
-        description: "Application information storage table."
-        default: "DeployedApplications"
     secrets:
       azurePassword:
         required: false
@@ -69,6 +32,9 @@ jobs:
     name: Update API Management Service
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Login via Az module
         uses: azure/login@v2
         with:
@@ -84,11 +50,13 @@ jobs:
             Install-Module -Name AzTable -Force
             Import-Module AzTable
 
-            $appInfoTableName = "${{ inputs.appInfoTableName }}"
+            # Define the storage account and table name
+            $appInfoTableName = "DeployedApplications"
+            $storageAccountName = "amucloudapps"
 
-            $storageContext = New-AzStorageContext -StorageAccountName ${{ inputs.storageAccountName }} -StorageAccountKey ${{ secrets.storageAccountKey }}
+            $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey ${{ secrets.storageAccountKey }}
 
-            #Get Storage table
+            # Get Storage table
             try {
                 $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
                 }
@@ -97,8 +65,10 @@ jobs:
                 return
                 }
 
+            # Retrieve the application information
             $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey "${{ inputs.repositoryName }}" -RowKey "${{ inputs.environment }}"
 
+            # Set the application information as variables
             $applicationName = $appInfo.ApplicationName
             $version = $appInfo.Version
             $keyVault = $appInfo.KeyVault
@@ -108,54 +78,53 @@ jobs:
             $healthCheckPath = $appInfo.HealthCheckPath
             $aksIngress = $appInfo.AksIngress
 
-            echo "applicationName=$applicationName" >> $env:GITHUB_ENV
-            echo "version=$version" >> $env:GITHUB_ENV
-            echo "keyVault=$keyVault" >> $env:GITHUB_ENV
-            echo "hostName=$hostName" >> $env:GITHUB_ENV
-            echo "domainName=$domainName" >> $env:GITHUB_ENV
-            echo "applicationIngressFqdn=$ingressFqdn" >> $env:GITHUB_ENV
-            echo "healthCheckPath=$healthCheckPath" >> $env:GITHUB_ENV
-            echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
+            # Set the application information as output variables
+            echo "applicationName=$applicationName" >> $env:GITHUB_OUTPUT
+            echo "version=$version" >> $env:GITHUB_OUTPUT
+            echo "keyVault=$keyVault" >> $env:GITHUB_OUTPUT
+            echo "hostName=$hostName" >> $env:GITHUB_OUTPUT
+            echo "domainName=$domainName" >> $env:GITHUB_OUTPUT
+            echo "applicationIngressFqdn=$ingressFqdn" >> $env:GITHUB_OUTPUT
+            echo "healthCheckPath=$healthCheckPath" >> $env:GITHUB_OUTPUT
+            echo "aksIngress=$aksIngress" >> $env:GITHUB_OUTPUT
 
       - name: Update Azure API Management
         uses: azure/powershell@v2
         with:
           azPSVersion: "latest"
           inlineScript: |
-            $serviceFqdn = "${{ env.applicationIngressFqdn }}"
-            $APISpecPath = "${{ inputs.apiSpecificationPath }}"
-            $SwaggerURL = "https://$serviceFqdn$APISpecPath"
+            # Set API Management variables
+            $ApiProductId = "AZ-WebServices"
+            $ApiSubscriptionRequired = $True
+
+            # Generate API ID by appending "-api" to the repository name and replacing underscores with hyphens
+            $ApiId = ("${{ github.event.repository.name }}-api").Replace("_","-")
+
+            # Retrieve the resource group and service name based on the environment tag
+            $ResourceGroup = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
+            $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).Name
+
+            # Get the fully qualified domain name (FQDN) of the service from previous steps
+            $serviceFqdn = "${{ steps.getappinfo.outputs.applicationIngressFqdn }}"
             $ServiceURL = "https://$serviceFqdn"
-            $ApiProductId = "${{ inputs.apiProductId }}"
-            $ApiSubscriptionRequired = ${{ inputs.apiSubscriptionRequired }}
 
-            echo "SwaggerURL: $SwaggerURL"
-
-            if ("${{ inputs.apiId }}") {
-              $ApiId = "${{ inputs.apiId }}"
-            }
-            else {
-              $ApiId = ("${{ github.event.repository.name }}-api").Replace("_","-") 
-            }
-
-            if ("${{ inputs.apiServiceResourceGroup }}") {
-              $ResourceGroup = "${{ inputs.apiServiceResourceGroup }}"
-            }
-            else {
-              $ResourceGroup = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
-            }
-
-            if ("${{ inputs.apiServiceName }}") {
-              $ServiceName = "${{ inputs.apiServiceName }}"
-            }
-            else {
-              $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).Name
-            }
-
+            # Create a context object for API management operations
             $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
-            Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId $ApiId
+
+            # Construct the Swagger URL for the default API specification
+            $SwaggerURL = "https://$serviceFqdn${{ inputs.apiSpecificationPath }}"
+            Write-Output "Default API Swagger URL: $SwaggerURL"
+
+            # Import the API using the Swagger URL
+            Import-AzApiManagementApi -Context $Context -SpecificationUrl $SwaggerURL -SpecificationFormat OpenApi -Path $ApiId -ApiId "$ApiId"
+
+            # Retrieve the imported API object
             $Api = Get-AzApiManagementApi -Context $Context -ApiId $ApiId
+
+            # Update the API object with the service URL and subscription requirement
             $Api.ServiceURL = $ServiceURL
             $Api.SubscriptionRequired = $ApiSubscriptionRequired
+
+            # Update default API version
             Set-AzApiManagementApi -InputObject $Api
             Add-AzApiManagementApiToProduct -Context $Context -ApiId $ApiId -ProductId $ApiProductId
