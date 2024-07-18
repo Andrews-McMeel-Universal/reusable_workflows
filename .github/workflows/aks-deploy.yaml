@@ -136,7 +136,15 @@ jobs:
           $appVersion = $chartConfig.appVersion
           $appHealthCheck = $appconfig.deployment.healthCheckPath
           $configMap = $appConfig.deployment.configMap
-          $maxReplicas = $appConfig.autoscaling.maxReplicas
+          if ($appEnvironment -eq "development") {
+              $maxReplicas = 2
+          }
+          elseif ($appEnvironment -eq "staging") {
+              $maxReplicas = 4
+          }
+          else {
+              $maxReplicas = $appConfig.autoscaling.maxReplicas
+          }
           $configSecret = $appConfig.deployment.secret
           $imagePullSecret = "$appName-pull-secret"
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
