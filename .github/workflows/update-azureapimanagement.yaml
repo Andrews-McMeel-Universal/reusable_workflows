@@ -30,7 +30,7 @@ on:
 jobs:
   update-api-management:
     name: Update API Management Service
-    runs-on: boley
+    runs-on: lightedge
     steps:
       - name: Checkout
         uses: actions/checkout@v4
