@@ -4,3 +4,4 @@ self-hosted-runner:
     - boley
     - Windows
     - self-hosted
+    - azure
