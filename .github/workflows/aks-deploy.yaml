@@ -153,13 +153,9 @@ jobs:
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
-          $ingressWhitelist = $appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" ?? "${{ inputs.ingressWhitelist }}"
+          $ingressWhitelist = "${{ inputs.ingressWhitelist }}" ?? $appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
           if ($appConfig.adminingress) {
-              $adminIngressWhitelist = $appConfig.adminingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" ?? "${{ inputs.adminIngressWhitelist }}"
-              if (![bool]($adminIngressWhitelist -match "^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?(,\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?)*$")) { 
-                  Write-Output "Invalid value set for 'adminingress.annotations.nginx.ingress.kubernetes.io/whitelist-source-range'. Defaulting to ${{ inputs.adminIngressWhitelist }} Value: $adminIngressWhitelist"
-                  $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
-              }
+              $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}" ?? $appConfig.adminingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
           }
           else {
               Write-Output "adminingress values not defined. Skipping setting adminIngressWhitelist"
