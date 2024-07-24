@@ -45,7 +45,7 @@ on:
         required: false
         type: string
         description: "IPs to include in the application whitelist"
-        default: "0.0.0.0/0"
+        default: ${{ vars.KUBERNETES_INGRESS_WHITELIST }}
       adminIngressWhitelist:
         required: false
         type: string
@@ -153,7 +153,7 @@ jobs:
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
-          $ingressWhitelist = "${{ inputs.ingressWhitelist }}" ?? $appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+          $ingressWhitelist = "${{ inputs.ingressWhitelist }}" ?? $appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" ?? '0.0.0.0/0'
           if ($appConfig.adminingress) {
               $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}" ?? $appConfig.adminingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
           }
