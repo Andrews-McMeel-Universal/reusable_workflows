@@ -116,7 +116,9 @@ jobs:
             if (-not $apiVersionSet) {
                 $apiVersionSet = New-AzApiManagementApiVersionSet -Context $Context -Name $ApiId -Scheme Segment -Description "$ApiId API"
             }
-            Get-AzApiManagementApi -Context $Context -ApiId $ApiId | Where-Object { -not $_.ApiVersionSetId } | ForEach-Object {
+
+            # Check if the original API exists
+            Get-AzApiManagementApi -Context $Context -ApiId $ApiId -ErrorAction SilentlyContinue | Where-Object { -not $_.ApiVersionSetId } | ForEach-Object {
                 $_.ApiVersionSetId = $apiVersionSet.Id
                 Set-AzApiManagementApi -InputObject $_
                 $OriginalVersion = $True
