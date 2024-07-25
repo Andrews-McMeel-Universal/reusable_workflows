@@ -113,8 +113,13 @@ jobs:
 
             # Retrieve the API Version Set
             $apiVersionSet = Get-AzApiManagementApiVersionSet -Context $Context | Where-Object { $_.DisplayName -eq $ApiId }
-            if (-not $apiVersionSet) { # Corrected variable name here
+            if (-not $apiVersionSet) {
                 $apiVersionSet = New-AzApiManagementApiVersionSet -Context $Context -Name $ApiId -Scheme Segment -Description "$ApiId API"
+            }
+            Get-AzApiManagementApi -Context $Context -ApiId $ApiId | Where-Object { -not $_.ApiVersionSetId } | ForEach-Object {
+                $_.ApiVersionSetId = $apiVersionSet.Id
+                Set-AzApiManagementApi -InputObject $_
+                $OriginalVersion = $True
             }
 
             # Update API versions
@@ -152,6 +157,11 @@ jobs:
                     # Associate the versioned API with a product
                     Set-AzApiManagementApi -InputObject $Api
                     Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
+
+                    # Remove the original API spec
+                    if ($OriginalVersion) {
+                        Remove-AzApiManagementApi -Context $Context -ApiId $ApiId
+                    }
                 }
                 else {
                     Write-Output "Version V$version does not exist in this repository."
