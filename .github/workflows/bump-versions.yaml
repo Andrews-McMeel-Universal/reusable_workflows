@@ -32,7 +32,7 @@ jobs:
         if: ${{ ! inputs.version }}
         id: latestrelease
         continue-on-error: true
-        uses: thebritican/fetch-latest-release@v2.0.0
+        uses: gregziegan/fetch-latest-release@v2.0.0
 
       - name: Get Chart.yaml appVersion
         if: ${{ inputs.environmentCharts == 'false' && ! inputs.version }}
