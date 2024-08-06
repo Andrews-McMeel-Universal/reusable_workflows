@@ -166,6 +166,6 @@ jobs:
                     }
                 }
                 else {
-                    Write-Output "API version V${version} (${SwaggerURL}): $SwaggerJSON.StatusCode $SwaggerJSON.StatusDescription"
+                    Write-Output "API version V${version} (${SwaggerURL}): $($SwaggerJSON.StatusCode) $($SwaggerJSON.StatusDescription)"
                 }
             }
