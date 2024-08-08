@@ -103,6 +103,8 @@ on:
         required: false
       webAuthenticationUsername:
         required: false
+      PAT_ACTION_CI:
+        required: false
 
 jobs:
   build:
@@ -114,6 +116,7 @@ jobs:
         with:
           ref: ${{ inputs.checkoutRef }}
           submodules: ${{ inputs.checkoutSubmodules }}
+          token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
       - name: Extract Helm values
         id: setenvs
