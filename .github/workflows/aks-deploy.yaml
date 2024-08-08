@@ -83,7 +83,7 @@ on:
         default: ${{ vars.MSTEAMS_DEPLOYMENT_WEBHOOK }}
       checkoutSubmodules:
         required: false
-        type: boolean
+        type: string
         description: "Check out submodules"
         default: ${{ vars.GIT_CHECKOUT_SUBMODULES || false }}
     secrets:
