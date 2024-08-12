@@ -85,7 +85,7 @@ on:
         required: false
         type: string
         description: "Check out submodules"
-        default: ${{ vars.GIT_CHECKOUT_SUBMODULES || false }}
+        default: ${{ vars.GIT_CHECKOUT_SUBMODULES }}
     secrets:
       azureClusterName:
         required: true
