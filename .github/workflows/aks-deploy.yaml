@@ -153,7 +153,7 @@ jobs:
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
-          if ([string]::IsNullOrEmpty(${{ inputs.ingressWhitelist }})) {
+          if ([string]::IsNullOrEmpty("${{ inputs.ingressWhitelist }}")) {
               if ([string]::IsNullOrEmpty($appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")) {
                   $ingressWhitelist = '0.0.0.0/0'
               } else {
