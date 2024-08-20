@@ -47,8 +47,10 @@ jobs:
       - name: Insert new line after build arguments
         id: insert-new-line
         run: |
-          buildArguments=$(echo "${{ steps.get-envs.outputs.buildArguments }}" | sed 's/^ ; //g' | sed 's/; //g')
-          echo "buildArguments=${buildArguments}" >> $GITHUB_OUTPUT
+          buildArguments=$(echo "${{ steps.get-envs.outputs.buildArguments }}" | sed 's/^ ; //g' | sed 's/; /\n/g')
+          echo 'buildArguments<<EOF' >> $GITHUB_ENV
+          echo "$buildArguments" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
 
       - name: Docker Build
         uses: docker/build-push-action@v5
@@ -56,7 +58,8 @@ jobs:
           tags: docker-ci:latest
           push: false
           load: true
-          build-args: ${{ steps.insert-new-line.outputs.buildArguments }}
+          build-args: |
+            ${{ env.buildArguments }}
 
       - name: Get Docker variables from image
         run: |
