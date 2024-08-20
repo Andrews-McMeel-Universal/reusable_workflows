@@ -3,11 +3,14 @@ name: Docker Application CI
 on:
   workflow_call:
     inputs:
-      NODE_ENV:
+      environment:
         required: false
-        description: NODE_ENV environment to run in
+        description: Environment to run CI checks in
         type: string
         default: development
+    secrets:
+      azureCredentials:
+        required: false
 
 jobs:
   build:
@@ -24,12 +27,39 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check if azureCredentials is set
+        run: |
+          if [ -z "${{ secrets.azureCredentials }}" ]; then
+            echo "Azure Credentials not set. Skipping Azure Key Vault retrieval."
+            echo "AZURE_CREDENTIALS_SET=false" >> $GITHUB_ENV
+          fi
+
+      - name: Generate .env file from Azure Key Vaults
+        if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
+        id: get-envs
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environment: ${{ inputs.environment }}
+          contentTypes: BuildArg Env
+          buildArgPredicate: ";"
+      
+      - name: Insert new line after build arguments
+        id: insert-new-line
+        run: |
+          buildArguments=$(echo "${{ steps.get-envs.outputs.buildArguments }}" | sed 's/^ ; //g' | sed 's/; /\n/g')
+          echo 'buildArguments<<EOF' >> $GITHUB_ENV
+          echo "$buildArguments" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
       - name: Docker Build
         uses: docker/build-push-action@v5
         with:
           tags: docker-ci:latest
           push: false
           load: true
+          build-args: |
+            ${{ env.buildArguments }}
 
       - name: Get Docker variables from image
         run: |
