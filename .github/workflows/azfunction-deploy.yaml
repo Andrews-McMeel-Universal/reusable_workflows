@@ -162,6 +162,102 @@ jobs:
           package: "${{ inputs.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
 
+      - name: Enable identity for Azure Function
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+              az functionapp identity assign \
+                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" | tee
+            else
+              az functionapp identity assign \
+                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                --slot "${{ inputs.environment }}" | tee
+            fi
+
+      - name: Get Azure Function Managed Identity
+        id: identity
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+              IDENTITY=$(az functionapp identity show \
+                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" | tee)
+            else
+              IDENTITY=$(az functionapp identity show \
+                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                --slot "${{ inputs.environment }}" | tee)
+            fi
+            echo "functionAppIdentity=$(echo $IDENTITY | jq -r '.principalId')" >> $GITHUB_ENV
+
+      - name: Retrieve key vault name
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            ENVIRONMENT="${{ inputs.environment }}"
+            REPOSITORY_NAME="${{ github.event.repository.name }}"
+
+            echo -e "Searching for key vault with tags: \"repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}\""
+            KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
+
+            # Check if key vault was found
+            if [[ -z "$KEYVAULT_NAME" ]]; then
+              echo "Key Vault not found with tags: repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}"
+              exit 1
+            fi
+
+            # Get key vault object
+            KEYVAULT_NAME=${KEYVAULT_NAME// /}
+            echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_ENV
+
+      - name: Assign Azure Function System Managed Identity to Key Vault
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            # Assign the Key Vault Secrets User role to the managed identity
+            az role assignment create --role "Key Vault Secrets User" --assignee ${{ env.functionAppIdentity }} --scope $(az keyvault show --name ${{ env.keyVaultName }} --query id --output tsv)
+      
+      - name: Retrieve environment variables
+        if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
+        id: get-envs
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
+          contentTypes: Env
+
+      - name: Add environment variables to function app
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            # Iterate over each environment variable
+            for part in ${{ steps.get-envs.outputs.environmentVariables }}; do
+              part=$(echo $part | xargs)  # Trim leading and trailing spaces
+              IFS='=' read -r key value <<< "$part"
+              VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
+              if [[ "${{ inputs.environment }}" == "production" ]]; then
+                az functionapp config appsettings set \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
+              else
+                az functionapp config appsettings set \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --slot "${{ inputs.environment }}" \
+                  --settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
+              fi
+            done
+
       - name: Remove GitHub Runner IP from Whitelist
         if: always()
         uses: azure/cli@v2
