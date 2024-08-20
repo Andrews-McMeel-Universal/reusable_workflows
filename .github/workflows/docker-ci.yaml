@@ -8,6 +8,11 @@ on:
         description: Environment to run CI checks in
         type: string
         default: development
+      healthCheckPath:
+        required: false
+        description: Path to health check endpoint
+        type: string
+        default: ${{ vars.APPLICATION_CI_HEALTHCHECK_PATH || '/' }}
     secrets:
       azureCredentials:
         required: false
@@ -78,8 +83,8 @@ jobs:
             sleep 15
             RESULT=$?
             if [ $RESULT -eq 0 ]; then
-              wget -O - -q "http://localhost:${{ env.dockerContainerPort }}" ||
-              curl "http://localhost:${{ env.dockerContainerPort }}"
+              wget -O - -q "http://localhost:${{ env.dockerContainerPort }}${{ inputs.healthCheckPath }}" ||
+              curl "http://localhost:${{ env.dockerContainerPort }}${{ inputs.healthCheckPath }}"
             else
               exit 1
             fi
