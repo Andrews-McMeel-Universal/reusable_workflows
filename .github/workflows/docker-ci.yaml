@@ -3,11 +3,19 @@ name: Docker Application CI
 on:
   workflow_call:
     inputs:
-      NODE_ENV:
+      environment:
         required: false
-        description: NODE_ENV environment to run in
+        description: Environment to run CI checks in
         type: string
         default: development
+      AZURE_KEYVAULT_PREFIX:
+        required: false
+        description: Azure Key Vault prefix
+        type: string
+        default: ${{ vars.AZURE_KEYVAULT_PREFIX }}
+    secrets:
+      azureCredentials:
+        required: false
 
 jobs:
   build:
@@ -24,12 +32,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check if azureCredentials is set
+        run: |
+          if [ -z "${{ secrets.azureCredentials }}" ]; then
+            echo "Azure Credentials not set. Skipping Azure Key Vault retrieval."
+            echo "AZURE_CREDENTIALS_SET=false" >> $GITHUB_ENV
+          fi
+
+      - name: Generate .env file from Azure Key Vaults
+        if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
+        id: get-envs
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.azureCredentials }}
+          environment: ${{ inputs.environment }}
+          contentTypes: BuildArg Env
+
       - name: Docker Build
         uses: docker/build-push-action@v5
         with:
           tags: docker-ci:latest
           push: false
           load: true
+          build-args: ${{ steps.get-envs.outputs.buildArguments }}
 
       - name: Get Docker variables from image
         run: |
