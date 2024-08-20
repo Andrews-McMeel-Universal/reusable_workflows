@@ -42,7 +42,7 @@ jobs:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
           contentTypes: BuildArg Env
-          buildArgPredicate: ""
+          buildArgPredicate: "\n"
 
       - name: Docker Build
         uses: docker/build-push-action@v5
