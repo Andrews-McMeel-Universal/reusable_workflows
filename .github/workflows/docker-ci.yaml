@@ -47,7 +47,7 @@ jobs:
       - name: Insert new line after build arguments
         id: insert-new-line
         run: |
-          buildArguments=$(echo "buildArguments=${{ steps.get-envs.outputs.buildArguments }}" | sed 's/;/\n/g')
+          buildArguments=$(echo "${{ steps.get-envs.outputs.buildArguments }}" | sed 's/;/\n/g')
           echo "buildArguments=${buildArguments}" >> $GITHUB_OUTPUT
 
       - name: Docker Build
