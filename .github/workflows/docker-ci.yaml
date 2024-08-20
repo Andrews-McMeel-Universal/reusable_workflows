@@ -37,11 +37,12 @@ jobs:
       - name: Generate .env file from Azure Key Vaults
         if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
         id: get-envs
-        uses: Andrews-McMeel-Universal/get-envs@v1
+        uses: Andrews-McMeel-Universal/get-envs@maint/UEXPRESS-1171/add-docker-ci-check
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
           contentTypes: BuildArg Env
+          buildArgPredicate: ""
 
       - name: Docker Build
         uses: docker/build-push-action@v5
