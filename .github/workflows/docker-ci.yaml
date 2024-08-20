@@ -56,7 +56,8 @@ jobs:
           tags: docker-ci:latest
           push: false
           load: true
-          build-args: ${{ steps.insert-new-line.outputs.buildArguments }}
+          build-args: |
+            ${{ steps.insert-new-line.outputs.buildArguments }}
 
       - name: Get Docker variables from image
         run: |
