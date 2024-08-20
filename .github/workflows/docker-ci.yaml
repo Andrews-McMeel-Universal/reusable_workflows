@@ -8,11 +8,6 @@ on:
         description: Environment to run CI checks in
         type: string
         default: development
-      AZURE_KEYVAULT_PREFIX:
-        required: false
-        description: Azure Key Vault prefix
-        type: string
-        default: ${{ vars.AZURE_KEYVAULT_PREFIX }}
     secrets:
       azureCredentials:
         required: false
