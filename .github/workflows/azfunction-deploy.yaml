@@ -226,7 +226,7 @@ jobs:
             keyVaultId=$(az keyvault show --name ${{ env.keyVaultName }} --query id --output tsv)
             
             # Assign the Key Vault Secrets User role to the managed identity using object ID and principal type
-            az role assignment create --role "Key Vault Secrets User" --assignee-object-id --assignee-principal-type ServicePrincipal ${{ env.functionAppIdentity }} --scope $keyVaultId
+            az role assignment create --role "Key Vault Secrets User" --assignee-object-id ${{ env.functionAppIdentity }} --assignee-principal-type ServicePrincipal  --scope $keyVaultId
       
       - name: Retrieve environment variables
         if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
