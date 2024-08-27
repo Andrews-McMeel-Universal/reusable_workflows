@@ -245,7 +245,6 @@ jobs:
             set -eu
             # Store the environment variables output into a separate variable
             ENV_VARS_OUTPUT='${{ steps.get-envs.outputs.environmentVariables }}'
-            echo "ENV_VARS_OUTPUT: $ENV_VARS_OUTPUT"
 
             # Get current app settings
             if [[ "${{ inputs.environment }}" == "production" ]]; then
@@ -261,7 +260,7 @@ jobs:
 
             # Use a while loop to read and process each environment variable and trim output
             echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
-              echo "Processing part: $key=$value"
+              echo "Processing variable: $key=$value"
               VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
 
               # Search for the key in app settings
