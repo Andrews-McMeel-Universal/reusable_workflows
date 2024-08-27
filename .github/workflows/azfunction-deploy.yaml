@@ -247,21 +247,39 @@ jobs:
             ENV_VARS_OUTPUT='${{ steps.get-envs.outputs.environmentVariables }}'
             echo "ENV_VARS_OUTPUT: $ENV_VARS_OUTPUT"
 
+            # Get current app settings
+            APPSETTINGS=$(az functionapp config appsettings list \
+              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}")
+
             # Use a while loop to read and process each environment variable
             echo "$ENV_VARS_OUTPUT" | while IFS='=' read -r key value; do
               echo "Processing part: $key=$value"
               VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
+
+              # Search for the key in app settings
+              APPSETTING_VALUE=$(echo "${APPSETTINGS}" | jq -r ".[] | select(.name == \"$key\") | .value")
+
+              # Check if the value is set to a keyvault reference
+              if [[ "${APPSETTING_VALUE}" == "@Microsoft.KeyVault"* ]]; then
+                echo "Skipping $key as it is already a keyvault reference"
+                continue
+              fi
+              
+              echo "Adding $key to app settings"
               if [[ "${{ inputs.environment }}" == "production" ]]; then
                 az functionapp config appsettings set \
                   -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
                   -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" && \
+                echo "Successfully added $key to app settings"
               else
                 az functionapp config appsettings set \
                   -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
                   -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
                   --slot "${{ inputs.environment }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" && \
+                echo "Successfully added $key to app settings"
               fi
             done
 
