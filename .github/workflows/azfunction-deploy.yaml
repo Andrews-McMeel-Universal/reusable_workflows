@@ -236,30 +236,56 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
           contentTypes: Env
+          environmentVariableSeparator: "\n"
 
       - name: Add environment variables to function app
         uses: azure/cli@v2
         with:
           inlineScript: |
             set -eu
-            # Iterate over each environment variable
+            # Store the environment variables output into a separate variable
+            ENV_VARS_OUTPUT='${{ steps.get-envs.outputs.environmentVariables }}'
 
-            ENV_VARS=($(echo '${{ steps.get-envs.outputs.environmentVariables }}'))
+            # Get current app settings
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+              APPSETTINGS=$(az functionapp config appsettings list \
+                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}")
+            else
+              APPSETTINGS=$(az functionapp config appsettings list \
+                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                --slot "${{ inputs.environment }}")
+            fi
 
-            for part in ${ENV_VARS[@]}; do
-              IFS='=' read -r key value <<< "$part"
+            # Use a while loop to read and process each environment variable and trim output
+            echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
+              echo "Processing variable: $key=$value"
               VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
+
+              # Search for the key in app settings
+              APPSETTING_VALUE=$(echo "${APPSETTINGS}" | jq -r ".[] | select(.name == \"$key\") | .value")
+
+              # Check if the value is set to a keyvault reference
+              if [[ "${APPSETTING_VALUE}" == "@Microsoft.KeyVault"* ]]; then
+                echo "Skipping $key as it is already a keyvault reference"
+                continue
+              fi
+              
+              echo "Adding $key to app settings"
               if [[ "${{ inputs.environment }}" == "production" ]]; then
                 az functionapp config appsettings set \
                   -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
                   -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
+                echo "Successfully added $key to app settings"
               else
                 az functionapp config appsettings set \
                   -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
                   -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
                   --slot "${{ inputs.environment }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
+                echo "Successfully added $key to app settings"
               fi
             done
 
