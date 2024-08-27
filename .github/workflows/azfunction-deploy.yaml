@@ -243,8 +243,12 @@ jobs:
         with:
           inlineScript: |
             set -eu
+            # Store the environment variables output into a separate variable
+            ENV_VARS_OUTPUT='${{ steps.get-envs.outputs.environmentVariables }}'
+            echo "ENV_VARS_OUTPUT: $ENV_VARS_OUTPUT"
+
             # Iterate over each environment variable
-            IFS=$'\n' read -r -a ENV_VARS <<< '${{ steps.get-envs.outputs.environmentVariables }}'
+            IFS=$'\n' read -r -a ENV_VARS <<< "$ENV_VARS_OUTPUT"
             echo "ENV_VARS: ${ENV_VARS[@]}"
 
             for part in "${ENV_VARS[@]}"; do
