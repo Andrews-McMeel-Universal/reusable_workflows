@@ -244,15 +244,11 @@ jobs:
           inlineScript: |
             set -eu
             # Iterate over each environment variable
-            IFS=$'\n' read -d '' -r -a ENV_VARS <<< '${{ steps.get-envs.outputs.environmentVariables }}'
-            echo "ENV_VARS: $ENV_VARS"
+            IFS=$'\n' read -r -a ENV_VARS <<< '${{ steps.get-envs.outputs.environmentVariables }}'
 
             for part in "${ENV_VARS[@]}"; do
-              echo "part: $part"
               IFS='=' read -r key value <<< "$part"
-              echo "key: $key"
               VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
-              echo "VARIABLE_LC: $VARIABLE_LC"
               if [[ "${{ inputs.environment }}" == "production" ]]; then
                 az functionapp config appsettings set \
                   -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
