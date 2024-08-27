@@ -248,9 +248,16 @@ jobs:
             echo "ENV_VARS_OUTPUT: $ENV_VARS_OUTPUT"
 
             # Get current app settings
-            APPSETTINGS=$(az functionapp config appsettings list \
-              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}")
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+              APPSETTINGS=$(az functionapp config appsettings list \
+                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}")
+            else
+              APPSETTINGS=$(az functionapp config appsettings list \
+                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                --slot "${{ inputs.environment }}")
+            fi
 
             # Use a while loop to read and process each environment variable
             echo "$ENV_VARS_OUTPUT" | while IFS='=' read -r key value; do
