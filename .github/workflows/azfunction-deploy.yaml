@@ -231,7 +231,7 @@ jobs:
       - name: Retrieve environment variables
         if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
         id: get-envs
-        uses: Andrews-McMeel-Universal/get-envs@bug/DEVOPS-513/fix-environment-var-separator
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
