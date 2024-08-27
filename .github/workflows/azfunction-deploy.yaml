@@ -236,6 +236,7 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
           contentTypes: Env
+          environmentVariableSeparator: "\n"
 
       - name: Add environment variables to function app
         uses: azure/cli@v2
@@ -243,10 +244,9 @@ jobs:
           inlineScript: |
             set -eu
             # Iterate over each environment variable
+            IFS=$'\n' read -d '' -r -a ENV_VARS <<< "${{ steps.get-envs.outputs.environmentVariables }}"
 
-            ENV_VARS=($(echo '${{ steps.get-envs.outputs.environmentVariables }}'))
-
-            for part in ${ENV_VARS[@]}; do
+            for part in "${ENV_VARS[@]}"; do
               IFS='=' read -r key value <<< "$part"
               VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
               if [[ "${{ inputs.environment }}" == "production" ]]; then
