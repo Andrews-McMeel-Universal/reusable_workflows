@@ -239,27 +239,29 @@ jobs:
           environmentVariableSeparator: "\n"
 
       - name: Add environment variables to function app
-        run: |
-          set -eu
-          # Iterate over each environment variable
-          IFS=$'\n' read -d '' -r -a ENV_VARS <<< "${{ steps.get-envs.outputs.environmentVariables }}"
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            # Iterate over each environment variable
+            IFS=$'\n' read -d '' -r -a ENV_VARS <<< '${{ steps.get-envs.outputs.environmentVariables }}'
 
-          for part in "${ENV_VARS[@]}"; do
-            IFS='=' read -r key value <<< "$part"
-            VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-              az functionapp config appsettings set \
-                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
-            else
-              az functionapp config appsettings set \
-                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                --slot "${{ inputs.environment }}" \
-                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
-            fi
-          done
+            for part in "${ENV_VARS[@]}"; do
+              IFS='=' read -r key value <<< "$part"
+              VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
+              if [[ "${{ inputs.environment }}" == "production" ]]; then
+                az functionapp config appsettings set \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
+              else
+                az functionapp config appsettings set \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --slot "${{ inputs.environment }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" | tee
+              fi
+            done
 
       - name: Remove GitHub Runner IP from Whitelist
         if: always()
