@@ -259,8 +259,8 @@ jobs:
                 --slot "${{ inputs.environment }}")
             fi
 
-            # Use a while loop to read and process each environment variable
-            echo "$ENV_VARS_OUTPUT" | while IFS='=' read -r key value; do
+            # Use a while loop to read and process each environment variable and trim output
+            echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
               echo "Processing part: $key=$value"
               VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
 
