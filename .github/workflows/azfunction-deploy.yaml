@@ -278,14 +278,14 @@ jobs:
                 az functionapp config appsettings set \
                   -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
                   -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" && \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
                 echo "Successfully added $key to app settings"
               else
                 az functionapp config appsettings set \
                   -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
                   -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
                   --slot "${{ inputs.environment }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" && \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
                 echo "Successfully added $key to app settings"
               fi
             done
