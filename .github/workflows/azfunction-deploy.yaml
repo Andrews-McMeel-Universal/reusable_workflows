@@ -247,14 +247,9 @@ jobs:
             ENV_VARS_OUTPUT='${{ steps.get-envs.outputs.environmentVariables }}'
             echo "ENV_VARS_OUTPUT: $ENV_VARS_OUTPUT"
 
-            # Iterate over each environment variable
-            IFS=$'\n' read -r -a ENV_VARS <<< "$ENV_VARS_OUTPUT"
-            echo "ENV_VARS: ${ENV_VARS[@]}"
-
-            for part in "${ENV_VARS[@]}"; do
-              echo "Processing part: $part"
-              IFS='=' read -r key value <<< "$part"
-              echo "Key: $key, Value: $value"
+            # Use a while loop to read and process each environment variable
+            echo "$ENV_VARS_OUTPUT" | while IFS='=' read -r key value; do
+              echo "Processing part: $key=$value"
               VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
               if [[ "${{ inputs.environment }}" == "production" ]]; then
                 az functionapp config appsettings set \
