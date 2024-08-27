@@ -242,7 +242,7 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
-            set -eu
+            # set -eu
             # Iterate over each environment variable
             IFS=$'\n' read -d '' -r -a ENV_VARS <<< '${{ steps.get-envs.outputs.environmentVariables }}'
 
