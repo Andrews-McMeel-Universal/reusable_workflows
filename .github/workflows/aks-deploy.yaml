@@ -169,7 +169,7 @@ jobs:
                   $ingressWhitelist = $appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
               }
           } else {
-              $ingressWhitelist = $inputs.ingressWhitelist
+              $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
           }
           if ($appConfig.adminingress) {
               $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}" ?? $appConfig.adminingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
