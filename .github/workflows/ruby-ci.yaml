@@ -21,6 +21,11 @@ on:
         type: string
         description: "Node.js version to install"
         default: "14"
+      GITHUB_RUNNER:
+        required: false
+        type: string
+        description: "The type of runner to use"
+        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -32,7 +37,7 @@ jobs:
   build:
     name: Build and Test
     if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
