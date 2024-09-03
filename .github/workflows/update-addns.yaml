@@ -81,16 +81,13 @@ jobs:
         shell: pwsh
         run: |
           try {
-            Write-Host "Adding CNAME Record"
             Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
           } 
           catch {
             Write-Host "Record Already Exists"
           }
-          Write-Host "Retrieving DNS Record"
           Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ env.aksIngress }}" | Format-List
           try {
-            Write-Host "Syncing DNS Zone"
             Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
           } 
           catch {
