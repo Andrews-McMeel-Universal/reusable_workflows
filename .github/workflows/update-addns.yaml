@@ -31,10 +31,8 @@ on:
 
 jobs:
   update-dns:
-    runs-on: [self-hosted, Windows, boley]
-    continue-on-error: false
-    timeout-minutes: 10
     name: Update Boley DNS
+    runs-on: [self-hosted, Windows, boley]
     steps:
       - name: Retrieve Application information
         id: getappinfo
