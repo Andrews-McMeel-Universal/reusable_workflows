@@ -80,19 +80,41 @@ jobs:
         timeout-minutes: 15
         shell: pwsh
         run: |
+          $recordUpdated = $false
+
           try {
-            Write-Host "Adding CNAME Record"
-            Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
+              Write-Host "Attempting to add CNAME Record..."
+              Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
+              Write-Host "CNAME Record added successfully."
+              $recordUpdated = $true
           } 
           catch {
-            Write-Host "Record Already Exists"
+              Write-Host "Failed to add CNAME Record. It may already exist."
           }
-          Write-Host "Retrieving DNS Record"
-          Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ env.aksIngress }}" | Format-List
+
+          Write-Host "Retrieving DNS Record..."
           try {
-            Write-Host "Syncing DNS Zone"
-            Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
+              $dnsRecord = Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.aksIngress }}" }
+              if ($dnsRecord) {
+                  Write-Host "DNS Record retrieved successfully:"
+                  $dnsRecord | Format-List
+              } else {
+                  Write-Error "DNS Record not found."
+              }
           } 
           catch {
-            Write-Host "Skipping zone sync. Zone is currently being synced."
+              Write-Error "Failed to retrieve DNS Record."
+          }
+
+          if ($recordUpdated) {
+              try {
+                  Write-Host "Attempting to sync DNS Zone..."
+                  Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
+                  Write-Host "DNS Zone synced successfully."
+              } 
+              catch {
+                  Write-Error "Failed to sync DNS Zone. Zone may currently be syncing."
+              }
+          } else {
+              Write-Host "No changes made to DNS records. Skipping DNS Zone sync."
           }
