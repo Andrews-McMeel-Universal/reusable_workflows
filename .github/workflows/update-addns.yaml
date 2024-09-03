@@ -93,17 +93,12 @@ jobs:
           }
 
           Write-Host "Retrieving DNS Record..."
-          try {
-              $dnsRecord = Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.aksIngress }}" }
-              if ($dnsRecord) {
-                  Write-Host "DNS Record retrieved successfully:"
-                  $dnsRecord | Format-List
-              } else {
-                  Write-Error "DNS Record not found."
-              }
-          } 
-          catch {
-              Write-Error "Failed to retrieve DNS Record."
+          $dnsRecord = Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.aksIngress }}" }
+          if ($dnsRecord) {
+              Write-Host "DNS Record retrieved successfully:"
+              $dnsRecord | Format-List
+          } else {
+              Write-Error "DNS Record not found."
           }
 
           if ($recordUpdated) {
