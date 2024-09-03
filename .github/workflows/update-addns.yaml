@@ -32,7 +32,7 @@ on:
 jobs:
   update-dns:
     name: Update Boley DNS
-    runs-on: [self-hosted, Linux, boley]
+    runs-on: [self-hosted, Linux]
     steps:
       - name: Retrieve Application information
         id: getappinfo
