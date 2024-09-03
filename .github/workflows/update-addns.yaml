@@ -80,19 +80,51 @@ jobs:
         timeout-minutes: 15
         shell: pwsh
         run: |
+          $RecordExists = $false
+          $RecordChanged = $false
+
           try {
-            Write-Host "Adding CNAME Record"
-            Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
+              Write-Host "Adding CNAME Record: ${env.hostName} -> ${env.aksIngress}"
+              Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
           } 
           catch {
-            Write-Host "Record Already Exists"
+              Write-Host "Record Already Exists"
+              $RecordExists = $true
           }
+
           Write-Host "Retrieving DNS Record"
-          Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ env.aksIngress }}" | Format-List
-          try {
-            Write-Host "Syncing DNS Zone"
-            Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
-          } 
-          catch {
-            Write-Host "Skipping zone sync. Zone is currently being synced."
+          $existingRecord = Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.hostName }}" -and $_.RecordType -eq 'CName' }
+
+          if ($existingRecord) {
+              if ($existingRecord.RecordData.HostNameAlias -ne "${{ env.aksIngress }}") {
+                  Write-Host "Existing record differs from desired record. Updating..."
+                  $RecordChanged = $true
+              } else {
+                  Write-Host "Existing record matches the desired record. No update needed."
+              }
+          } else {
+              Write-Host "No existing record found. Adding new record..."
+              $RecordChanged = $true
           }
+
+          if ($RecordChanged) {
+              try {
+                  Write-Host "Updating CNAME Record"
+                  Remove-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -Name "${{ env.hostName }}" -RecordType 'CName' -ComputerName ${{ secrets.domainController }} -Force
+                  Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
+              } 
+              catch {
+                  Write-Host "Failed to update the record"
+              }
+          }
+
+          if (!$RecordExists -or $RecordChanged) {
+              try {
+                  Write-Host "Syncing DNS Zone"
+                  Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
+              } 
+              catch {
+                  Write-Host "Skipping zone sync. Zone is currently being synced."
+              }
+          }
+
