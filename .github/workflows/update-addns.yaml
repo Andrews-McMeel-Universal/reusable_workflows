@@ -84,7 +84,7 @@ jobs:
           $RecordChanged = $false
 
           try {
-              Write-Host "Adding CNAME Record: ${env.hostName} -> ${env.aksIngress}"
+              Write-Host "Adding CNAME Record: ${{ env.hostName }} -> ${{ env.aksIngress }}"
               Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
           } 
           catch {
