@@ -163,7 +163,10 @@ jobs:
 
                     # Associate the versioned API with a product
                     Set-AzApiManagementApi -InputObject $Api
-                    Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
+                    Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
+                    if ($ApiProductId -ne "AZ-WebServices") {
+                        Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
+                    }
 
                     # Remove the original API spec
                     if ($OriginalVersion) {
