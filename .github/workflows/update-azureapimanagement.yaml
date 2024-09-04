@@ -17,6 +17,11 @@ on:
         type: string
         description: "GitHub Repository Name."
         default: ${{ github.event.repository.name }}
+      productId:
+        required: false
+        type: string
+        description: "API Management Product ID."
+        default: ${{ vars.API_PRODUCT_ID || 'AZ-WebServices' }}
     secrets:
       azurePassword:
         required: false
@@ -94,7 +99,7 @@ jobs:
           azPSVersion: "latest"
           inlineScript: |
             # Set API Management variables
-            $ApiProductId = "AZ-WebServices"
+            $ApiProductId = "${{ inputs.productId }}"
             $ApiSubscriptionRequired = $True
 
             # Generate API ID by appending "-api" to the repository name and replacing underscores with hyphens
@@ -158,7 +163,10 @@ jobs:
 
                     # Associate the versioned API with a product
                     Set-AzApiManagementApi -InputObject $Api
-                    Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
+                    Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
+                    if ($ApiProductId -ne "AZ-WebServices") {
+                        Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
+                    }
 
                     # Remove the original API spec
                     if ($OriginalVersion) {
