@@ -245,7 +245,6 @@ jobs:
           packages: jq
 
       - name: Add environment variables to function app
-        shell: pwsh
         run: |
           set -eu
           # Store the environment variables output into a separate variable
