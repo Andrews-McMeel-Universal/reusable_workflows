@@ -69,6 +69,11 @@ jobs:
         with:
           ref: ${{ inputs.checkoutRef }}
 
+      - name: Install jq apt package
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: jq
+
       - name: Setup application platform
         uses: actions/setup-dotnet@v4
         with:
@@ -194,8 +199,7 @@ jobs:
                 -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
                 --slot "${{ inputs.environment }}" | tee)
             fi
-            PRINCIPAL_ID=$(echo "$IDENTITY" | grep -o '"principalId": *"[^"]*"' | sed 's/.*: *"\([^"]*\)".*/\1/')
-            echo "functionAppIdentity=$PRINCIPAL_ID" >> $GITHUB_ENV
+            echo "functionAppIdentity=$(echo $IDENTITY | jq -r '.principalId')" >> $GITHUB_ENV
 
       - name: Retrieve key vault name
         uses: azure/cli@v2
@@ -238,11 +242,6 @@ jobs:
           environment: ${{ inputs.environment }}
           contentTypes: Env
           environmentVariableSeparator: "\n"
-
-      - name: Install jq apt package
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: jq
 
       - name: Add environment variables to function app
         run: |
