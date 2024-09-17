@@ -185,21 +185,19 @@ jobs:
 
       - name: Get Azure Function Managed Identity
         id: identity
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            set -eu
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-              IDENTITY=$(az functionapp identity show \
-                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" | tee)
-            else
-              IDENTITY=$(az functionapp identity show \
-                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                --slot "${{ inputs.environment }}" | tee)
-            fi
-            echo "functionAppIdentity=$(echo $IDENTITY | jq -r '.principalId')" >> $GITHUB_ENV
+        run: |
+          set -eu
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            IDENTITY=$(az functionapp identity show \
+              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" | tee)
+          else
+            IDENTITY=$(az functionapp identity show \
+              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+              --slot "${{ inputs.environment }}" | tee)
+          fi
+          echo "functionAppIdentity=$(echo $IDENTITY | jq -r '.principalId')" >> $GITHUB_ENV
 
       - name: Retrieve key vault name
         uses: azure/cli@v2
