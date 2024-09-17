@@ -194,7 +194,8 @@ jobs:
                 -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
                 --slot "${{ inputs.environment }}" | tee)
             fi
-            echo "functionAppIdentity=$(echo $IDENTITY | jq -r '.principalId')" >> $GITHUB_ENV
+            PRINCIPAL_ID=$(echo "$IDENTITY" | grep -o '"principalId": *"[^"]*"' | sed 's/.*: *"\([^"]*\)".*/\1/')
+            echo "functionAppIdentity=$PRINCIPAL_ID" >> $GITHUB_ENV
 
       - name: Retrieve key vault name
         uses: azure/cli@v2
