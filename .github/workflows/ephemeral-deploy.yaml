@@ -100,7 +100,7 @@ jobs:
         id: checksum
         run: |
           CHECKSUM=$(echo -n '${{ inputs.repositoryName }}-${{ steps.jira-ticket.outputs.jiraTicketIdLc }}' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g' | sed 's/--/-/g' | sed 's/^-//;s/-$//' | cut -c1-31 | md5sum | cut -d' ' -f1 | sed 's/^\([0-9]\)/a\1/')
-          SHORT_CHECKSUM=${CHECKSUM:0:20}
+          SHORT_CHECKSUM=${CHECKSUM:0:18}
           CONTAINER_APP_NAME="${SHORT_CHECKSUM}-${{ steps.jira-ticket.outputs.jiraTicketIdLc }}"
           echo "containerAppName=${CONTAINER_APP_NAME}" >> $GITHUB_OUTPUT
     outputs:
