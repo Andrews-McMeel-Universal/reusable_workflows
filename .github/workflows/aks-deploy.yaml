@@ -15,7 +15,7 @@ on:
         required: false
         type: string
         description: "AKS Cluster Resource Group."
-        default: "AMU_AKS_201"
+        default: ${{ vars.AKS_CLUSTER_RESOURCE_GROUP || 'AMU_AKS_201' }}
       chartsPath:
         required: false
         type: string
