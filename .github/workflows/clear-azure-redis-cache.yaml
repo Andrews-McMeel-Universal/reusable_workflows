@@ -49,7 +49,7 @@ jobs:
             $Environment = "${{ inputs.environment }}"
 
             # Check to see if Azure Redis Cache PowerShell Module is installed
-            Install-Module -Name Az.RedisCache -Confirm:$false
+            Install-Module -Name Az.RedisCache -Confirm:$false -Force
 
             # Get list of Redis instances using tags
             $Redis = Get-AzRedisCache -ResourceGroupName "$ResourceGroupName" | Where-Object { $_.Tag.Values -eq "$Environment" }
