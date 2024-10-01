@@ -50,7 +50,40 @@ updates:
     # Create a group of dependencies to be updated together in one pull request
     groups:
       # Specify a name for the group, which will be used in pull request titles
-      # and branch names
+      # and branch names. The first matching group is used.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "react-test-renderer"
+      next:
+        patterns:
+          - "next"
+          - '@next*'
+          - "eslint-config-next" # excluded in linters-and-formatters group
+      storybook:
+        patterns:
+          - "chromatic"
+          - "storybook"
+          - "@storybook*"
+          - "eslint-plugin-storybook" # excluded in linters-and-formatters group
+      sentry:
+        patterns:
+          - "@sentry*"
+      linters-and-formatters:
+        patterns:
+          - "*eslint*"
+          - "*prettier*"
+          - "*stylelint*"
+        exclude-patterns:
+          - eslint-config-next
+          - eslint-plugin-storybook
+      testing:
+        patterns:
+          - "*jest*"
+          - "*playwright*"
+          - "*testing-library*"
+          - "*size-limit*"
       dependencies-minor:
         # Open a PR with all minor version updates from "dependencies" in package.json
         dependency-type: "production"
@@ -98,3 +131,19 @@ updates:
     commit-message:
       # Prefix all commit messages with 'nuget'
       prefix: "nuget"
+
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    labels:
+      - "back-end"
+      - "dependencies"
+    open-pull-requests-limit: 10
+    commit-message:
+      # Prefix all commit messages with 'go'
+      prefix: "go"
