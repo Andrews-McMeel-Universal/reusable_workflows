@@ -840,3 +840,9 @@ terraform/*.key
 
 # Ansible
 vault.yml
+
+# Typesense
+data/db
+data/meta
+data/models
+data/state
