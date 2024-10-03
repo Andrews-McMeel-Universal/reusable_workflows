@@ -12,7 +12,7 @@ on:
         description: Project Directory Name
         default: ""
       DOTNET_VERSION:
-        required: true
+        required: false
         type: string
         description: ".NET SDK Version"
         default: ${{ vars.DOTNET_VERSION || '6.0.x' }}

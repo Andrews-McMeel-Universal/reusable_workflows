@@ -62,3 +62,9 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+###############################################################################
+# Yarn bundles
+###############################################################################
+.yarn/releases/** binary
+.yarn/plugins/** binary

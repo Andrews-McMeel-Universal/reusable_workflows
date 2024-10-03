@@ -42,8 +42,6 @@
 # *.cs                            @Andrews-McMeel-Universal/back-end-engineers
 # *.csproj                        @Andrews-McMeel-Universal/back-end-engineers
 # *.sln                           @Andrews-McMeel-Universal/back-end-engineers
-# *.rb                            @Andrews-McMeel-Universal/back-end-engineers
-# *.ru                            @Andrews-McMeel-Universal/back-end-engineers
 # *.Library/                      @Andrews-McMeel-Universal/back-end-engineers
 # *.Tests/                        @Andrews-McMeel-Universal/back-end-engineers
 # *.WebAPI/                       @Andrews-McMeel-Universal/back-end-engineers

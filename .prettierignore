@@ -24,10 +24,7 @@ test-results/
 **.bundle.js
 storybook-static/
 src/helpers/utilities/tokens/_design_tokens.js
-*.tsbuildinfo
-**/vendor
-/tests/
-**/.test.
+
 # Project Specific Ignores
 src/design-system-package/dist/**
 
