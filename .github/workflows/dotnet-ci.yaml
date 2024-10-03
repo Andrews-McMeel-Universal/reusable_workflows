@@ -15,6 +15,7 @@ on:
         required: true
         type: string
         description: ".NET SDK Version"
+        default: ${{ vars.DOTNET_VERSION || '6.0.x' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
