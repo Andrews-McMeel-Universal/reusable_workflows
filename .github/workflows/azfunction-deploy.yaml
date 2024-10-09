@@ -74,10 +74,16 @@ jobs:
         with:
           packages: jq
 
+      - name: Retrieve .NET version
+        id: dotnet-version
+        run: |
+          DOTNET_VERSION=$(grep -h '<TargetFramework>net' **/*.csproj | sed -E 's/.*<TargetFramework>net([0-9]+\.[0-9]+)<\/TargetFramework>.*/\1/' | sort -V | tail -n1)
+          echo "DOTNET_VERSION=${DOTNET_VERSION}" >> $GITHUB_OUTPUT
+
       - name: Setup application platform
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ inputs.DOTNET_VERSION }}
+          dotnet-version: ${{ inputs.DOTNET_VERSION || steps.dotnet-version.outputs.DOTNET_VERSION }}
 
       - name: Add AMU GitHub Packages nuget source
         if: ${{ env.PAT_ACTION_CI }}
