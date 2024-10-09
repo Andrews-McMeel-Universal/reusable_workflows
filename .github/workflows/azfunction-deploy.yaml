@@ -77,7 +77,7 @@ jobs:
       - name: Retrieve .NET version
         id: dotnet-version
         run: |
-          DOTNET_VERSION=$(grep -h '<TargetFramework>net' **/*.csproj | sed -E 's/.*<TargetFramework>net([0-9]+\.[0-9]+)<\/TargetFramework>.*/\1/' | sort -V | tail -n1)
+          DOTNET_VERSION=$(find . -name '*.csproj' -exec grep -h '<TargetFramework>net' {} + | sed -E 's/.*<TargetFramework>net([0-9]+\.[0-9]+)<\/TargetFramework>.*/\1/' | sort -V | tail -n1)
           echo "DOTNET_VERSION=${DOTNET_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Setup application platform
