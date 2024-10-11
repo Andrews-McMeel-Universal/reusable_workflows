@@ -359,6 +359,7 @@ jobs:
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             ingress.host:${{ needs.build.outputs.ingress }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas || inputs.maximumReplicas }}
+            ingress.ingressClassName:nginx-${{ inputs.environment }}
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
