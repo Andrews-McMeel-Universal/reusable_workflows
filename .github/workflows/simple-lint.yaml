@@ -11,6 +11,9 @@ on:
       prettierPlugins:
         description: Install Prettier plugins, i.e. '@prettier/plugin-php @prettier/plugin-other'
         type: string
+      onlyChanged:
+        default: ${{ vars.SIMPLE_LINT_ONLY_CHANGED || 'true' }}
+        type: string
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -61,7 +64,7 @@ jobs:
           prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
-          only_changed: true
+          only_changed: ${{ inputs.onlyChanged }}
 
       - name: Run prettier with .prettierrc.json configuration
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
@@ -70,7 +73,7 @@ jobs:
           prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
-          only_changed: true
+          only_changed: ${{ inputs.onlyChanged }}
 
       - name: Run prettier without any configuration files
         if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
@@ -79,7 +82,7 @@ jobs:
           prettier_options: --write . --ignore-path ./.prettierignore ${{ steps.prettier-plugins.outputs.prettierPlugins }}
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
-          only_changed: true
+          only_changed: ${{ inputs.onlyChanged }}
 
   lint-workflows:
     name: Workflow linter
