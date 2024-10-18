@@ -26,6 +26,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           ref: ${{ github.head_ref }}
+          fetch-depth: 0
 
       - name: Run yarn install
         if: ${{ inputs.prettierPlugins }}
