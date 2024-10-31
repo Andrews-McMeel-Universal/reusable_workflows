@@ -108,14 +108,7 @@ jobs:
             $ApiSubscriptionRequired = $True
 
             # Generate API ID by appending "-api" to the repository name and replacing underscores with hyphens
-
-            if (${{ inputs.apiSuffix }} -eq "true") {
-                $ApiSuffix = "-api"
-            }
-            else {
-                $ApiSuffix = ""
-            }
-
+            $ApiSuffix = if ("${{ inputs.apiSuffix }}" -eq "true") { "-api" } else { "" }
             $ApiId = ("${{ github.event.repository.name }}$ApiSuffix").Replace("_","-")
 
             # Retrieve the resource group and service name based on the environment tag
