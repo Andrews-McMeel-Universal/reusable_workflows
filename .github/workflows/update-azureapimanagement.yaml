@@ -167,7 +167,7 @@ jobs:
                     $SwaggerJSON | Out-File -FilePath $SwaggerJSONFile
 
                     # # Import the versioned API
-                    Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerJSONFile -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
+                    Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerJSONFile -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id -Force
 
                     # Retrieve and update the API object
                     $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
