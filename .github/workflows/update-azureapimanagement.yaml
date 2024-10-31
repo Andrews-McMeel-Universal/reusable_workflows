@@ -166,6 +166,7 @@ jobs:
                         Write-Output "Removing existing API version V${version}"
                         Remove-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
                     }
+                    Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerJSONFile -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
 
                     # Retrieve and update the API object
                     $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
