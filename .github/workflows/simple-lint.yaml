@@ -38,7 +38,7 @@ jobs:
       - name: Get Prettier version
         id: prettier-version
         run: |
-          VERSION=$(yarn info prettier version --silent)
+          VERSION=$(yarn info prettier version --name-only | awk -F ':' '{print $2}')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set prettier plugin arguments
