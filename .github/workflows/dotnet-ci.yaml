@@ -43,13 +43,17 @@ jobs:
       - name: Retrieve .NET version
         id: dotnet-version
         run: |
-          DOTNET_VERSION=$(find . -name '*.csproj' -exec grep -h '<TargetFramework>net' {} + | sed -E 's/.*<TargetFramework>net([0-9]+\.[0-9]+)<\/TargetFramework>.*/\1/' | sort -V | tail -n1)
-          echo "DOTNET_VERSION=${DOTNET_VERSION}" >> $GITHUB_OUTPUT
+          if [[ -z "${{ inputs.DOTNET_VERSION }}" ]]; then
+            DOTNET_VERSION=$(find . -name '*.csproj' -exec grep -h '<TargetFramework>net' {} + | sed -E 's/.*<TargetFramework>net([0-9]+\.[0-9]+)<\/TargetFramework>.*/\1/' | sort -V | tail -n1)
+            echo "DOTNET_VERSION=${DOTNET_VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "DOTNET_VERSION=${{ inputs.DOTNET_VERSION }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup application platform
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ inputs.DOTNET_VERSION || steps.dotnet-version.outputs.DOTNET_VERSION }}
+          dotnet-version: ${{ steps.dotnet-version.outputs.DOTNET_VERSION }}
 
       - name: Add AMU GitHub Packages nuget source
         run: |
