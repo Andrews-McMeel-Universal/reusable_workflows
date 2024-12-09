@@ -49,7 +49,7 @@ jobs:
           environment: ${{ inputs.environment }}
 
       - name: Set up Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         if: ${{ inputs.INSTALL_NODE == 'true' }}
         with:
           node-version: ${{ inputs.NODE_VERSION }}
