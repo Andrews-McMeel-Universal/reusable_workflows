@@ -72,7 +72,7 @@ jobs:
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed: ${{ inputs.onlyChanged }}
           prettier_version: ${{ steps.prettier-version.outputs.version }}
-          working_directory: ${{ github.workspace }}
+          working_directory: .
 
       - name: Run prettier with .prettierrc.json configuration
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
@@ -83,7 +83,7 @@ jobs:
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed: ${{ inputs.onlyChanged }}
           prettier_version: ${{ steps.prettier-version.outputs.version }}
-          working_directory: ${{ github.workspace }}
+          working_directory: .
 
       - name: Run prettier without any configuration files
         if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
@@ -94,7 +94,7 @@ jobs:
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed: ${{ inputs.onlyChanged }}
           prettier_version: ${{ steps.prettier-version.outputs.version }}
-          working_directory: ${{ github.workspace }}
+          working_directory: .
 
   lint-workflows:
     name: Workflow linter
