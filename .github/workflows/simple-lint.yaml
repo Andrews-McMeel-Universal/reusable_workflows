@@ -39,7 +39,7 @@ jobs:
       - name: Get Prettier version
         id: prettier-version
         run: |
-          VERSION=$(yarn info prettier version --json | jq -r '.data')
+          VERSION=$(yarn info prettier version --json | jq -r '.children.Version')
           echo "version=$VERSION" >> $GITHUB_ENV
 
       - name: Install Prettier
