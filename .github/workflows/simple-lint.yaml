@@ -41,9 +41,9 @@ jobs:
         run: |
           VERSION=$(yarn info prettier version --json | jq -r '.children.Version')
           if [ -z "$VERSION" ]; then
-            echo "version=latest" >> $GITHUB_ENV
+            echo "prettier-version=latest" >> $GITHUB_ENV
           else
-            echo "version=$VERSION" >> $GITHUB_ENV
+            echo "prettier-version=$VERSION" >> $GITHUB_ENV
           fi
           echo "Prettier version: $VERSION"
 
@@ -78,7 +78,7 @@ jobs:
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed: ${{ inputs.onlyChanged }}
-          prettier_version: ${{ steps.prettier-version.outputs.version }}
+          prettier_version: ${{ env.prettier-version }}
           working_directory: ${{ github.workspace }}
 
       - name: Run prettier with .prettierrc.json configuration
@@ -89,7 +89,7 @@ jobs:
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed: ${{ inputs.onlyChanged }}
-          prettier_version: ${{ steps.prettier-version.outputs.version }}
+          prettier_version: ${{ env.prettier-version }}
           working_directory: ${{ github.workspace }}
 
       - name: Run prettier without any configuration files
@@ -100,7 +100,7 @@ jobs:
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed: ${{ inputs.onlyChanged }}
-          prettier_version: ${{ steps.prettier-version.outputs.version }}
+          prettier_version: ${{ env.prettier-version }}
           working_directory: ${{ github.workspace }}
 
   lint-workflows:
