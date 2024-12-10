@@ -40,7 +40,11 @@ jobs:
         id: prettier-version
         run: |
           VERSION=$(yarn info prettier version --json | jq -r '.children.Version')
-          echo "version=$VERSION" >> $GITHUB_ENV
+          if [ -z "$VERSION" ]; then
+            echo "version=latest" >> $GITHUB_ENV
+          else
+            echo "version=$VERSION" >> $GITHUB_ENV
+          fi
 
       - name: Install Prettier
         run: yarn add prettier@$VERSION
