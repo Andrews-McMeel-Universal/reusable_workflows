@@ -31,10 +31,6 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Run yarn install
-        if: ${{ inputs.prettierPlugins }}
-        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
-
       - name: Get Prettier version
         id: prettier-version
         run: |
@@ -42,15 +38,10 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Install Prettier
-        run: yarn add prettier@${{ steps.prettier-version.outputs.version }}
-        env:
-          # Overrides/align yarnrc.yml options (v3, v4) for a CI context
-          YARN_ENABLE_GLOBAL_CACHE: "false" # Use local cache folder to keep downloaded archives
-          YARN_ENABLE_MIRROR: "false" # Prevent populating global cache for caches misses (local cache only)
-          YARN_NM_MODE: "hardlinks-local" # Reduce node_modules size
-          YARN_INSTALL_STATE_PATH: ".yarn/install-state.gz" # Might speed up resolution step when node_modules present
-          # Other environment variables
-          HUSKY: "0" # By default do not run HUSKY install
+        run: npm install --silent prettier@${{ steps.prettier-version.outputs.version }}
+
+      - name: Install Prettier plugins
+        run: npm install --silent ${{ inputs.prettierPlugins }}
 
       - name: Set prettier plugin arguments
         id: prettier-plugins
