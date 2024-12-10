@@ -65,36 +65,25 @@ jobs:
 
       - name: Run prettier with .prettierrc.js configuration
         if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' }}
-        uses: creyD/prettier_action@v4.3
-        with:
-          prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
-          prettier_plugins: ${{ inputs.prettierPlugins }}
-          commit_message: "[Simple Linter] Apply prettier changes"
-          only_changed: ${{ inputs.onlyChanged }}
-          prettier_version: ${{ steps.prettier-version.outputs.version }}
-          working_directory: ${{ github.workspace }}
+        run: |
+          prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
 
       - name: Run prettier with .prettierrc.json configuration
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
-        uses: creyD/prettier_action@v4.3
-        with:
-          prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
-          prettier_plugins: ${{ inputs.prettierPlugins }}
-          commit_message: "[Simple Linter] Apply prettier changes"
-          only_changed: ${{ inputs.onlyChanged }}
-          prettier_version: ${{ steps.prettier-version.outputs.version }}
-          working_directory: ${{ github.workspace }}
+        run: |
+          prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
 
       - name: Run prettier without any configuration files
         if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
-        uses: creyD/prettier_action@v4.3
+        run: |
+          prettier --write . --ignore-path ./.prettierignore ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+
+      - name: Commit and Push Linting Fixes
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          prettier_options: --write . --ignore-path ./.prettierignore ${{ steps.prettier-plugins.outputs.prettierPlugins }}
-          prettier_plugins: ${{ inputs.prettierPlugins }}
+          commit_user_name: amutechtest
+          commit_user_email: amu_deploy@amuniversal.com
           commit_message: "[Simple Linter] Apply prettier changes"
-          only_changed: ${{ inputs.onlyChanged }}
-          prettier_version: ${{ steps.prettier-version.outputs.version }}
-          working_directory: ${{ github.workspace }}
 
   lint-workflows:
     name: Workflow linter
