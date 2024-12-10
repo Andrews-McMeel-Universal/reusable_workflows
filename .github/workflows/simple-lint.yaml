@@ -31,17 +31,26 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
+      - name: Install jq apt package
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: jq
+
       - name: Get Prettier version
         id: prettier-version
         run: |
-          VERSION=$(yarn info prettier version --name-only | awk -F ':' '{print $2}')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=$(yarn info prettier version --json | jq -r '.data')
+          echo "version=$VERSION" >> $GITHUB_ENV
 
       - name: Install Prettier
-        run: npm install --legacy-peer-deps prettier@${{ steps.prettier-version.outputs.version }}
+        run: npm install prettier@$VERSION
+        env:
+          VERSION: ${{ env.version }}
 
       - name: Install Prettier plugins
-        run: npm install --legacy-peer-deps ${{ inputs.prettierPlugins }}
+        run: npm install $PACKAGES
+        env:
+          PACKAGES: ${{ inputs.prettierPlugins }}
 
       - name: Set prettier plugin arguments
         id: prettier-plugins
