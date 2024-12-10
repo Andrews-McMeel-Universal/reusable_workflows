@@ -41,6 +41,9 @@ jobs:
           VERSION=$(yarn info prettier version --name-only | awk -F ':' '{print $2}')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Install Prettier
+        run: yarn add prettier@${{ steps.prettier-version.outputs.version }}
+
       - name: Set prettier plugin arguments
         id: prettier-plugins
         if: ${{ inputs.prettierPlugins }}
@@ -65,18 +68,15 @@ jobs:
 
       - name: Run prettier with .prettierrc.js configuration
         if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' }}
-        run: |
-          prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+        run: yarn run prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
 
       - name: Run prettier with .prettierrc.json configuration
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
-        run: |
-          prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+        run: yarn run prettier --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
 
       - name: Run prettier without any configuration files
         if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
-        run: |
-          prettier --write . --ignore-path ./.prettierignore ${{ steps.prettier-plugins.outputs.prettierPlugins }}
+        run: yarn run prettier --write . --ignore-path ./.prettierignore ${{ steps.prettier-plugins.outputs.prettierPlugins }}
 
       - name: Commit and Push Linting Fixes
         uses: stefanzweifel/git-auto-commit-action@v5
