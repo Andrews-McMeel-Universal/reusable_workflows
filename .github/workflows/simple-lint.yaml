@@ -43,12 +43,12 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_ENV
 
       - name: Install Prettier
-        run: npm install prettier@$VERSION
+        run: yarn add prettier@$VERSION
         env:
           VERSION: ${{ env.version }}
 
       - name: Install Prettier plugins
-        run: npm install $PACKAGES
+        run: yarn add $PACKAGES
         env:
           PACKAGES: ${{ inputs.prettierPlugins }}
 
