@@ -38,10 +38,10 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Install Prettier
-        run: npm install prettier@${{ steps.prettier-version.outputs.version }}
+        run: npm install --legacy-peer-deps prettier@${{ steps.prettier-version.outputs.version }}
 
       - name: Install Prettier plugins
-        run: npm install ${{ inputs.prettierPlugins }}
+        run: npm install --legacy-peer-deps ${{ inputs.prettierPlugins }}
 
       - name: Set prettier plugin arguments
         id: prettier-plugins
