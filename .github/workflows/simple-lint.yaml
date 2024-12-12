@@ -40,7 +40,7 @@ jobs:
         id: prettier-version
         run: |
           VERSION=$(yarn info prettier version --json | jq -r '.children.Version')
-          if [ -z "$VERSION" ]; then
+          if [[ "$VERSION" == "null" ]]; then
             echo "prettier-version=latest" >> $GITHUB_ENV
           else
             echo "prettier-version=$VERSION" >> $GITHUB_ENV
