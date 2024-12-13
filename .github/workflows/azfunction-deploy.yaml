@@ -173,6 +173,22 @@ jobs:
           package: "${{ inputs.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
 
+      - name: Restart Azure Function App
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+                az functionapp restart \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" | tee
+            else
+                az functionapp restart \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --slot "${{ inputs.environment }}" | tee
+            fi
+
       - name: Enable identity for Azure Function
         uses: azure/cli@v2
         with:
