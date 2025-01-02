@@ -154,7 +154,7 @@ jobs:
           else {
               $maxReplicas = $appConfig.autoscaling.maxReplicas
           }
-          $configSecret = $appConfig.deployment.secret
+          $configSecret = "$appName-config-secret"
           $imagePullSecret = "$appName-pull-secret"
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
