@@ -15,7 +15,7 @@ on:
         required: false
         type: string
         description: "AKS Cluster Resource Group."
-        default: ${{ vars.AKS_CLUSTER_RESOURCE_GROUP || 'AMU_AKS_201' }}
+        default: ${{ vars.AKS_CLUSTER_RESOURCE_GROUP }}
       chartsPath:
         required: false
         type: string
@@ -302,6 +302,7 @@ jobs:
               echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST!=null"
           cat << EOF >> values-override.yaml
           ingress:
+            ingressClassName: nginx-${{ inputs.environment }}
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
@@ -309,6 +310,7 @@ jobs:
               nginx.ingress.kubernetes.io/auth-secret: "${{ needs.build.outputs.appName }}-basic-auth"
               nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
           adminingress:
+            ingressClassName: nginx-${{ inputs.environment }}
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
@@ -316,6 +318,7 @@ jobs:
               echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST=null"
           cat << EOF >> values-override.yaml
           ingress:
+            ingressClassName: nginx-${{ inputs.environment }}
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
@@ -328,10 +331,12 @@ jobs:
             echo "::debug::WEB_AUTHENTICATION=false,ADMIN_INGRESS_WHITELIST!=null"
           cat << EOF >> values-override.yaml
           ingress:
+            ingressClassName: nginx-${{ inputs.environment }}
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
           adminingress:
+            ingressClassName: nginx-${{ inputs.environment }}
             annotations:
               nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
           EOF
@@ -339,6 +344,7 @@ jobs:
             echo "::debug::WEB_AUTHENTICATION=false,ADMIN_INGRESS_WHITELIST=null"
           cat << EOF >> values-override.yaml
           ingress:
+            ingressClassName: nginx-${{ inputs.environment }}
             annotations:
               nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
               nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
