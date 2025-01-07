@@ -790,6 +790,9 @@ FodyWeavers.xsd
 # Project Specific
 # unique ignores for this project
 
+# UI Applications
+next-env.d.ts
+
 # dependencies
 /.pnp
 .pnp.js
@@ -846,3 +849,6 @@ data/db
 data/meta
 data/models
 data/state
+
+# Syndication
+public/uu_site/

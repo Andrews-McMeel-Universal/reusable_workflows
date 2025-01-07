@@ -3,6 +3,7 @@
 .git/
 .vscode/
 .idea/
+*.lock
 
 # GitHub Actions Workflows
 .github/
