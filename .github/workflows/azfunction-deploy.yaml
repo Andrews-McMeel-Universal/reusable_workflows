@@ -70,9 +70,7 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Install jq apt package
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: jq
+        run: apt-get update -y && apt-get install jq -y
 
       - name: Retrieve .NET version
         id: dotnet-version

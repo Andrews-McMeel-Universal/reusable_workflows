@@ -33,11 +33,8 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
-      - name: Install Dependencies
-        uses: awalsh128/cache-apt-pkgs-action@v1
-        with:
-          packages: redis-tools
-          version: 1.0
+      - name: Install jq apt package
+        run: apt-get update -y && apt-get install redis-tools -y
 
       # Script is adapted from https://github.com/Andrews-McMeel-Universal/azure-content-management_tool/blob/main/Scripts/rundeck/Flush-RedisCache.ps1
       - name: Clear Redis Cache
