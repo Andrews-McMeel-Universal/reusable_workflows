@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install jq apt package
-        run: apt-get update -y && apt-get install jq -y
+        run: sudo apt-get update -y && sudo apt-get install jq -y
 
       - name: Get Prettier version
         id: prettier-version

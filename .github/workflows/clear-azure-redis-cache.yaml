@@ -34,7 +34,7 @@ jobs:
           enable-AzPSSession: true
 
       - name: Install jq apt package
-        run: apt-get update -y && apt-get install redis-tools -y
+        run: sudo apt-get update -y && sudo apt-get install redis-tools -y
 
       # Script is adapted from https://github.com/Andrews-McMeel-Universal/azure-content-management_tool/blob/main/Scripts/rundeck/Flush-RedisCache.ps1
       - name: Clear Redis Cache
