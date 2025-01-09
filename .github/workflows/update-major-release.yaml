@@ -1,8 +1,10 @@
 name: Update Major Release
 
-run-name: Move ${{ github.event.inputs.major_version }} to ${{ github.event.inputs.target }}
+run-name: Update major release to ${{ github.event.inputs.target || github.event.release.name }}
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       target:
@@ -28,12 +30,24 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
 
+      - name: Get target
+        run: 
+          echo "TARGET=$(echo ${{ github.event.inputs.target || github.event.release.name }} | tr -d '[:space:]')" >> $GITHUB_ENV
+
+      - name: Get major version
+        run: |
+          if [[ -z "${{ github.event.inputs.major_version }}" ]]; then
+            echo "MAJOR_VERSION=$(echo "${{ github.event.release.name }}" | cut -d. -f1)" >> $GITHUB_ENV
+          else 
+            echo "MAJOR_VERSION=${{ github.event.inputs.major_version }}" >> $GITHUB_ENV
+          fi
+
       - name: Tag new target
         run: |
-          git tag -f ${{ github.event.inputs.major_version }} ${{ github.event.inputs.target }}
-          git tag -f latest ${{ github.event.inputs.target }}
+          git tag -f ${{ env.MAJOR_VERSION }} ${{ env.TARGET }}
+          git tag -f latest ${{ env.TARGET }}
 
       - name: Push new tag
         run: |
-          git push origin ${{ github.event.inputs.major_version }} --force
+          git push origin ${{ env.MAJOR_VERSION }} --force
           git push origin latest --force
