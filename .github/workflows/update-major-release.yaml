@@ -32,7 +32,7 @@ jobs:
 
       - name: Get target
         run: 
-          echo "TARGET=$(echo ${{ github.event.inputs.target || github.event.release.name }} | tr -d '[:space:]')" >> $GITHUB_ENV
+          echo "TARGET=$(echo "${{ github.event.inputs.target || github.event.release.name }}" | tr -d '[:space:]')" >> $GITHUB_ENV
 
       - name: Get major version
         run: |
