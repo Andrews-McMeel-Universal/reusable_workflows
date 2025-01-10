@@ -37,8 +37,8 @@ jobs:
       - name: Get Prettier version
         id: prettier-version
         run: |
-          VERSION=$(yarn info prettier version --json | jq -r '.children.Version')
-          if [[ "$VERSION" == "null" ]]; then
+          VERSION=$(yarn list --pattern prettier | grep "prettier" | awk -F '@' '{print $2}')
+          if [[ -z "$VERSION" ]]; then
             echo "prettier-version=latest" >> $GITHUB_ENV
           else
             echo "prettier-version=$VERSION" >> $GITHUB_ENV
