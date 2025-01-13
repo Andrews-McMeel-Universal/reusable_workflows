@@ -55,12 +55,12 @@ jobs:
               echo "Front Door Profile is required. Please provide the Front Door Profile name when calling the workflow."
               exit 1
             else
-              FD_PROFILE_ENDPOINT_NAME="${{ inputs.fdProfile }}"
+              FD_PROFILE_NAME="${{ inputs.fdProfile }}"
             fi
 
             if [[ -z "${{ inputs.fdProfileEndpoint }}" ]]; then
               if [[ "${{ github.event.repository.name }}" == *_game ]]; then
-                FD_PROFILE_ENDPOINT_NAME=$(az afd endpoint list --profile-name $ProfileName --resource-group $ResourceGroup --query "[?tags.\"repository-name\" == '${{ github.event.repository.name }}'].name" -o tsv)
+                FD_PROFILE_ENDPOINT_NAME=$(az afd endpoint list --profile-name "${FD_PROFILE_NAME}" --resource-group "${FD_RESOURCE_GROUP}" --query "[?tags.\"repository-name\" == '${{ github.event.repository.name }}'].name" -o tsv)
               else
                 echo "Front Door Profile Endpoint is required. Please provide the Front Door Profile Endpoint name when calling the workflow."
                 exit 1
