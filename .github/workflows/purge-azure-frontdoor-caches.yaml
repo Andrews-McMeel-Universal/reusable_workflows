@@ -70,3 +70,9 @@ jobs:
             fi
 
             az afd endpoint purge --endpoint-name "${FD_PROFILE_ENDPOINT_NAME}" --profile-name "${FD_PROFILE_NAME}" -g "${FD_RESOURCE_GROUP}" --content-paths '/*'
+            if [[ $? -ne 0 ]]; then
+              echo "Failed to purge Azure Front Door cache."
+              exit 1
+            else
+              echo "Successfully purged Azure Front Door cache for endpoint ${FD_PROFILE_ENDPOINT_NAME}."
+            fi
