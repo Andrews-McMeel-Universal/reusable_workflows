@@ -49,25 +49,23 @@ jobs:
         with:
           azPSVersion: "latest"
           inlineScript: |
-            if ("${{ inputs.cdnResourceGroup }}") {
-              $ResourceGroup = "${{ inputs.cdnResourceGroup }}"
-            }
-            else {
-              $ResourceGroup = (Get-AzResource -ResourceType Microsoft.Cdn/profiles -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
+            if (-not ${{ inputs.cdnResourceGroup }}) {
+              Write-Error "CDN Resource Group is required. Please provide the CDN Resource Group name when calling the workflow."
+              exit 1
             }
 
-            if ("${{ inputs.cdnProfile }}") {
-              $ProfileName = "${{ inputs.cdnProfile }}"
-            }
-            else {
-              $ProfileName = (Get-AzResource -ResourceType Microsoft.Cdn/profiles -Tag @{"environment"="${{ inputs.environment }}"}).Name
+            if (-not ${{ inputs.cdnProfile }}) {
+              Write-Error "CDN Profile is required. Please provide the CDN Profile name when calling the workflow."
+              exit 1
             }
 
-            if ("${{ inputs.cdnEndpoint }}") {
-              $EndpointName = "${{ inputs.cdnEndpoint }}"
+            if (-not ${{ inputs.cdnEndpoint }}) {
+              Write-Error "CDN Endpoint is required. Please provide the CDN Endpoint name when calling the workflow."
+              exit 1
             }
-            else {
-              $EndpointName = (Get-AzResource -ResourceType Microsoft.Cdn/profiles/endpoints -Tag @{"repository-name"="${{ github.event.repository.name }}"} | Where-Object { $_.Tags."environment" -contains "${{ inputs.environment }}" }).Name -replace ("${ProfileName}/","")
-            }
+
+            $ResourceGroup = "${{ inputs.cdnResourceGroup }}"
+            $ProfileName = "${{ inputs.cdnProfile }}"
+            $EndpointName = "${{ inputs.cdnEndpoint }}"
 
             Clear-AzCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPath '/*'
