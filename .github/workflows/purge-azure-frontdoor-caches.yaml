@@ -1,0 +1,74 @@
+name: Purge Azure Front Door Caches
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: false
+        type: string
+        description: "Deploy Environment. Can be development, staging, or production"
+      fdResourceGroup:
+        required: false
+        type: string
+        description: "Front Door Resource Group"
+      fdProfile:
+        required: false
+        type: string
+        description: "Front Door Profile"
+      fdProfileEndpoint:
+        required: false
+        type: string
+        description: "Front Door Profile Endpoint"
+    secrets:
+      azureCredentials:
+        required: true
+
+jobs:
+  purge-cdn:
+    name: Purge CDN Cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check inputs
+        uses: azure/powershell@v2
+        with:
+          azPSVersion: "latest"
+          inlineScript: |
+            if ((!"${{ inputs.environment }}") -and ((!"${{ inputs.fdResourceGroup }}") -or (!"${{ inputs.fdProfile }}") -or (!"${{ inputs.fdProfileEndpoint }}"))) {
+              echo "::error::The environment input and at least one of the CDN inputs are missing from the workflow call. Please try again"
+              exit 1
+            }
+
+      - name: Login via Az module
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
+
+      - name: Purge CDN cache
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            if [[ -z "${{ inputs.fdResourceGroup }}" ]]; then
+              echo "Front Door Resource Group is required. Please provide the Front Door Resource Group name when calling the workflow."
+              exit 1
+            fi
+
+            if [[ -z "${{ inputs.fdProfile }}" ]]; then
+              echo "Front Door Profile is required. Please provide the Front Door Profile name when calling the workflow."
+              exit 1
+            fi
+
+            if [[ -z "${{ inputs.fdProfileEndpoint }}" ]]; then
+              if [[ "${{ github.event.repository.name }}" == *_game ]]; then
+                EndpointName=$(az afd endpoint list --profile-name $ProfileName --resource-group $ResourceGroup --query "[?tags.\"repository-name\" == '${{ github.event.repository.name }}'].name" -o tsv)
+              else
+                echo "Front Door Profile Endpoint is required. Please provide the Front Door Profile Endpoint name when calling the workflow."
+                exit 1
+              fi
+            fi
+
+            FD_RESOURCE_GROUP="${{ inputs.fdResourceGroup }}"
+            FD_PROFILE_NAME="${{ inputs.fdProfile }}"
+            FD_PROFILE_ENDPOINT_NAME="${{ inputs.fdProfileEndpoint }}"
+
+            az afd endpoint purge --endpoint-name "${FD_PROFILE_ENDPOINT_NAME}" --profile-name "${FD_PROFILE_NAME}" -g "${FD_RESOURCE_GROUP}" --content-paths '/*'
