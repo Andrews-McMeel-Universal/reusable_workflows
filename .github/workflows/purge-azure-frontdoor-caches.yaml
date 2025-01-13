@@ -3,10 +3,6 @@ name: Purge Azure Front Door Caches
 on:
   workflow_call:
     inputs:
-      environment:
-        required: false
-        type: string
-        description: "Deploy Environment. Can be development, staging, or production"
       fdResourceGroup:
         required: false
         type: string
