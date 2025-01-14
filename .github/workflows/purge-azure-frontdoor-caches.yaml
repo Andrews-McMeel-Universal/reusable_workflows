@@ -24,16 +24,6 @@ jobs:
     name: Purge Azure Front Door Cache
     runs-on: ubuntu-latest
     steps:
-      - name: Check inputs
-        uses: azure/powershell@v2
-        with:
-          azPSVersion: "latest"
-          inlineScript: |
-            if ((!"${{ inputs.environment }}") -and ((!"${{ inputs.fdResourceGroup }}") -or (!"${{ inputs.fdProfile }}") -or (!"${{ inputs.fdProfileEndpoint }}"))) {
-              echo "::error::The environment input and at least one of the CDN inputs are missing from the workflow call. Please try again"
-              exit 1
-            }
-
       - name: Login via Az module
         uses: azure/login@v2
         with:
@@ -70,6 +60,7 @@ jobs:
             fi
 
             az afd endpoint purge --endpoint-name "${FD_PROFILE_ENDPOINT_NAME}" --profile-name "${FD_PROFILE_NAME}" -g "${FD_RESOURCE_GROUP}" --content-paths '/*'
+
             if [[ $? -ne 0 ]]; then
               echo "Failed to purge Azure Front Door cache."
               exit 1
