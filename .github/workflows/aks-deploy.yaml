@@ -258,6 +258,17 @@ jobs:
 
       - name: Push Docker Image
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
+
+      - name: Send Failed Deployment report to Teams
+        if: failure() && (inputs.environment != 'development')
+        uses: jdcargile/ms-teams-notification@v1.4
+        with:
+          github-token: ${{ github.token }}
+          ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
+          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Failed ${{ inputs.environment }} Deployment"
+          notification-color: 17a2b8
+          timezone: America/Chicago
+          verbose-logging: true
     outputs:
       appName: ${{ env.appName }}
       appVersion: ${{ env.appVersion }}
@@ -521,7 +532,7 @@ jobs:
         if: failure() && (inputs.environment != 'development')
         uses: jdcargile/ms-teams-notification@v1.4
         with:
-          github-token: ${{ github.token }} # this will use the runner's token.
+          github-token: ${{ github.token }}
           ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
           notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Failed ${{ inputs.environment }} Deployment"
           notification-color: 17a2b8
@@ -532,7 +543,7 @@ jobs:
         if: success() && (inputs.environment != 'development')
         uses: jdcargile/ms-teams-notification@v1.4
         with:
-          github-token: ${{ github.token }} # this will use the runner's token.
+          github-token: ${{ github.token }}
           ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
           notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Successful ${{ inputs.environment }} Deployment"
           notification-color: 28a745
