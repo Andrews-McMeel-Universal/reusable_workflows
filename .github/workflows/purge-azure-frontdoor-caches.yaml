@@ -1,0 +1,69 @@
+name: Purge Azure Front Door Caches
+
+on:
+  workflow_call:
+    inputs:
+      fdResourceGroup:
+        required: false
+        type: string
+        description: "Front Door Resource Group"
+      fdProfile:
+        required: false
+        type: string
+        description: "Front Door Profile"
+      fdProfileEndpoint:
+        required: false
+        type: string
+        description: "Front Door Profile Endpoint"
+    secrets:
+      azureCredentials:
+        required: true
+
+jobs:
+  purge-fd:
+    name: Purge Azure Front Door Cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login via Az module
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+          enable-AzPSSession: true
+
+      - name: Purge Azure Front Door cache
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            if [[ -z "${{ inputs.fdResourceGroup }}" ]]; then
+              echo "Front Door Resource Group is required. Please provide the Front Door Resource Group name when calling the workflow."
+              exit 1
+            else
+              FD_RESOURCE_GROUP="${{ inputs.fdResourceGroup }}"
+            fi
+
+            if [[ -z "${{ inputs.fdProfile }}" ]]; then
+              echo "Front Door Profile is required. Please provide the Front Door Profile name when calling the workflow."
+              exit 1
+            else
+              FD_PROFILE_NAME="${{ inputs.fdProfile }}"
+            fi
+
+            if [[ -z "${{ inputs.fdProfileEndpoint }}" ]]; then
+              if [[ "${{ github.event.repository.name }}" == *_game ]]; then
+                FD_PROFILE_ENDPOINT_NAME=$(az afd endpoint list --profile-name "${FD_PROFILE_NAME}" --resource-group "${FD_RESOURCE_GROUP}" --query "[?tags.\"repository-name\" == '${{ github.event.repository.name }}'].name" -o tsv)
+              else
+                echo "Front Door Profile Endpoint is required. Please provide the Front Door Profile Endpoint name when calling the workflow."
+                exit 1
+              fi
+            else
+              FD_PROFILE_ENDPOINT_NAME="${{ inputs.fdProfileEndpoint }}"
+            fi
+
+            az afd endpoint purge --endpoint-name "${FD_PROFILE_ENDPOINT_NAME}" --profile-name "${FD_PROFILE_NAME}" -g "${FD_RESOURCE_GROUP}" --content-paths '/*'
+
+            if [[ $? -ne 0 ]]; then
+              echo "Failed to purge Azure Front Door cache."
+              exit 1
+            else
+              echo "Successfully purged Azure Front Door cache for endpoint ${FD_PROFILE_ENDPOINT_NAME}."
+            fi
