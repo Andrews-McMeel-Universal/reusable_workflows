@@ -27,6 +27,11 @@ on:
         type: string
         description: "API Suffix for the API URL."
         default: ${{ vars.API_SUFFIX || 'true' }}
+      deploymentWebhook:
+        required: false
+        type: string
+        description: "The webhook URL for the deployment status"
+        default: ${{ vars.MSTEAMS_DEPLOYMENT_WEBHOOK }}
     secrets:
       azurePassword:
         required: false
@@ -183,3 +188,14 @@ jobs:
                     Write-Output "API version V${version} (${SwaggerURL}): $($SwaggerJSON.StatusCode) $($SwaggerJSON.StatusDescription)"
                 }
             }
+      
+      - name: Send Failed Deployment report to Teams
+        if: failure() && (inputs.environment != 'development')
+        uses: jdcargile/ms-teams-notification@v1.4
+        with:
+          github-token: ${{ github.token }}
+          ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
+          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Failed ${{ inputs.environment }} Deployment"
+          notification-color: 17a2b8
+          timezone: America/Chicago
+          verbose-logging: true
