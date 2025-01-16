@@ -264,6 +264,8 @@ jobs:
       - name: Create values override file
         shell: pwsh
         run: |
+          Install-Module -Name powershell-yaml -Confirm:$false -Force
+          
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
