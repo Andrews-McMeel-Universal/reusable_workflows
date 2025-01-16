@@ -40,7 +40,7 @@ on:
         required: false
         type: string
         description: "IPs to include in the application whitelist"
-        default: ${{ vars.KUBERNETES_INGRESS_WHITELIST }}
+        default: ${{ vars.KUBERNETES_INGRESS_WHITELIST || '0.0.0.0/0' }}
       adminIngressWhitelist:
         required: false
         type: string
