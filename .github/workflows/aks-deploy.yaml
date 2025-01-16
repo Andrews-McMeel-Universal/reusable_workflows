@@ -352,6 +352,10 @@ jobs:
           # Write to file
           $appConfig | ConvertTo-Yaml | Out-File -FilePath "./values-override.yaml"
 
+          # Output file content
+          Write-Output "values-override.yaml:"
+          Get-Content "./values-override.yaml"
+
       - name: Bake Helm Templates
         id: bake
         uses: azure/k8s-bake@v3
