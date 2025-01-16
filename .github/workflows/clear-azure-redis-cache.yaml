@@ -38,44 +38,42 @@ jobs:
 
       # Script is adapted from https://github.com/Andrews-McMeel-Universal/azure-content-management_tool/blob/main/Scripts/rundeck/Flush-RedisCache.ps1
       - name: Clear Redis Cache
-        uses: azure/powershell@v2
-        with:
-          inlineScript: |
-            $CacheKey = "${{ inputs.applicationCacheKey }}"
-            $ResourceGroupName = "${{ inputs.resourceGroupName }}"
-            $Environment = "${{ inputs.environment }}"
+        shell: pwsh
+        run: |
+          $CacheKey = "${{ inputs.applicationCacheKey }}"
+          $ResourceGroupName = "${{ inputs.resourceGroupName }}"
+          $Environment = "${{ inputs.environment }}"
 
-            # Check to see if Azure Redis Cache PowerShell Module is installed
-            Install-Module -Name Az.RedisCache -Confirm:$false -Force
+          # Check to see if Azure Redis Cache PowerShell Module is installed
+          Install-Module -Name Az.RedisCache -Confirm:$false -Force
 
-            # Get list of Redis instances using tags
-            $Redis = Get-AzRedisCache -ResourceGroupName "$ResourceGroupName" | Where-Object { $_.Tag.Values -eq "$Environment" }
+          # Get list of Redis instances using tags
+          $Redis = Get-AzRedisCache -ResourceGroupName "$ResourceGroupName" | Where-Object { $_.Tag.Values -eq "$Environment" }
 
-            # Loop through Redis instances
-            $Redis | ForEach-Object {
-                $RedisHostname = $_.HostName
-                $RedisPort = $_.Port
-                $RedisName = $_.Name
-                $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName $ResourceGroupName).PrimaryKey
+          # Loop through Redis instances
+          $Redis | ForEach-Object {
+              $RedisHostname = $_.HostName
+              $RedisPort = $_.Port
+              $RedisName = $_.Name
+              $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName $ResourceGroupName).PrimaryKey
 
-                Write-Host "Authenticating to $RedisHostname..." -ForegroundColor DarkGray
-                $RedisCommands = "AUTH $RedisKey
-                SELECT 0
-                EVAL 'return redis.call(\'del\', unpack(redis.call(\'keys\', ARGV[1])))' 0 $CacheKey"
-                Write-Host "Clearing cache key: $CacheKey" -ForegroundColor DarkGray
-                $RedisResult = $RedisCommands | redis-cli -h $RedisHostname -p $RedisPort
+              Write-Host "Authenticating to $RedisHostname..." -ForegroundColor DarkGray
+              $RedisCommands = "AUTH $RedisKey
+              SELECT 0
+              EVAL 'return redis.call(\'del\', unpack(redis.call(\'keys\', ARGV[1])))' 0 $CacheKey"
+              Write-Host "Clearing cache key: $CacheKey" -ForegroundColor DarkGray
+              $RedisResult = $RedisCommands | redis-cli -h $RedisHostname -p $RedisPort
 
-                # Check if output from cache clearing command has correct status message
-                if ($RedisResult -match '^\d+$') {
-                    Write-Host "Successfully flushed cache for $RedisHostname" -ForegroundColor Green
-                }
-                elseif ($RedisResult -match 'Wrong number of args calling Redis command From Lua script') {
-                    Write-Host "Cache key $CacheKey missing in $RedisHostname" -ForegroundColor Yellow
-                }
-                else {
-                    Write-Host "Cache key $CacheKey status unknown in $RedisHostname" -ForegroundColor Red
-                    Write-Host "Full output: $RedisResult"
-                }
-            }
-          azPSVersion: "latest"
+              # Check if output from cache clearing command has correct status message
+              if ($RedisResult -match '^\d+$') {
+                  Write-Host "Successfully flushed cache for $RedisHostname" -ForegroundColor Green
+              }
+              elseif ($RedisResult -match 'Wrong number of args calling Redis command From Lua script') {
+                  Write-Host "Cache key $CacheKey missing in $RedisHostname" -ForegroundColor Yellow
+              }
+              else {
+                  Write-Host "Cache key $CacheKey status unknown in $RedisHostname" -ForegroundColor Red
+                  Write-Host "Full output: $RedisResult"
+              }
+          }
 
