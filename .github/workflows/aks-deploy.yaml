@@ -147,8 +147,8 @@ jobs:
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
           # Set hostname and domain name for the ingress
-          if ($appConfig.ingress[0]) {
-              $ingress = $appConfig.ingress.host[0]
+          if ($appConfig.schemaVersion -eq "2") {
+              $ingress = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).host
           }
           else {
               $ingress = $appConfig.ingress.host
@@ -278,7 +278,7 @@ jobs:
           $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
 
-          if ($appConfig.ingress[0]) {
+          if ($appConfig.schemaVersion -eq "2") {
               foreach ($item in $appConfig.ingress) {
                   # Add environment to ingress
                   if (($environmentIngress -eq "true") -and ($item.environmentIngress -eq $true)) { 
@@ -313,7 +313,7 @@ jobs:
                   }
               }
           }
-          elseif ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" }) {
+          else
               foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" }).Value) {
                   # Add environment to ingress 
                   if (($item.host -notmatch "development|staging|production") -and ($item.secondaryhost -notmatch "www") -and ($environmentIngress -eq "true")){
