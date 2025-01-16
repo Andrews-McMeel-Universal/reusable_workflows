@@ -45,7 +45,7 @@ on:
         required: false
         type: string
         description: "IPs to include in the Admin application whitelist"
-        default: "207.67.20.252"
+        default: ${{ vars.KUBERNETES_ADMIN_INGRESS_WHITELIST || '207.67.20.252' }}
       environmentIngress:
         required: false
         type: string
@@ -237,13 +237,9 @@ jobs:
     outputs:
       appName: ${{ env.appName }}
       appVersion: ${{ env.appVersion }}
-      configMap: ${{ env.configMap }}
       ingress: ${{ env.ingress }}
       domainName: ${{ env.domainName }}
       hostName: ${{ env.hostName }}
-      date: ${{ env.date }}
-      ingressWhitelist: ${{ env.ingressWhitelist }}
-      adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
 
@@ -251,7 +247,6 @@ jobs:
     name: AKS Deploy
     needs: [build]
     runs-on: ${{ inputs.githubRunner }}
-    continue-on-error: false
     environment:
       name: ${{ inputs.environment }}
       url: https://${{ needs.build.outputs.ingress }}
