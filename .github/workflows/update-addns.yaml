@@ -38,7 +38,7 @@ jobs:
         id: getappinfo
         shell: pwsh
         run: |
-          Install-Module -Name AzTable,Az.Storage -Force
+          Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
           Import-Module AzTable
 
           $storageAccountName = "${{ inputs.storageAccountName }}"
