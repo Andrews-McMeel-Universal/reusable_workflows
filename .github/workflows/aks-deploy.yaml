@@ -313,7 +313,7 @@ jobs:
                   }
               }
           }
-          else
+          else {
               foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" }).Value) {
                   # Add environment to ingress 
                   if (($item.host -notmatch "development|staging|production") -and ($item.secondaryhost -notmatch "www") -and ($environmentIngress -eq "true")){
