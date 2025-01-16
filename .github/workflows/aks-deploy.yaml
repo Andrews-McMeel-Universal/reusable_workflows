@@ -507,7 +507,7 @@ jobs:
       - name: Record deployment information in Azure Storage Table
         shell: pwsh
         run: |
-          Install-Module -Name AzTable -Force
+          Install-Module -Name AzTable,Az.Storage -Force
           Import-Module AzTable
 
           $storageAccountName = "amucloudapps"
