@@ -265,7 +265,7 @@ jobs:
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Confirm:$false -Force
-          
+
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
@@ -275,7 +275,7 @@ jobs:
           $appName = $chartConfig.name
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
-          $environment = ${{ inputs.environment }}
+          $environment = "${{ inputs.environment }}"
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
