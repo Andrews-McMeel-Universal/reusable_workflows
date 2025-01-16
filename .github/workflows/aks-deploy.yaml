@@ -367,6 +367,8 @@ jobs:
           helm-version: "latest"
           overrideFiles: ./values-override.yaml
           overrides: |
+            deployment.image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
+            deployment.image.tag:${{ github.sha }}-${{ inputs.environment }}
             image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas || inputs.maximumReplicas }}
