@@ -113,7 +113,7 @@ jobs:
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Confirm:$false -Force
-          
+
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
@@ -147,7 +147,7 @@ jobs:
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
           # Set hostname and domain name for the ingress
-          if ($appConfig.ingress.host[0] -gt 1) {
+          if ($appConfig.ingress[0]) {
               $ingress = $appConfig.ingress.host[0]
           }
           else {
@@ -282,33 +282,33 @@ jobs:
               foreach ($item in $appConfig.ingress) {
                   # Add environment to ingress
                   if (($environmentIngress -eq "true") -and ($item.environmentIngress -eq $true)) { 
-                      $item["host"] = "$environment.$($item['host'])"
-                      Write-Output "Host updated to: $($item['host'])"
+                      $item.host = "$environment.$($item.host)"
+                      Write-Output "Host updated to: $($item.host)"
                   }
 
                   # Add WWW to ingress
                   if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -eq "false")) {
-                      $item["host"] = "www.$($item['host'])"
+                      $item.host = "www.$($item.host)"
                   }
 
                   # Add ingressClassName to ingress
-                  $item["ingressClassName"] = "nginx-$environment"
+                  $item.ingressClassName = "nginx-$environment"
 
                   # Reset annotations
-                  $item["annotations"] = @{}
+                  $item.annotations = @{}
 
                   # Add ingressWhitelist to ingress
-                  $item["annotations"]["nginx.ingress.kubernetes.io/whitelist-source-range"] = $ingressWhitelist
+                  $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
                   if ($item.name -eq "admin-ingress" -and $adminIngressWhitelist -ne "") {
-                      $item["annotations"]["nginx.ingress.kubernetes.io/whitelist-source-range"] = $adminIngressWhitelist
+                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
                   }
 
                   # Add webAuthentication to main ingress
                   if ($webAuthentication -eq "true") {
                       foreach ($item in $appConfig.ingress[0]) {
-                          $item["annotations"]["nginx.ingress.kubernetes.io/auth-type"]="basic"
-                          $item["annotations"]["nginx.ingress.kubernetes.io/auth-secret"]="$appName-basic-auth"
-                          $item["annotations"]["nginx.ingress.kubernetes.io/auth-realm"]="Authentication Required"
+                          $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
+                          $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
+                          $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
                       }
                   }
               }
