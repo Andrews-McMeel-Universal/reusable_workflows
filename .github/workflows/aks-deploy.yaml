@@ -122,29 +122,22 @@ jobs:
         id: setenvs
         shell: pwsh
         run: |
-          Install-Module -Name powershell-yaml -Confirm:$false -Force
-          Function Get-Envs {
-              param (
-                  [parameter(Mandatory = $true, ValueFromPipeline = $true)]
-                  [string]$PathToYaml
-              )
-              Import-Module powershell-yaml
-              Write-Host "Getting configuration from: $PathToYaml."
-              $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
-              return $Values
-          }
-
-          $appEnvironment = "${{ inputs.environment }}"
           $basePath = Get-Location
           $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
-          $appConfig = Get-Envs -PathToYaml $valuesYamlPath
+          $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
           $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
-          $chartConfig = Get-Envs -PathToYaml $chartYamlPath
+          $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
+          # Set app name
           $appName = $chartConfig.name
+          Write-Output "appName=$appName" >> $env:GITHUB_ENV
+
+          # Set app version
           $appVersion = $chartConfig.appVersion
-          $appHealthCheck = $appconfig.deployment.healthCheckPath
-          $configMap = $appConfig.deployment.configMap
+          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
+
+          # Set the max replicas based on the environment
+          $appEnvironment = "${{ inputs.environment }}"
           if ($appEnvironment -eq "development") {
               $maxReplicas = 2
           }
@@ -154,30 +147,23 @@ jobs:
           else {
               $maxReplicas = $appConfig.autoscaling.maxReplicas
           }
-          $configSecret = "$appName-config-secret"
-          $imagePullSecret = "$appName-pull-secret"
+          Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
+
+          # Set image tag
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
-          $ingress = $appConfig.ingress.host
-          $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
-          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
-          $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
-          if ([string]::IsNullOrEmpty("${{ inputs.ingressWhitelist }}")) {
-              if ([string]::IsNullOrEmpty($appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")) {
-                  $ingressWhitelist = '0.0.0.0/0'
-              } else {
-                  $ingressWhitelist = $appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
-              }
-          } else {
-              $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
-          }
-          if ($appConfig.adminingress) {
-              $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}" ?? $appConfig.adminingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+          Write-Output "release=$release" >> $env:GITHUB_ENV
+
+          # Set hostname and domain name for the ingress
+          if ($appConfig.ingress.host[0] -gt 1) {
+              $ingress = $appConfig.ingress.host[0]
           }
           else {
-              Write-Output "adminingress values not defined. Skipping setting adminIngressWhitelist"
+              $ingress = $appConfig.ingress.host
           }
-
+          $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
+          $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
+          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -eq "true") {
               $ingress = "$appEnvironment.$ingress"
               if ($hostName.Length -gt 0) {
@@ -192,22 +178,9 @@ jobs:
                   $hostName = "www"
               }
           }
-          Write-Output "This application's hostname is $hostName.$domainName"
-
-          Write-Output "appName=$appName" >> $env:GITHUB_ENV
-          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
-          Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
-          Write-Output "configMap=$configMap" >> $env:GITHUB_ENV
-          Write-Output "configSecret=$configSecret" >> $env:GITHUB_ENV
           Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
           Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
-          Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
-          Write-Output "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
-          Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
-          Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
-          Write-Output "release=$release" >> $env:GITHUB_ENV
-          Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -272,13 +245,10 @@ jobs:
     outputs:
       appName: ${{ env.appName }}
       appVersion: ${{ env.appVersion }}
-      appHealthCheck: ${{ env.appHealthCheck }}
       configMap: ${{ env.configMap }}
-      configSecret: ${{ env.configSecret }}
       ingress: ${{ env.ingress }}
       domainName: ${{ env.domainName }}
       hostName: ${{ env.hostName }}
-      imagePullSecret: ${{ env.imagePullSecret }}
       date: ${{ env.date }}
       ingressWhitelist: ${{ env.ingressWhitelist }}
       adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
@@ -300,67 +270,98 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Create values override file
+        shell: pwsh
         run: |
-          WEB_AUTHENTICATION=$(echo "${{ inputs.webAuthentication }}" | tr -d "'" | tr -d '"')
-          INGRESS_WHITELIST="${{ needs.build.outputs.ingressWhitelist }}"
-          ADMIN_INGRESS_WHITELIST="${{ needs.build.outputs.adminIngressWhitelist }}"
-          echo "::debug::WEB_AUTHENTICATION=$WEB_AUTHENTICATION"
-          echo "::debug::INGRESS_WHITELIST=$INGRESS_WHITELIST"
-          echo "::debug::ADMIN_INGRESS_WHITELIST=$ADMIN_INGRESS_WHITELIST"
+          $basePath = Get-Location
+          $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
+          $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
+          $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
+          $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
-          if [[ "${WEB_AUTHENTICATION}" == "true" ]] ; then
-            if [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
-              echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST!=null"
-          cat << EOF >> values-override.yaml
-          ingress:
-            ingressClassName: nginx-${{ inputs.environment }}
-            annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
-              nginx.ingress.kubernetes.io/auth-type: "basic"
-              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.build.outputs.appName }}-basic-auth"
-              nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
-          adminingress:
-            ingressClassName: nginx-${{ inputs.environment }}
-            annotations:
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
-          EOF
-            else
-              echo "::debug::WEB_AUTHENTICATION=true,ADMIN_INGRESS_WHITELIST=null"
-          cat << EOF >> values-override.yaml
-          ingress:
-            ingressClassName: nginx-${{ inputs.environment }}
-            annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
-              nginx.ingress.kubernetes.io/auth-type: "basic"
-              nginx.ingress.kubernetes.io/auth-secret: "${{ needs.build.outputs.appName }}-basic-auth"
-              nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
-          EOF
-            fi
-          elif [[ -n "${ADMIN_INGRESS_WHITELIST}" ]] ; then
-            echo "::debug::WEB_AUTHENTICATION=false,ADMIN_INGRESS_WHITELIST!=null"
-          cat << EOF >> values-override.yaml
-          ingress:
-            ingressClassName: nginx-${{ inputs.environment }}
-            annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
-          adminingress:
-            ingressClassName: nginx-${{ inputs.environment }}
-            annotations:
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${ADMIN_INGRESS_WHITELIST}"
-          EOF
-          else
-            echo "::debug::WEB_AUTHENTICATION=false,ADMIN_INGRESS_WHITELIST=null"
-          cat << EOF >> values-override.yaml
-          ingress:
-            ingressClassName: nginx-${{ inputs.environment }}
-            annotations:
-              nginx.ingress.kubernetes.io/limit-whitelist: "207.67.20.252"
-              nginx.ingress.kubernetes.io/whitelist-source-range: "${INGRESS_WHITELIST}"
-          EOF
-          fi
+          $appName = $chartConfig.name
+
+          $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
+          $environment = ${{ inputs.environment }}
+          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
+          $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
+
+          if ($appConfig.ingress[0]) {
+              foreach ($item in $appConfig.ingress) {
+                  # Add environment to ingress
+                  if (($environmentIngress -eq "true") -and ($item.environmentIngress -eq $true)) { 
+                      $item["host"] = "$environment.$($item['host'])"
+                      Write-Output "Host updated to: $($item['host'])"
+                  }
+
+                  # Add WWW to ingress
+                  if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -eq "false")) {
+                      $item["host"] = "www.$($item['host'])"
+                  }
+
+                  # Add ingressClassName to ingress
+                  $item["ingressClassName"] = "nginx-$environment"
+
+                  # Reset annotations
+                  $item["annotations"] = @{}
+
+                  # Add ingressWhitelist to ingress
+                  $item["annotations"]["nginx.ingress.kubernetes.io/whitelist-source-range"] = $ingressWhitelist
+                  if ($item.name -eq "admin-ingress" -and $adminIngressWhitelist -ne "") {
+                      $item["annotations"]["nginx.ingress.kubernetes.io/whitelist-source-range"] = $adminIngressWhitelist
+                  }
+
+                  # Add webAuthentication to main ingress
+                  if ($webAuthentication -eq "true") {
+                      foreach ($item in $appConfig.ingress[0]) {
+                          $item["annotations"]["nginx.ingress.kubernetes.io/auth-type"]="basic"
+                          $item["annotations"]["nginx.ingress.kubernetes.io/auth-secret"]="$appName-basic-auth"
+                          $item["annotations"]["nginx.ingress.kubernetes.io/auth-realm"]="Authentication Required"
+                      }
+                  }
+              }
+          }
+          elseif ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" }) {
+              foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" }).Value) {
+                  # Add environment to ingress 
+                  if (($item.host -notmatch "development|staging|production") -and ($item.secondaryhost -notmatch "www") -and ($environmentIngress -eq "true")){
+                      $item.host = "$environment.$($item.host)"
+                      Write-Output "Host updated to: $($item.host)"
+                  }
+
+                  # Add ingressClassName to ingress
+                  $item.ingressClassName = "nginx-$environment"
+
+                  # Reset annotations
+                  $item.annotations = @{}
+
+                  # Add ingressWhitelist to ingress
+                  $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
+                  if ($item.name -eq "admin-ingress" -and $adminIngressWhitelist -ne "") {
+                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
+                  }
+
+                  # Add webAuthentication to main ingress
+                  if ($webAuthentication -eq "true") {
+                      $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
+                      $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
+                      $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
+                  }
+              }
+          }
+
+          # Delete redundant keys
+          $appConfig.Remove("deployment")
+          $appConfig.Remove("autoscaling")
+          $appConfig.Remove("service")
+          $appConfig.Remove("image")
+          $appConfig.Remove("replicaCount")
+          $appConfig.Remove("resources")
+          $appConfig.Remove("volumes")
+          $appConfig.Remove("cronjobs")
+
+          # Write to file
+          $appConfig | ConvertTo-Yaml | Out-File -FilePath "./values-override.yaml"
 
       - name: Bake Helm Templates
         id: bake
@@ -374,9 +375,7 @@ jobs:
           overrides: |
             image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
             image.tag:${{ github.sha }}-${{ inputs.environment }}
-            ingress.host:${{ needs.build.outputs.ingress }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas || inputs.maximumReplicas }}
-            ingress.ingressClassName:nginx-${{ inputs.environment }}
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -401,18 +400,12 @@ jobs:
             echo "namespace=default" >> $GITHUB_OUTPUT
           fi
 
-      - name: Apply configMap if it exists
-        if: ${{ needs.build.outputs.configMap != null }}
-        uses: swdotcom/update-and-apply-kubernetes-configs@v1
-        with:
-          k8-config-file-paths: deployments/k8s/config-${{ inputs.environment }}.yaml
-
       - name: Update .env Kubernetes secret
         run: |
-          if kubectl get secret | grep -q "${{ needs.build.outputs.configSecret }}"; then
-              kubectl delete secret "${{ needs.build.outputs.configSecret }}"
+          if kubectl get secret | grep -q "${{ needs.build.outputs.appName }}-config-secret"; then
+              kubectl delete secret "${{ needs.build.outputs.appName }}-config-secret"
           fi
-          kubectl create secret generic "${{ needs.build.outputs.configSecret }}" --validate='warn' --from-env-file ${{ github.workspace }}/.env
+          kubectl create secret generic "${{ needs.build.outputs.appName }}-config-secret" --validate='warn' --from-env-file ${{ github.workspace }}/.env
 
       - name: Update basic web authentication Kubernetes secret
         run: |
@@ -435,7 +428,7 @@ jobs:
           container-registry-url: ${{ secrets.registryHostName }}
           container-registry-username: ${{ secrets.registryUserName  }}
           container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: "${{ needs.build.outputs.imagePullSecret }}"
+          secret-name: "${{ needs.build.outputs.appName }}-pull-secret"
           namespace: ${{ steps.namespace.outputs.namespace }}
 
       - name: Get previous image tag used in deployment
@@ -458,7 +451,7 @@ jobs:
           images: |
             "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
           imagepullsecrets: |
-            "${{ needs.build.outputs.imagePullSecret }}"
+            "${{ needs.build.outputs.appName }}-pull-secret"
           pull-images: false
 
       - name: Unlock and untag previous ACR image
@@ -504,16 +497,47 @@ jobs:
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
+      - name: Get Current Date
+        id: date
+        run: |
+          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
+
       - name: Record deployment information in Azure Storage Table
-        uses: LadyCailin/azure-table-storage-upload@v1.0.1
-        with:
-          table_name: "DeployedApplications"
-          partition_key: "${{ github.event.repository.name }}"
-          row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ steps.dns.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
-          if_exists: "replace"
-          extra_args: ""
-          connection_string: "AccountName=amucloudapps;AccountKey=${{ secrets.storageAccountKey }}"
+        shell: pwsh
+        run: |
+          Install-Module -Name AzTable -Force
+          Import-Module AzTable
+
+          $storageAccountName = "amucloudapps"
+          $storageAccountKey = ${{ secrets.storageAccountKey }}
+          $appInfoTableName = "DeployedApplications"
+          $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+
+          #Get Storage table
+          try {
+              $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
+              }
+          catch {
+              Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+              return
+          }
+
+          Add-AzTableRow `
+              -Table $appInfoTable `
+              -partitionKey "${{ github.event.repository.name }}" `
+              -RowKey "${{ inputs.environment }}" `
+              -property @{
+              "ApplicationName"="${{ needs.build.outputs.appName }}";
+              "Version"="${{ needs.build.outputs.appVersion }}";
+              "KeyVault"="${{ inputs.environmentKeyVault }}";
+              "HostName"="${{ needs.build.outputs.hostName }}";
+              "DomainName"="${{ needs.build.outputs.domainName }}";
+              "IngressFqdn"="${{ needs.build.outputs.ingress }}";
+              "AksIngress"="${{ steps.dns.outputs.aksIngress }}";
+              "Cluster"="${{ secrets.azureClusterName }}";
+              "ClusterResourceGroup"="${{ inputs.clusterResourceGroup }}";
+              "LastDeploy"="${{ steps.date.outputs.date }}"
+              } -UpdateExisting | Out-Null
 
       - name: Create deployment summary
         run: |
@@ -523,10 +547,6 @@ jobs:
           echo "- **Version**: ${{ needs.build.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Key Vault Name**: ${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
           echo "- **FQDN**: ${{ needs.build.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **ConfigSecret**: ${{ needs.build.outputs.configSecret }}" >> $GITHUB_STEP_SUMMARY
-          if [[ -n "${{ needs.build.outputs.configMap }}" ]] ; then
-            echo "- **ConfigMap**: ${{ needs.build.outputs.configMap }}" >> $GITHUB_STEP_SUMMARY
-          fi
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
