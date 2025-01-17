@@ -51,6 +51,11 @@ on:
         type: string
         description: "Add the environment name to the front of the hostname (for DNS)"
         default: "true"
+      serviceIngressWhitelist:
+        required: false
+        type: string
+        description: "IPs to include in the service whitelist"
+        default: ${{ vars.KUBERNETES_SERVICE_INGRESS_WHITELIST }}
       environmentNamespace:
         required: false
         type: boolean
@@ -262,9 +267,11 @@ jobs:
           Install-Module -Name powershell-yaml -Confirm:$false -Force
 
           $basePath = Get-Location
-          $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
+          $chartsPath = ${{ inputs.chartsPath }}
+
+          $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
-          $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
+          $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
           $appName = $chartConfig.name
@@ -274,9 +281,26 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
+          $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
 
           if ($appConfig.schemaVersion -eq "2") {
               foreach ($item in $appConfig.ingress) {
+                  # Set ingress whitelist if not set
+                  if (($item.name -eq "ingress") -and ([string]::IsNullOrEmpty($ingressWhitelist))) {
+                      if (($ingressWhitelist -eq "service") -or ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
+                          # Use service whitelist
+                          $ingressWhitelist = $serviceIngressWhitelist
+                      }
+                      elseif ($item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
+                          # Use existing whitelist
+                          $ingressWhitelist = $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+                      } 
+                      else {
+                          # Default to any
+                          $ingressWhitelist = "0.0.0.0/0"
+                      }
+                  }
+
                   # Add environment to ingress
                   if (($environmentIngress -eq "true") -and ($item.environmentIngress -eq $true)) { 
                       $item.host = "$environment.$($item.host)"
@@ -294,47 +318,71 @@ jobs:
                   # Reset annotations
                   $item.annotations = @{}
 
-                  # Add ingressWhitelist to ingress
-                  $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
-                  if ($item.name -eq "admin-ingress" -and $adminIngressWhitelist -ne "") {
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
-                  }
-
-                  # Add webAuthentication to main ingress
-                  if ($webAuthentication -eq "true") {
-                      foreach ($item in $appConfig.ingress[0]) {
+                  if ($item.name -eq "ingress") {
+                      # Add ingressWhitelist to ingress
+                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
+                      
+                      # Add webAuthentication to main ingress
+                      if ($webAuthentication -eq "true") {
                           $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
                           $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
                           $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
                       }
                   }
+                  elseif ($item.name -eq "admin-ingress") {
+                      if ($adminIngressWhitelist -ne "") {
+                          $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
+                      }
+                      else {
+                          $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = "207.67.20.252"
+                      }
+                  }
               }
           }
-          else {
-              foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" }).Value) {
+          elseif ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" }) {
+              foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" })) {
+                  # Set ingress whitelist if not set
+                  if ([string]::IsNullOrEmpty($ingressWhitelist)) {
+                      if (($ingressWhitelist -eq "service") -or ($item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
+                          # Use service whitelist
+                          $ingressWhitelist = $serviceIngressWhitelist
+                      }
+                      elseif ($item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
+                          # Use existing whitelist
+                          $ingressWhitelist = $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+                      } 
+                      else {
+                          # Default to any
+                          $ingressWhitelist = "0.0.0.0/0"
+                      }
+                  }
+
                   # Add environment to ingress 
-                  if (($item.host -notmatch "development|staging|production") -and ($item.secondaryhost -notmatch "www") -and ($environmentIngress -eq "true")){
-                      $item.host = "$environment.$($item.host)"
-                      Write-Output "Host updated to: $($item.host)"
+                  if (($item.Value.host -notmatch "development|staging|production") -and ($item.Value.secondaryhost -notmatch "www") -and ($environmentIngress -eq "true")){
+                      $item.Value.host = "$environment.$($item.Value.host)"
+                      Write-Output "Host updated to: $($item.Value.host)"
                   }
 
                   # Add ingressClassName to ingress
-                  $item.ingressClassName = "nginx-$environment"
+                  $item.Value.ingressClassName = "nginx-$environment"
 
                   # Reset annotations
-                  $item.annotations = @{}
+                  $item.Value.annotations = @{}
 
-                  # Add ingressWhitelist to ingress
-                  $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
-                  if ($item.name -eq "admin-ingress" -and $adminIngressWhitelist -ne "") {
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
+                  if ( $item.Key -eq "ingress" ) {
+                      # Add ingressWhitelist to ingress
+                      $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
+                      
+                      # Add webAuthentication to main ingress
+                      if ($webAuthentication -eq "true") {
+                          $item.Value.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
+                          $item.Value.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
+                          $item.Value.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
+                      }
                   }
-
-                  # Add webAuthentication to main ingress
-                  if ($webAuthentication -eq "true") {
-                      $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
-                      $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
-                      $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
+                  elseif (($item.Key -eq "adminingress" ) -and ($adminIngressWhitelist -ne "")){
+                      # Add ingressWhitelist to admin ingress
+                      $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
                   }
               }
           }
@@ -348,6 +396,9 @@ jobs:
           $appConfig.Remove("resources")
           $appConfig.Remove("volumes")
           $appConfig.Remove("cronjobs")
+          $appConfig.Remove("fullnameOverride")
+          $appConfig.Remove("nameOverride")
+          $appConfig.Remove("imagePullSecrets")
 
           # Write to file
           $appConfig | ConvertTo-Yaml | Out-File -FilePath "./values-override.yaml"
