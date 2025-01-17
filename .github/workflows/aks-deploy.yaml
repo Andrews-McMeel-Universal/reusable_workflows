@@ -351,7 +351,7 @@ jobs:
                       }
 
                       # Add ingressWhitelist to ingress
-                      Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist
+                      Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
                       $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
                       
                       # Add webAuthentication to main ingress
