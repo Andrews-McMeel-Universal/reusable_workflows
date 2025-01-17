@@ -277,8 +277,14 @@ jobs:
         run: |
           Install-Module -Name powershell-yaml -Confirm:$false -Force
 
+          # Get charts path
           $basePath = Get-Location
-          $chartsPath = "${{ inputs.chartsPath }}"
+          if (Test-Path -Path (Join-Path $basePath "./deployments/${{ inputs.environment }}-charts")) {
+              $chartsPath = "./deployments/${{ inputs.environment }}-charts"
+          }
+          else {
+              $chartsPath = "./deployments/charts"
+          }
 
           $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
