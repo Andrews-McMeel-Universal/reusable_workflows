@@ -318,11 +318,6 @@ jobs:
                       Write-Output "Host updated to: $($item.host)"
                   }
 
-                  # Add WWW to ingress
-                  if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -eq "false")) {
-                      $item.host = "www.$($item.host)"
-                  }
-
                   # Add ingressClassName to ingress
                   $item.ingressClassName = "nginx-$environment"
 
@@ -330,6 +325,11 @@ jobs:
                   $item.annotations = @{}
 
                   if ($item.name -eq "ingress") {
+                      # Add WWW to ingress
+                      if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -eq "false")) {
+                          $item.host = "www.$($item.host)"
+                      }
+
                       # Add ingressWhitelist to ingress
                       $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
                       
