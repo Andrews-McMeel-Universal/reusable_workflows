@@ -548,7 +548,7 @@ jobs:
               "IngressFqdn"="${{ needs.build.outputs.ingress }}";
               "AksIngress"="${{ steps.dns.outputs.aksIngress }}";
               "Cluster"="${{ secrets.azureClusterName }}";
-              "ClusterResourceGroup"="${{ inputs.clusterResourceGroup }}";
+              "ClusterResourceGroup"="${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}";
               "LastDeploy"="${{ steps.date.outputs.date }}"
               } -UpdateExisting | Out-Null
 
