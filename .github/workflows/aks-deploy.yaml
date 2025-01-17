@@ -272,8 +272,6 @@ jobs:
       - name: Create values override file
         shell: pwsh
         run: |
-          Install-Module -Name powershell-yaml -Confirm:$false -Force
-
           $basePath = Get-Location
           $chartsPath = "${{ inputs.chartsPath }}"
 
@@ -412,7 +410,8 @@ jobs:
           $appConfig | ConvertTo-Yaml | Out-File -FilePath "./values-override.yaml"
 
           # Output file content
-          Write-Output "values-override.yaml:"
+          Write-Output "---"
+          Write-Output "# Source: values-override.yaml
           Get-Content "./values-override.yaml"
 
       - name: Bake Helm Templates
