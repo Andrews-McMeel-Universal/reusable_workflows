@@ -267,7 +267,7 @@ jobs:
           Install-Module -Name powershell-yaml -Confirm:$false -Force
 
           $basePath = Get-Location
-          $chartsPath = ${{ inputs.chartsPath }}
+          $chartsPath = "${{ inputs.chartsPath }}"
 
           $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
