@@ -33,20 +33,21 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
-      - name: Install jq apt package
+      - name: Install redis-tools apt package
         run: sudo apt-get update -y && sudo apt-get install redis-tools -y
+
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2
+        with:
+          modules-to-cache: Az.RedisCache
 
       # Script is adapted from https://github.com/Andrews-McMeel-Universal/azure-content-management_tool/blob/main/Scripts/rundeck/Flush-RedisCache.ps1
       - name: Clear Redis Cache
-        uses: azure/powershell@v2
-        with:
-          inlineScript: |
+        shell: pwsh
+        run: |
             $CacheKey = "${{ inputs.applicationCacheKey }}"
             $ResourceGroupName = "${{ inputs.resourceGroupName }}"
             $Environment = "${{ inputs.environment }}"
-
-            # Check to see if Azure Redis Cache PowerShell Module is installed
-            Install-Module -Name Az.RedisCache -Confirm:$false -Force
 
             # Get list of Redis instances using tags
             $Redis = Get-AzRedisCache -ResourceGroupName "$ResourceGroupName" | Where-Object { $_.Tag.Values -eq "$Environment" }
@@ -77,5 +78,4 @@ jobs:
                     Write-Host "Full output: $RedisResult"
                 }
             }
-          azPSVersion: "latest"
 

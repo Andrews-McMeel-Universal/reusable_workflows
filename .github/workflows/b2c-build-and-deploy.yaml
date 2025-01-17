@@ -65,9 +65,8 @@ jobs:
           clientSecret: ${{ env.AZURE_B2C_CLIENT_SECRET }}
 
       - name: Upload Auth Assets
-        uses: azure/powershell@v2
-        with:
-          inlineScript: |
+        shell: pwsh
+        run: |
             if ("${{ inputs.environment }}" -match "production") {
                 $ContainerName = "assets"
             }
@@ -76,7 +75,6 @@ jobs:
             }
             $DistPath = Join-Path (Get-Location) "dist"
             ./deployments/scripts/Deploy-B2C-Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName $ContainerName -DistPath $DistPath
-          azPSVersion: "latest"
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')

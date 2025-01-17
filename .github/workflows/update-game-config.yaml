@@ -43,15 +43,10 @@ jobs:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
 
-      - name: Install SimplySql PowerShell module
-        shell: pwsh
-        run: |
-          Install-Module -Name SimplySql -RequiredVersion 1.9.1 -Force -AllowClobber
-
-      - name: Install Azure PowerShell module
-        shell: pwsh
-        run: |
-          Install-Module -Name Az -Force -AllowClobber
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2
+        with:
+          modules-to-cache: SimplySql:1.9.1, Az
 
       - name: Update Game Configs
         shell: pwsh

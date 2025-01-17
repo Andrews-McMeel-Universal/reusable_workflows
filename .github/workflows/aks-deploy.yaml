@@ -11,11 +11,6 @@ on:
         required: false
         type: string
         description: "AKS Key vault."
-      clusterResourceGroup:
-        required: false
-        type: string
-        description: "AKS Cluster Resource Group."
-        default: ${{ vars.AKS_CLUSTER_RESOURCE_GROUP }}
       chartsPath:
         required: false
         type: string
@@ -61,11 +56,6 @@ on:
         type: boolean
         description: "Enable/Disable adding environment in AKS cluster ingress DNS record"
         default: true
-      enableNginxAccessLogging:
-        required: false
-        type: string
-        description: Enable access logging in Kubernetes ingress
-        default: "false"
       checkoutRef:
         required: false
         type: string
@@ -118,11 +108,15 @@ jobs:
           submodules: ${{ inputs.checkoutSubmodules }}
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2
+        with:
+          modules-to-cache: powershell-yaml
+
       - name: Extract Helm values
         id: setenvs
         shell: pwsh
         run: |
-          Install-Module -Name powershell-yaml -Confirm:$false -Force
           Function Get-Envs {
               param (
                   [parameter(Mandatory = $true, ValueFromPipeline = $true)]
@@ -289,7 +283,6 @@ jobs:
     name: AKS Deploy
     needs: [build]
     runs-on: ${{ inputs.githubRunner }}
-    continue-on-error: false
     environment:
       name: ${{ inputs.environment }}
       url: https://${{ needs.build.outputs.ingress }}
@@ -298,6 +291,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.checkoutRef }}
+
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2
+        with:
+          modules-to-cache: powershell-yaml
 
       - name: Create values override file
         run: |
@@ -385,11 +383,17 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
+      - name: Get AKS cluster resource group
+        id: aks-resource-group
+        run: |
+          AKS_RESOURCE_GROUP=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].resourceGroup" -o tsv)
+          echo "AKS_RESOURCE_GROUP=${AKS_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
+
       - name: Set target AKS cluster
         uses: azure/aks-set-context@v4
         with:
           cluster-name: ${{ secrets.azureClusterName }}
-          resource-group: ${{ inputs.clusterResourceGroup }}
+          resource-group: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
 
       - name: Switch Kubernetes Namespace
         id: namespace
@@ -504,16 +508,49 @@ jobs:
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
-      - name: Record deployment information in Azure Storage Table
-        uses: LadyCailin/azure-table-storage-upload@v1.0.1
+      - name: Get Current Date
+        id: date
+        run: |
+          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
+
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2
         with:
-          table_name: "DeployedApplications"
-          partition_key: "${{ github.event.repository.name }}"
-          row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ steps.dns.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
-          if_exists: "replace"
-          extra_args: ""
-          connection_string: "AccountName=amucloudapps;AccountKey=${{ secrets.storageAccountKey }}"
+          modules-to-cache: AzTable, Az.Storage, Az.Resources
+
+      - name: Record deployment information in Azure Storage Table
+        shell: pwsh
+        run: |
+          $storageAccountName = "amucloudapps"
+          $storageAccountKey = ${{ secrets.storageAccountKey }}
+          $appInfoTableName = "DeployedApplications"
+          $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+
+          #Get Storage table
+          try {
+              $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
+              }
+          catch {
+              Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+              return
+          }
+
+          Add-AzTableRow `
+              -Table $appInfoTable `
+              -partitionKey "${{ github.event.repository.name }}" `
+              -RowKey "${{ inputs.environment }}" `
+              -property @{
+              "ApplicationName"="${{ needs.build.outputs.appName }}";
+              "Version"="${{ needs.build.outputs.appVersion }}";
+              "KeyVault"="${{ inputs.environmentKeyVault }}";
+              "HostName"="${{ needs.build.outputs.hostName }}";
+              "DomainName"="${{ needs.build.outputs.domainName }}";
+              "IngressFqdn"="${{ needs.build.outputs.ingress }}";
+              "AksIngress"="${{ steps.dns.outputs.aksIngress }}";
+              "Cluster"="${{ secrets.azureClusterName }}";
+              "ClusterResourceGroup"="${{ inputs.clusterResourceGroup }}";
+              "LastDeploy"="${{ steps.date.outputs.date }}"
+              } -UpdateExisting | Out-Null
 
       - name: Create deployment summary
         run: |
