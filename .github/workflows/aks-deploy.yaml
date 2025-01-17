@@ -555,13 +555,18 @@ jobs:
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
+      - name: Get Current Date
+        id: date
+        run: |
+          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
+
       - name: Record deployment information in Azure Storage Table
         uses: LadyCailin/azure-table-storage-upload@v1.0.1
         with:
           table_name: "DeployedApplications"
           partition_key: "${{ github.event.repository.name }}"
           row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ steps.dns.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
+          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} AksIngress=${{ steps.dns.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} LastDeploy=${{ steps.date.outputs.date }}"
           if_exists: "replace"
           extra_args: ""
           connection_string: "AccountName=amucloudapps;AccountKey=${{ secrets.storageAccountKey }}"
