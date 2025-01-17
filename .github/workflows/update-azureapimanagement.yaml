@@ -83,25 +83,8 @@ jobs:
             # Retrieve the application information
             $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey "${{ inputs.repositoryName }}" -RowKey "${{ inputs.environment }}"
 
-            # Set the application information as variables
-            $applicationName = $appInfo.ApplicationName
-            $version = $appInfo.Version
-            $keyVault = $appInfo.KeyVault
-            $hostName = $appInfo.HostName
-            $domainName = $appInfo.DomainName
-            $ingressFqdn = $appInfo.IngressFqdn
-            $healthCheckPath = $appInfo.HealthCheckPath
-            $aksIngress = $appInfo.AksIngress
-
             # Set the application information as output variables
-            echo "applicationName=$applicationName" >> $env:GITHUB_OUTPUT
-            echo "version=$version" >> $env:GITHUB_OUTPUT
-            echo "keyVault=$keyVault" >> $env:GITHUB_OUTPUT
-            echo "hostName=$hostName" >> $env:GITHUB_OUTPUT
-            echo "domainName=$domainName" >> $env:GITHUB_OUTPUT
-            echo "applicationIngressFqdn=$ingressFqdn" >> $env:GITHUB_OUTPUT
-            echo "healthCheckPath=$healthCheckPath" >> $env:GITHUB_OUTPUT
-            echo "aksIngress=$aksIngress" >> $env:GITHUB_OUTPUT
+            echo "applicationIngressFqdn=$($appInfo.IngressFqdn)" >> $env:GITHUB_OUTPUT
 
       - name: Update Azure API Management
         uses: azure/powershell@v2

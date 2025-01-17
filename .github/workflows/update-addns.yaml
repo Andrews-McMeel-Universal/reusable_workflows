@@ -58,23 +58,9 @@ jobs:
 
           $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey "${{ inputs.repositoryName }}" -RowKey "${{ inputs.environment }}"
 
-          $applicationName = $appInfo.ApplicationName
-          $version = $appInfo.Version
-          $keyVault = $appInfo.KeyVault
-          $hostName = $appInfo.HostName
-          $domainName = $appInfo.DomainName
-          $ingressFqdn = $appInfo.IngressFqdn
-          $healthCheckPath = $appInfo.HealthCheckPath
-          $aksIngress = $appInfo.AksIngress
-
-          echo "applicationName=$applicationName" >> $env:GITHUB_ENV
-          echo "version=$version" >> $env:GITHUB_ENV
-          echo "keyVault=$keyVault" >> $env:GITHUB_ENV
-          echo "hostName=$hostName" >> $env:GITHUB_ENV
-          echo "domainName=$domainName" >> $env:GITHUB_ENV
-          echo "applicationIngressFqdn=$ingressFqdn" >> $env:GITHUB_ENV
-          echo "healthCheckPath=$healthCheckPath" >> $env:GITHUB_ENV
-          echo "aksIngress=$aksIngress" >> $env:GITHUB_ENV
+          echo "aksIngress=$($appInfo.AksIngress)" >> $env:GITHUB_ENV
+          echo "hostName=$($appInfo.HostName)" >> $env:GITHUB_ENV
+          echo "domainName=$($appInfo.DomainName)" >> $env:GITHUB_ENV
 
       - name: Update Internal Boley DNS
         timeout-minutes: 15
