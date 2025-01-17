@@ -422,7 +422,7 @@ jobs:
 
           # Output file content
           Write-Output "---"
-          Write-Output "# Source: values-override.yaml
+          Write-Output "# Source: values-override.yaml"
           Get-Content "./values-override.yaml"
 
       - name: Bake Helm Templates
