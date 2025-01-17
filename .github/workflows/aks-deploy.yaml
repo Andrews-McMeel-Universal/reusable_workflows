@@ -137,10 +137,12 @@ jobs:
 
           # Set app name
           $appName = $chartConfig.name
+          Write-Output "appName=$appName"
           Write-Output "appName=$appName" >> $env:GITHUB_ENV
 
           # Set app version
           $appVersion = $chartConfig.appVersion
+          Write-Output "appVersion=$appVersion"
           Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
 
           # Set the max replicas based on the environment
@@ -154,11 +156,13 @@ jobs:
           else {
               $maxReplicas = $appConfig.autoscaling.maxReplicas
           }
+          Write-Output "maxReplicas=$maxReplicas"
           Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
 
           # Set image tag
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
+          Write-Output "release=$release"
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
           # Set hostname and domain name for the ingress
@@ -185,8 +189,11 @@ jobs:
                   $hostName = "www"
               }
           }
+          Write-Output "ingress=$ingress"
           Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+          Write-Output "domainName=$domainName"
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
+          Write-Output "hostName=$hostName"
           Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
@@ -285,7 +292,8 @@ jobs:
           else {
               $chartsPath = "./deployments/charts"
           }
-
+          Write-Output "Using charts path: $chartsPath"
+          
           $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
           $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
@@ -304,16 +312,20 @@ jobs:
               foreach ($item in $appConfig.ingress) {
                   # Set ingress whitelist if not set
                   if (($item.name -eq "ingress") -and ([string]::IsNullOrEmpty($ingressWhitelist))) {
+                      Write-Output "Ingress whitelist not set for $($item.name)"
                       if (($ingressWhitelist -eq "service") -or ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
                           # Use service whitelist
+                          Write-Output "Overriding ingress whitelist with service whitelist for $($item.name)"
                           $ingressWhitelist = $serviceIngressWhitelist
                       }
                       elseif ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
                           # Use existing whitelist
+                          Write-Output "Using existing ingress whitelist for $($item.name)"
                           $ingressWhitelist = $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
                       } 
                       else {
-                          # Default to any
+                          # Default to 0.0.0.0/0
+                          Write-Output "Defaulting to 0.0.0.0/0 ingress whitelist for $($item.name)"
                           $ingressWhitelist = "0.0.0.0/0"
                       }
                   }
@@ -321,10 +333,11 @@ jobs:
                   # Add environment to ingress
                   if (($environmentIngress -eq "true") -and ($item.environmentIngress -eq $true)) { 
                       $item.host = "$environment.$($item.host)"
-                      Write-Output "Host updated to: $($item.host)"
+                      Write-Output "Updating ingress host for $($item.name) to: $($item.host)"
                   }
 
                   # Add ingressClassName to ingress
+                  Write-Output "Setting ingress class name for $($item.name) to: nginx-$environment"
                   $item.ingressClassName = "nginx-$environment"
 
                   # Reset annotations
@@ -333,14 +346,17 @@ jobs:
                   if ($item.name -eq "ingress") {
                       # Add WWW to ingress
                       if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -eq "false")) {
+                          Write-Output "Adding www to $($item.name) host"
                           $item.host = "www.$($item.host)"
                       }
 
                       # Add ingressWhitelist to ingress
+                      Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist
                       $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
                       
                       # Add webAuthentication to main ingress
                       if ($webAuthentication -eq "true") {
+                          Write-Output "Adding basic auth to $($item.name)"
                           $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
                           $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
                           $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
@@ -353,6 +369,7 @@ jobs:
                       else {
                           $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = "207.67.20.252"
                       }
+                      Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")"
                   }
               }
           }
@@ -360,20 +377,20 @@ jobs:
               foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" })) {
                   # Set ingress whitelist if not set
                   if ([string]::IsNullOrEmpty($ingressWhitelist)) {
-                      Write-Output "Ingress whitelist not set"
+                      Write-Output "Ingress whitelist not set for $($item.Key)"
                       if (($ingressWhitelist -eq "service") -or ($item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
                           # Use service whitelist
-                          Write-Output "Overriding ingress whitelist with service whitelist"
+                          Write-Output "Overriding ingress whitelist with service whitelist for $($item.Key)"
                           $ingressWhitelist = $serviceIngressWhitelist
                       }
                       elseif ($item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
                           # Use existing whitelist
-                          Write-Output "Using existing ingress whitelist"
+                          Write-Output "Using existing ingress whitelist for $($item.Key)"
                           $ingressWhitelist = $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
                       } 
                       else {
-                          # Default to any
-                          Write-Output "Defaulting to any ingress whitelist"
+                          # Default to 0.0.0.0/0
+                          Write-Output "Defaulting to 0.0.0.0/0 ingress whitelist for $($item.Key)"
                           $ingressWhitelist = "0.0.0.0/0"
                       }
                   }
@@ -381,10 +398,11 @@ jobs:
                   # Add environment to ingress 
                   if (($item.Value.host -notmatch "development|staging|production") -and ($item.Value.secondaryhost -notmatch "www") -and ($environmentIngress -eq "true")){
                       $item.Value.host = "$environment.$($item.Value.host)"
-                      Write-Output "Host updated to: $($item.Value.host)"
+                      Write-Output "Updating ingress host for $($item.Key) to: $($item.Value.host)"
                   }
 
                   # Add ingressClassName to ingress
+                  Write-Output "Setting ingress class name for $($item.Key) to: nginx-$environment"
                   $item.Value.ingressClassName = "nginx-$environment"
 
                   # Reset annotations
@@ -392,10 +410,12 @@ jobs:
 
                   if ( $item.Key -eq "ingress" ) {
                       # Add ingressWhitelist to ingress
+                      Write-Output "Setting ingress whitelist for $($item.Key) to: $ingressWhitelist"
                       $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
                       
                       # Add webAuthentication to main ingress
                       if ($webAuthentication -eq "true") {
+                          Write-Output "Adding basic auth to $($item.Key)"
                           $item.Value.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
                           $item.Value.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
                           $item.Value.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
@@ -403,6 +423,7 @@ jobs:
                   }
                   elseif (($item.Key -eq "adminingress" ) -and ($adminIngressWhitelist -ne "")){
                       # Add ingressWhitelist to admin ingress
+                      Write-Output "Setting ingress whitelist for $($item.Key) to: $adminIngressWhitelist"
                       $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
                   }
               }
