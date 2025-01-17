@@ -308,9 +308,9 @@ jobs:
                           # Use service whitelist
                           $ingressWhitelist = $serviceIngressWhitelist
                       }
-                      elseif ($item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
+                      elseif ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
                           # Use existing whitelist
-                          $ingressWhitelist = $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+                          $ingressWhitelist = $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
                       } 
                       else {
                           # Default to any
@@ -360,16 +360,20 @@ jobs:
               foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" })) {
                   # Set ingress whitelist if not set
                   if ([string]::IsNullOrEmpty($ingressWhitelist)) {
+                      Write-Output "Ingress whitelist not set"
                       if (($ingressWhitelist -eq "service") -or ($item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
                           # Use service whitelist
+                          Write-Output "Overriding ingress whitelist with service whitelist"
                           $ingressWhitelist = $serviceIngressWhitelist
                       }
                       elseif ($item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
                           # Use existing whitelist
+                          Write-Output "Using existing ingress whitelist"
                           $ingressWhitelist = $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
                       } 
                       else {
                           # Default to any
+                          Write-Output "Defaulting to any ingress whitelist"
                           $ingressWhitelist = "0.0.0.0/0"
                       }
                   }
