@@ -109,7 +109,7 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
       - name: Install PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2
+        uses: potatoqualitee/psmodulecache@v6.2.1
         with:
           modules-to-cache: powershell-yaml
 
@@ -539,7 +539,7 @@ jobs:
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
       - name: Install PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2
+        uses: potatoqualitee/psmodulecache@v6.2.1
         with:
           modules-to-cache: AzTable, Az.Storage, Az.Resources
 
