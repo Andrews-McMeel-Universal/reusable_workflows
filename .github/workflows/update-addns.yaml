@@ -67,6 +67,7 @@ jobs:
         shell: pwsh
         run: |
           try {
+            Write-Output "Adding CNAME record for '${{ env.aksIngress }}' to '${{ env.hostName }}.${{ env.domainName }}'"
             Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress}}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} 
           } 
           catch {
@@ -74,6 +75,7 @@ jobs:
           }
           Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object HostName -eq "${{ env.aksIngress }}" | Format-List
           try {
+            Write-Output "Syncing DNS Zone '${{ env.domainName }}'"
             Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
           } 
           catch {
