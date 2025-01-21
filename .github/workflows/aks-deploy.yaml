@@ -285,7 +285,7 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Install PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2
+        uses: potatoqualitee/psmodulecache@v6.2.1
         with:
           modules-to-cache: powershell-yaml
 
