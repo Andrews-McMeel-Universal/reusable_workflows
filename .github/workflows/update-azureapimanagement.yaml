@@ -56,15 +56,13 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
-      - name: Install PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2.1
-        with:
-          modules-to-cache: AzTable
-
       - name: Retrieve Application information
         id: getappinfo
         shell: pwsh
         run: |
+          Install-Module -Name AzTable -Force
+          Import-Module AzTable
+
           # Define the storage account and table name
           $appInfoTableName = "DeployedApplications"
           $storageAccountName = "amucloudapps"
