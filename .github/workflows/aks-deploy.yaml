@@ -142,10 +142,12 @@ jobs:
           Write-Output "appVersion=$appVersion"
           Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
 
+          # Set health check path
           $appHealthCheck = $appconfig.deployment.healthCheckPath
           Write-Output "appHealthCheck=$appHealthCheck"
           Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
 
+          # Set configMap
           $configMap = $appConfig.deployment.configMap
           Write-Output "configMap=$configMap"
           Write-Output "configMap=$configMap" >> $env:GITHUB_ENV
@@ -163,10 +165,13 @@ jobs:
           }
           Write-Output "maxReplicas=$maxReplicas"
           Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
+
+          # Set config secret
           $configSecret = "$appName-config-secret"
           Write-Output "configSecret=$configSecret"
           Write-Output "configSecret=$configSecret" >> $env:GITHUB_ENV
 
+          # Set image pull secret
           $imagePullSecret = "$appName-pull-secret"
           Write-Output "imagePullSecret=$imagePullSecret"
           Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
@@ -177,9 +182,37 @@ jobs:
           Write-Output "release=$release"
           Write-Output "release=$release" >> $env:GITHUB_ENV
           $ingress = $appConfig.ingress.host
+          Write-Output "ingress=$ingress"
+          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+
+          # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
+          Write-Output "domainName=$domainName"
+          Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
+
+          # Set hostname
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          if ($environmentIngress -eq "true") {
+              $ingress = "$appEnvironment.$ingress"
+              if ($hostName.Length -gt 0) {
+                  $hostName = "$appEnvironment.$hostName"
+              }
+              else {
+                  $hostName = "$appEnvironment"
+              }
+          }
+          else {
+              if ($hostName.Length -eq 0) {
+                  $hostName = "www"
+              }
+          }
+          Write-Output "hostName=$hostName"
+          Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
+
+          Write-Output "This application's hostname is $hostName.$domainName"
+
+          # Set ingress whitelist
           if ([string]::IsNullOrEmpty("${{ inputs.ingressWhitelist }}")) {
               if ([string]::IsNullOrEmpty($appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")) {
                   $ingressWhitelist = '0.0.0.0/0'
@@ -200,28 +233,6 @@ jobs:
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist"
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
 
-          if ($environmentIngress -eq "true") {
-              $ingress = "$appEnvironment.$ingress"
-              if ($hostName.Length -gt 0) {
-                  $hostName = "$appEnvironment.$hostName"
-              }
-              else {
-                  $hostName = "$appEnvironment"
-              }
-          }
-          else {
-              if ($hostName.Length -eq 0) {
-                  $hostName = "www"
-              }
-          }
-          Write-Output "This application's hostname is $hostName.$domainName"
-
-          Write-Output "ingress=$ingress"
-          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
-          Write-Output "domainName=$domainName"
-          Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
-          Write-Output "hostName=$hostName"
-          Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -293,7 +304,6 @@ jobs:
       domainName: ${{ env.domainName }}
       hostName: ${{ env.hostName }}
       imagePullSecret: ${{ env.imagePullSecret }}
-      date: ${{ env.date }}
       ingressWhitelist: ${{ env.ingressWhitelist }}
       adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
       release: ${{ env.release }}
