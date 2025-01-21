@@ -182,25 +182,25 @@ jobs:
           Write-Output "domainName=$domainName"
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
 
-          # Set host name
-          $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
+          # Set DNS subdomain
+          $dnsSubDomain = $ingress -replace $domainName, '' -replace "\.$", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -eq "true") {
               $ingress = "$appEnvironment.$ingress"
-              if ($hostName.Length -gt 0) {
-                  $hostName = "$appEnvironment.$hostName"
+              if ($dnsSubDomain.Length -gt 0) {
+                  $dnsSubDomain = "$appEnvironment.$dnsSubDomain"
               }
               else {
-                  $hostName = "$appEnvironment"
+                  $dnsSubDomain = "$appEnvironment"
               }
           }
           else {
-              if ($hostName.Length -eq 0) {
-                  $hostName = "www"
+              if ($dnsSubDomain.Length -eq 0) {
+                  $dnsSubDomain = "www"
               }
           }
-          Write-Output "hostName=$hostName"
-          Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
+          Write-Output "dnsSubDomain=$dnsSubDomain"
+          Write-Output "dnsSubDomain=$dnsSubDomain" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -267,7 +267,7 @@ jobs:
       appVersion: ${{ env.appVersion }}
       ingress: ${{ env.ingress }}
       domainName: ${{ env.domainName }}
-      hostName: ${{ env.hostName }}
+      dnsSubDomain: ${{ env.dnsSubDomain }}
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
 
@@ -610,7 +610,7 @@ jobs:
             INGRESS="${{ secrets.azureClusterName }}"
           fi
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
-          az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.hostName }}" --cname "${AKS_INGRESS}" --ttl 3600
+          az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.dnsSubDomain }}" --cname "${AKS_INGRESS}" --ttl 3600
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
@@ -649,7 +649,7 @@ jobs:
               "ApplicationName"="${{ needs.build.outputs.appName }}";
               "Version"="${{ needs.build.outputs.appVersion }}";
               "KeyVault"="${{ inputs.environmentKeyVault }}";
-              "HostName"="${{ needs.build.outputs.hostName }}";
+              "HostName"="${{ needs.build.outputs.dnsSubDomain }}";
               "DomainName"="${{ needs.build.outputs.domainName }}";
               "IngressFqdn"="${{ needs.build.outputs.ingress }}";
               "AksIngress"="${{ steps.dns.outputs.aksIngress }}";
