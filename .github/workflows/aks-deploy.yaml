@@ -341,7 +341,9 @@ jobs:
                   $item.ingressClassName = "nginx-$environment"
 
                   # Reset annotations
-                  $item.annotations = @{}
+                  if ($null -eq $item.annotations) {
+                      $item.annotations = @{}
+                  }
 
                   if ($item.name -eq "ingress") {
                       # Add WWW to ingress
@@ -378,7 +380,7 @@ jobs:
                   }
               }
           }
-          elseif ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" }) {
+          else {
               foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" })) {
                   # Set ingress whitelist if not set
                   if ([string]::IsNullOrEmpty($ingressWhitelist)) {
@@ -411,7 +413,9 @@ jobs:
                   $item.Value.ingressClassName = "nginx-$environment"
 
                   # Reset annotations
-                  $item.Value.annotations = @{}
+                  if ($null -eq $item.Value.annotations) {
+                      $item.Value.annotations = @{}
+                  }
 
                   if ( $item.Key -eq "ingress" ) {
                       # Add ingressWhitelist to ingress
