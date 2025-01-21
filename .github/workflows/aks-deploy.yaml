@@ -371,6 +371,11 @@ jobs:
                       }
                       Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")"
                   }
+
+                  # Remove annotations if empty
+                  if ($item.annotations.Count -eq 0) {
+                      $item.Remove("annotations")
+                  }
               }
           }
           elseif ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" }) {
@@ -425,6 +430,11 @@ jobs:
                       # Add ingressWhitelist to admin ingress
                       Write-Output "Setting ingress whitelist for $($item.Key) to: $adminIngressWhitelist"
                       $item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
+                  }
+
+                  # Remove annotations if empty
+                  if ($item.Value.annotations.Count -eq 0) {
+                      $item.Value.Remove("annotations")
                   }
               }
           }
