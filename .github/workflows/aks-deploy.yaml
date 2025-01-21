@@ -167,14 +167,22 @@ jobs:
           Write-Output "release=$release"
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
-          # Set hostname and domain name for the ingress
+          # Set ingress
           if ($appConfig.schemaVersion -eq "2") {
               $ingress = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).host
           }
           else {
-          $ingress = $appConfig.ingress.host
+              $ingress = $appConfig.ingress.host
           }
+          Write-Output "ingress=$ingress"
+          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+
+          # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
+          Write-Output "domainName=$domainName"
+          Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
+
+          # Set host name
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -eq "true") {
@@ -191,10 +199,6 @@ jobs:
                   $hostName = "www"
               }
           }
-          Write-Output "ingress=$ingress"
-          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
-          Write-Output "domainName=$domainName"
-          Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
           Write-Output "hostName=$hostName"
           Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
 
