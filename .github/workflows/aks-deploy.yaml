@@ -129,10 +129,19 @@ jobs:
         run: |
           Install-Module -Name powershell-yaml -Confirm:$false -Force
 
+          # Get charts path
           $basePath = Get-Location
-          $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
+          if (Test-Path -Path (Join-Path $basePath "./deployments/${{ inputs.environment }}-charts")) {
+              $chartsPath = "./deployments/${{ inputs.environment }}-charts"
+          }
+          else {
+              $chartsPath = "./deployments/charts"
+          }
+          Write-Output "Using charts path: $chartsPath"
+          
+          $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
-          $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
+          $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
           # Set app name
