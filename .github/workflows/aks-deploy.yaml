@@ -11,11 +11,6 @@ on:
         required: false
         type: string
         description: "AKS Key vault."
-      clusterResourceGroup:
-        required: false
-        type: string
-        description: "AKS Cluster Resource Group."
-        default: ${{ vars.AKS_CLUSTER_RESOURCE_GROUP }}
       chartsPath:
         required: false
         type: string
@@ -61,11 +56,6 @@ on:
         type: boolean
         description: "Enable/Disable adding environment in AKS cluster ingress DNS record"
         default: true
-      enableNginxAccessLogging:
-        required: false
-        type: string
-        description: Enable access logging in Kubernetes ingress
-        default: "false"
       checkoutRef:
         required: false
         type: string
@@ -118,33 +108,52 @@ jobs:
           submodules: ${{ inputs.checkoutSubmodules }}
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2.1
+        with:
+          modules-to-cache: powershell-yaml
+
       - name: Extract Helm values
         id: setenvs
         shell: pwsh
         run: |
-          Install-Module -Name powershell-yaml -Confirm:$false -Force
-          Function Get-Envs {
-              param (
-                  [parameter(Mandatory = $true, ValueFromPipeline = $true)]
-                  [string]$PathToYaml
-              )
-              Import-Module powershell-yaml
-              Write-Host "Getting configuration from: $PathToYaml."
-              $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
-              return $Values
-          }
-
-          $appEnvironment = "${{ inputs.environment }}"
+          # Get charts path
           $basePath = Get-Location
-          $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
-          $appConfig = Get-Envs -PathToYaml $valuesYamlPath
-          $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
-          $chartConfig = Get-Envs -PathToYaml $chartYamlPath
+          if (Test-Path -Path (Join-Path $basePath "./deployments/${{ inputs.environment }}-charts")) {
+              $chartsPath = "./deployments/${{ inputs.environment }}-charts"
+          }
+          else {
+              $chartsPath = "./deployments/charts"
+          }
+          Write-Output "Using charts path: $chartsPath"
+          
+          $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
+          $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
+          $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
+          $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
+          # Set app name
           $appName = $chartConfig.name
+          Write-Output "appName=$appName"
+          Write-Output "appName=$appName" >> $env:GITHUB_ENV
+
+          # Set app version
           $appVersion = $chartConfig.appVersion
+          Write-Output "appVersion=$appVersion"
+          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
+
+          # Set health check path
           $appHealthCheck = $appconfig.deployment.healthCheckPath
+          Write-Output "appHealthCheck=$appHealthCheck"
+          Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
+
+          # Set configMap
           $configMap = $appConfig.deployment.configMap
+          Write-Output "configMap=$configMap"
+          Write-Output "configMap=$configMap" >> $env:GITHUB_ENV
+
+          # Set the max replicas based on the environment
+          $appEnvironment = "${{ inputs.environment }}"
           if ($appEnvironment -eq "development") {
               $maxReplicas = 2
           }
@@ -154,14 +163,56 @@ jobs:
           else {
               $maxReplicas = $appConfig.autoscaling.maxReplicas
           }
+          Write-Output "maxReplicas=$maxReplicas"
+          Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
+
+          # Set config secret
           $configSecret = "$appName-config-secret"
+          Write-Output "configSecret=$configSecret"
+          Write-Output "configSecret=$configSecret" >> $env:GITHUB_ENV
+
+          # Set image pull secret
           $imagePullSecret = "$appName-pull-secret"
+          Write-Output "imagePullSecret=$imagePullSecret"
+          Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
+
+          # Set image tag
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
+          Write-Output "release=$release"
+          Write-Output "release=$release" >> $env:GITHUB_ENV
           $ingress = $appConfig.ingress.host
+          Write-Output "ingress=$ingress"
+          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+
+          # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
-          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          Write-Output "domainName=$domainName"
+          Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
+
+          # Set hostname
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
+          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          if ($environmentIngress -eq "true") {
+              $ingress = "$appEnvironment.$ingress"
+              if ($hostName.Length -gt 0) {
+                  $hostName = "$appEnvironment.$hostName"
+              }
+              else {
+                  $hostName = "$appEnvironment"
+              }
+          }
+          else {
+              if ($hostName.Length -eq 0) {
+                  $hostName = "www"
+              }
+          }
+          Write-Output "hostName=$hostName"
+          Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
+
+          Write-Output "This application's hostname is $hostName.$domainName"
+
+          # Set ingress whitelist
           if ([string]::IsNullOrEmpty("${{ inputs.ingressWhitelist }}")) {
               if ([string]::IsNullOrEmpty($appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")) {
                   $ingressWhitelist = '0.0.0.0/0'
@@ -177,37 +228,11 @@ jobs:
           else {
               Write-Output "adminingress values not defined. Skipping setting adminIngressWhitelist"
           }
-
-          if ($environmentIngress -eq "true") {
-              $ingress = "$appEnvironment.$ingress"
-              if ($hostName.Length -gt 0) {
-                  $hostName = "$appEnvironment.$hostName"
-              }
-              else {
-                  $hostName = "$appEnvironment"
-              }
-          }
-          else {
-              if ($hostName.Length -eq 0) {
-                  $hostName = "www"
-              }
-          }
-          Write-Output "This application's hostname is $hostName.$domainName"
-
-          Write-Output "appName=$appName" >> $env:GITHUB_ENV
-          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
-          Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
-          Write-Output "configMap=$configMap" >> $env:GITHUB_ENV
-          Write-Output "configSecret=$configSecret" >> $env:GITHUB_ENV
-          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
-          Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
-          Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
-          Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
-          Write-Output "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
+          Write-Output "ingressWhitelist=$ingressWhitelist"
           Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
+          Write-Output "adminIngressWhitelist=$adminIngressWhitelist"
           Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
-          Write-Output "release=$release" >> $env:GITHUB_ENV
-          Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
+
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -279,7 +304,6 @@ jobs:
       domainName: ${{ env.domainName }}
       hostName: ${{ env.hostName }}
       imagePullSecret: ${{ env.imagePullSecret }}
-      date: ${{ env.date }}
       ingressWhitelist: ${{ env.ingressWhitelist }}
       adminIngressWhitelist: ${{ env.adminIngressWhitelist }}
       release: ${{ env.release }}
@@ -289,7 +313,6 @@ jobs:
     name: AKS Deploy
     needs: [build]
     runs-on: ${{ inputs.githubRunner }}
-    continue-on-error: false
     environment:
       name: ${{ inputs.environment }}
       url: https://${{ needs.build.outputs.ingress }}
@@ -385,11 +408,17 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
+      - name: Get AKS cluster resource group
+        id: aks-resource-group
+        run: |
+          AKS_RESOURCE_GROUP=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].resourceGroup" -o tsv)
+          echo "AKS_RESOURCE_GROUP=${AKS_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
+
       - name: Set target AKS cluster
         uses: azure/aks-set-context@v4
         with:
           cluster-name: ${{ secrets.azureClusterName }}
-          resource-group: ${{ inputs.clusterResourceGroup }}
+          resource-group: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
 
       - name: Switch Kubernetes Namespace
         id: namespace
@@ -504,16 +533,49 @@ jobs:
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
-      - name: Record deployment information in Azure Storage Table
-        uses: LadyCailin/azure-table-storage-upload@v1.0.1
+      - name: Get Current Date
+        id: date
+        run: |
+          echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
+
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2.1
         with:
-          table_name: "DeployedApplications"
-          partition_key: "${{ github.event.repository.name }}"
-          row_key: "${{ inputs.environment }}"
-          data: "ApplicationName=${{ needs.build.outputs.appName }} Version=${{ needs.build.outputs.appVersion }} KeyVault=${{ inputs.environmentKeyVault }} HostName=${{ needs.build.outputs.hostName }} DomainName=${{ needs.build.outputs.domainName }} IngressFqdn=${{ needs.build.outputs.ingress }} HealthCheckPath=${{ needs.build.outputs.appHealthCheck }} AksIngress=${{ steps.dns.outputs.aksIngress }} Cluster=${{ secrets.azureClusterName }} ClusterResourceGroup=${{ inputs.clusterResourceGroup }} ConfigSecret=${{needs.build.outputs.configSecret }} ConfigMap=${{ needs.build.outputs.configMap }} LastDeploy=${{ needs.build.outputs.date }}"
-          if_exists: "replace"
-          extra_args: ""
-          connection_string: "AccountName=amucloudapps;AccountKey=${{ secrets.storageAccountKey }}"
+          modules-to-cache: AzTable, Az.Storage, Az.Resources
+
+      - name: Record deployment information in Azure Storage Table
+        shell: pwsh
+        run: |
+          $storageAccountName = "amucloudapps"
+          $storageAccountKey = ${{ secrets.storageAccountKey }}
+          $appInfoTableName = "DeployedApplications"
+          $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+
+          #Get Storage table
+          try {
+              $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
+              }
+          catch {
+              Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+              return
+          }
+
+          Add-AzTableRow `
+              -Table $appInfoTable `
+              -partitionKey "${{ github.event.repository.name }}" `
+              -RowKey "${{ inputs.environment }}" `
+              -property @{
+              "ApplicationName"="${{ needs.build.outputs.appName }}";
+              "Version"="${{ needs.build.outputs.appVersion }}";
+              "KeyVault"="${{ inputs.environmentKeyVault }}";
+              "HostName"="${{ needs.build.outputs.hostName }}";
+              "DomainName"="${{ needs.build.outputs.domainName }}";
+              "IngressFqdn"="${{ needs.build.outputs.ingress }}";
+              "AksIngress"="${{ steps.dns.outputs.aksIngress }}";
+              "Cluster"="${{ secrets.azureClusterName }}";
+              "ClusterResourceGroup"="${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}";
+              "LastDeploy"="${{ steps.date.outputs.date }}"
+              } -UpdateExisting | Out-Null
 
       - name: Create deployment summary
         run: |

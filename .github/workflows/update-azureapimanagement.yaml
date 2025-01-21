@@ -56,138 +56,119 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2.1
+        with:
+          modules-to-cache: AzTable
+
       - name: Retrieve Application information
         id: getappinfo
-        uses: azure/powershell@v2
-        with:
-          azPSVersion: "latest"
-          inlineScript: |
-            Install-Module -Name AzTable -Force
-            Import-Module AzTable
+        shell: pwsh
+        run: |
+          # Define the storage account and table name
+          $appInfoTableName = "DeployedApplications"
+          $storageAccountName = "amucloudapps"
 
-            # Define the storage account and table name
-            $appInfoTableName = "DeployedApplications"
-            $storageAccountName = "amucloudapps"
+          $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey ${{ secrets.storageAccountKey }}
 
-            $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey ${{ secrets.storageAccountKey }}
+          # Get Storage table
+          try {
+              $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
+              }
+          catch {
+              Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+              return
+              }
 
-            # Get Storage table
-            try {
-                $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
-                }
-            catch {
-                Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
-                return
-                }
+          # Retrieve the application information
+          $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey "${{ inputs.repositoryName }}" -RowKey "${{ inputs.environment }}"
 
-            # Retrieve the application information
-            $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey "${{ inputs.repositoryName }}" -RowKey "${{ inputs.environment }}"
-
-            # Set the application information as variables
-            $applicationName = $appInfo.ApplicationName
-            $version = $appInfo.Version
-            $keyVault = $appInfo.KeyVault
-            $hostName = $appInfo.HostName
-            $domainName = $appInfo.DomainName
-            $ingressFqdn = $appInfo.IngressFqdn
-            $healthCheckPath = $appInfo.HealthCheckPath
-            $aksIngress = $appInfo.AksIngress
-
-            # Set the application information as output variables
-            echo "applicationName=$applicationName" >> $env:GITHUB_OUTPUT
-            echo "version=$version" >> $env:GITHUB_OUTPUT
-            echo "keyVault=$keyVault" >> $env:GITHUB_OUTPUT
-            echo "hostName=$hostName" >> $env:GITHUB_OUTPUT
-            echo "domainName=$domainName" >> $env:GITHUB_OUTPUT
-            echo "applicationIngressFqdn=$ingressFqdn" >> $env:GITHUB_OUTPUT
-            echo "healthCheckPath=$healthCheckPath" >> $env:GITHUB_OUTPUT
-            echo "aksIngress=$aksIngress" >> $env:GITHUB_OUTPUT
+          # Set the application information as output variables
+          echo "applicationIngressFqdn=$($appInfo.IngressFqdn)" >> $env:GITHUB_OUTPUT
 
       - name: Update Azure API Management
-        uses: azure/powershell@v2
-        with:
-          azPSVersion: "latest"
-          inlineScript: |
-            # Set API Management variables
-            $ApiProductId = "${{ inputs.productId }}"
-            $ApiSubscriptionRequired = $True
+        shell: pwsh
+        run: |
+          # Set API Management variables
+          $ApiProductId = "${{ inputs.productId }}"
+          $ApiSubscriptionRequired = $True
 
-            # Generate API ID by appending "-api" to the repository name and replacing underscores with hyphens
-            $ApiSuffix = if ("${{ inputs.apiSuffix }}" -eq "true") { "-api" } else { "" }
-            $ApiId = ("${{ github.event.repository.name }}$ApiSuffix").Replace("_","-")
+          # Generate API ID by appending "-api" to the repository name and replacing underscores with hyphens
+          $ApiSuffix = if ("${{ inputs.apiSuffix }}" -eq "true") { "-api" } else { "" }
+          $ApiId = ("${{ github.event.repository.name }}$ApiSuffix").Replace("_","-")
 
-            # Retrieve the resource group and service name based on the environment tag
-            $ResourceGroup = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
-            $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).Name
+          # Retrieve the resource group and service name based on the environment tag
+          $ResourceGroup = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).ResourceGroupName
+          $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="${{ inputs.environment }}"}).Name
 
-            # Get the fully qualified domain name (FQDN) of the service from previous steps
-            $serviceFqdn = "${{ steps.getappinfo.outputs.applicationIngressFqdn }}"
-            $ServiceURL = "https://$serviceFqdn"
+          # Get the fully qualified domain name (FQDN) of the service from previous steps
+          $serviceFqdn = "${{ steps.getappinfo.outputs.applicationIngressFqdn }}"
+          $ServiceURL = "https://$serviceFqdn"
 
-            # Create a context object for API management operations
-            $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
+          # Create a context object for API management operations
+          $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
 
-            # Retrieve the API Version Set
-            $apiVersionSet = Get-AzApiManagementApiVersionSet -Context $Context | Where-Object { $_.DisplayName -eq $ApiId }
-            if (-not $apiVersionSet) {
-                $apiVersionSet = New-AzApiManagementApiVersionSet -Context $Context -Name $ApiId -Scheme Segment -Description "$ApiId API"
-            }
+          # Retrieve the API Version Set
+          $apiVersionSet = Get-AzApiManagementApiVersionSet -Context $Context | Where-Object { $_.DisplayName -eq $ApiId }
+          if (-not $apiVersionSet) {
+              $apiVersionSet = New-AzApiManagementApiVersionSet -Context $Context -Name $ApiId -Scheme Segment -Description "$ApiId API"
+          }
 
-            # Check if the original API exists
-            Get-AzApiManagementApi -Context $Context -ApiId $ApiId -ErrorAction SilentlyContinue | Where-Object { -not $_.ApiVersionSetId } | ForEach-Object {
-                $_.ApiVersionSetId = $apiVersionSet.Id
-                Set-AzApiManagementApi -InputObject $_
-                $OriginalVersion = $True
-            }
+          # Check if the original API exists
+          Get-AzApiManagementApi -Context $Context -ApiId $ApiId -ErrorAction SilentlyContinue | Where-Object { -not $_.ApiVersionSetId } | ForEach-Object {
+              $_.ApiVersionSetId = $apiVersionSet.Id
+              Set-AzApiManagementApi -InputObject $_
+              $OriginalVersion = $True
+          }
 
-            # Update API versions
-            1..3 | ForEach-Object {
-                $version = $_
+          # Update API versions
+          1..3 | ForEach-Object {
+              $version = $_
 
-                # Construct the Swagger URL for each version
-                $SwaggerURL = "https://$serviceFqdn/swagger/v$version/swagger.json"
+              # Construct the Swagger URL for each version
+              $SwaggerURL = "https://$serviceFqdn/swagger/v$version/swagger.json"
 
-                # Pull down Swagger JSON
-                $SwaggerJSON = Invoke-WebRequest -Uri $SwaggerURL -SkipHttpErrorCheck
+              # Pull down Swagger JSON
+              $SwaggerJSON = Invoke-WebRequest -Uri $SwaggerURL -SkipHttpErrorCheck
 
-                # Check if the versioned API exists
-                if ($SwaggerJSON.StatusCode -eq 200) {
-                    # Get Swagger JSON content
-                    Write-Output "Importing API version V${version}: $SwaggerURL"
-                    $SwaggerJSON = $SwaggerJSON.Content -replace "/v${version}", ""
+              # Check if the versioned API exists
+              if ($SwaggerJSON.StatusCode -eq 200) {
+                  # Get Swagger JSON content
+                  Write-Output "Importing API version V${version}: $SwaggerURL"
+                  $SwaggerJSON = $SwaggerJSON.Content -replace "/v${version}", ""
 
-                    # Generate a unique API ID for each version
-                    $versionedApiId = "$ApiId-v$version"
+                  # Generate a unique API ID for each version
+                  $versionedApiId = "$ApiId-v$version"
 
 
-                    # Save Swagger JSON to file
-                    $SwaggerJSONFile = "swagger.json"
-                    $SwaggerJSON | Out-File -FilePath $SwaggerJSONFile
+                  # Save Swagger JSON to file
+                  $SwaggerJSONFile = "swagger.json"
+                  $SwaggerJSON | Out-File -FilePath $SwaggerJSONFile
 
-                    # Import the versioned API
-                    Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerJSONFile -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
+                  # Import the versioned API
+                  Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerJSONFile -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
 
-                    # Retrieve and update the API object
-                    $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
-                    $Api.ServiceURL = "$ServiceURL/v${version}"
-                    $Api.SubscriptionRequired = $ApiSubscriptionRequired
+                  # Retrieve and update the API object
+                  $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
+                  $Api.ServiceURL = "$ServiceURL/v${version}"
+                  $Api.SubscriptionRequired = $ApiSubscriptionRequired
 
-                    # Associate the versioned API with a product
-                    Set-AzApiManagementApi -InputObject $Api
-                    Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
-                    if ($ApiProductId -ne "AZ-WebServices") {
-                        Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
-                    }
+                  # Associate the versioned API with a product
+                  Set-AzApiManagementApi -InputObject $Api
+                  Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
+                  if ($ApiProductId -ne "AZ-WebServices") {
+                      Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
+                  }
 
-                    # Remove the original API spec
-                    if ($OriginalVersion) {
-                        Remove-AzApiManagementApi -Context $Context -ApiId $ApiId
-                    }
-                }
-                else {
-                    Write-Output "API version V${version} (${SwaggerURL}): $($SwaggerJSON.StatusCode) $($SwaggerJSON.StatusDescription)"
-                }
-            }
+                  # Remove the original API spec
+                  if ($OriginalVersion) {
+                      Remove-AzApiManagementApi -Context $Context -ApiId $ApiId
+                  }
+              }
+              else {
+                  Write-Output "API version V${version} (${SwaggerURL}): $($SwaggerJSON.StatusCode) $($SwaggerJSON.StatusDescription)"
+              }
+          }
       
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
