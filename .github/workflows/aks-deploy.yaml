@@ -288,11 +288,14 @@ jobs:
         with:
           ref: ${{ inputs.checkoutRef }}
 
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2
+        with:
+          modules-to-cache: powershell-yaml
+
       - name: Create values override file
         shell: pwsh
         run: |
-          Install-Module -Name powershell-yaml -Confirm:$false -Force
-
           # Get charts path
           $basePath = Get-Location
           if (Test-Path -Path (Join-Path $basePath "./deployments/${{ inputs.environment }}-charts")) {
