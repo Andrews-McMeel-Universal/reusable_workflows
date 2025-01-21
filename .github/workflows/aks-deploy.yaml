@@ -117,28 +117,41 @@ jobs:
         id: setenvs
         shell: pwsh
         run: |
-          Function Get-Envs {
-              param (
-                  [parameter(Mandatory = $true, ValueFromPipeline = $true)]
-                  [string]$PathToYaml
-              )
-              Import-Module powershell-yaml
-              Write-Host "Getting configuration from: $PathToYaml."
-              $Values = Get-Content $PathToYaml | ConvertFrom-Yaml
-              return $Values
-          }
-
-          $appEnvironment = "${{ inputs.environment }}"
+          # Get charts path
           $basePath = Get-Location
-          $valuesYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "values.yaml"
-          $appConfig = Get-Envs -PathToYaml $valuesYamlPath
-          $chartYamlPath = Join-Path $basePath ${{ inputs.chartsPath }} "Chart.yaml"
-          $chartConfig = Get-Envs -PathToYaml $chartYamlPath
+          if (Test-Path -Path (Join-Path $basePath "./deployments/${{ inputs.environment }}-charts")) {
+              $chartsPath = "./deployments/${{ inputs.environment }}-charts"
+          }
+          else {
+              $chartsPath = "./deployments/charts"
+          }
+          Write-Output "Using charts path: $chartsPath"
+          
+          $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
+          $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
+          $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
+          $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
+          # Set app name
           $appName = $chartConfig.name
+          Write-Output "appName=$appName"
+          Write-Output "appName=$appName" >> $env:GITHUB_ENV
+
+          # Set app version
           $appVersion = $chartConfig.appVersion
+          Write-Output "appVersion=$appVersion"
+          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
+
           $appHealthCheck = $appconfig.deployment.healthCheckPath
+          Write-Output "appHealthCheck=$appHealthCheck"
+          Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
+
           $configMap = $appConfig.deployment.configMap
+          Write-Output "configMap=$configMap"
+          Write-Output "configMap=$configMap" >> $env:GITHUB_ENV
+
+          # Set the max replicas based on the environment
+          $appEnvironment = "${{ inputs.environment }}"
           if ($appEnvironment -eq "development") {
               $maxReplicas = 2
           }
@@ -148,14 +161,25 @@ jobs:
           else {
               $maxReplicas = $appConfig.autoscaling.maxReplicas
           }
+          Write-Output "maxReplicas=$maxReplicas"
+          Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
           $configSecret = "$appName-config-secret"
+          Write-Output "configSecret=$configSecret"
+          Write-Output "configSecret=$configSecret" >> $env:GITHUB_ENV
+
           $imagePullSecret = "$appName-pull-secret"
+          Write-Output "imagePullSecret=$imagePullSecret"
+          Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
+
+          # Set image tag
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
           $release = ($release -replace '[^-\p{L}\p{Nd}]', '').ToLower() -replace '^-', '' -replace '-$', ''
+          Write-Output "release=$release"
+          Write-Output "release=$release" >> $env:GITHUB_ENV
           $ingress = $appConfig.ingress.host
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
-          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $hostName = $ingress -replace $domainName, '' -replace "\.$", ""
+          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           if ([string]::IsNullOrEmpty("${{ inputs.ingressWhitelist }}")) {
               if ([string]::IsNullOrEmpty($appConfig.ingress.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")) {
                   $ingressWhitelist = '0.0.0.0/0'
@@ -171,6 +195,10 @@ jobs:
           else {
               Write-Output "adminingress values not defined. Skipping setting adminIngressWhitelist"
           }
+          Write-Output "ingressWhitelist=$ingressWhitelist"
+          Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
+          Write-Output "adminIngressWhitelist=$adminIngressWhitelist"
+          Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
 
           if ($environmentIngress -eq "true") {
               $ingress = "$appEnvironment.$ingress"
@@ -188,20 +216,12 @@ jobs:
           }
           Write-Output "This application's hostname is $hostName.$domainName"
 
-          Write-Output "appName=$appName" >> $env:GITHUB_ENV
-          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
-          Write-Output "appHealthCheck=$appHealthCheck" >> $env:GITHUB_ENV
-          Write-Output "configMap=$configMap" >> $env:GITHUB_ENV
-          Write-Output "configSecret=$configSecret" >> $env:GITHUB_ENV
+          Write-Output "ingress=$ingress"
           Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+          Write-Output "domainName=$domainName"
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
+          Write-Output "hostName=$hostName"
           Write-Output "hostName=$hostName" >> $env:GITHUB_ENV
-          Write-Output "imagePullSecret=$imagePullSecret" >> $env:GITHUB_ENV
-          Write-Output "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $env:GITHUB_ENV
-          Write-Output "ingressWhitelist=$ingressWhitelist" >> $env:GITHUB_ENV
-          Write-Output "adminIngressWhitelist=$adminIngressWhitelist" >> $env:GITHUB_ENV
-          Write-Output "release=$release" >> $env:GITHUB_ENV
-          Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -291,11 +311,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.checkoutRef }}
-
-      - name: Install PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2
-        with:
-          modules-to-cache: powershell-yaml
 
       - name: Create values override file
         run: |
