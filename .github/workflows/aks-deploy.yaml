@@ -610,6 +610,7 @@ jobs:
             INGRESS="${{ secrets.azureClusterName }}"
           fi
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
+          echo "Updating DNS record for ${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }} to $AKS_INGRESS"
           az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.dnsSubDomain }}" --cname "${AKS_INGRESS}" --ttl 3600
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
