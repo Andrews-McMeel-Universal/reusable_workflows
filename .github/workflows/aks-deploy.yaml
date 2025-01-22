@@ -174,8 +174,6 @@ jobs:
           else {
               $ingress = $appConfig.ingress.host
           }
-          Write-Output "ingress=$ingress"
-          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
 
           # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
@@ -201,6 +199,8 @@ jobs:
           }
           Write-Output "dnsSubDomain=$dnsSubDomain"
           Write-Output "dnsSubDomain=$dnsSubDomain" >> $env:GITHUB_ENV
+          Write-Output "ingress=$ingress"
+          Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
