@@ -183,7 +183,7 @@ jobs:
           # Set DNS subdomain
           $dnsSubDomain = $ingress -replace $domainName, '' -replace "\.$", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
-          if ($environmentIngress -eq "true") {
+          if ($environmentIngress -ne "false") {
               $ingress = "$appEnvironment.$ingress"
               if ($dnsSubDomain.Length -gt 0) {
                   $dnsSubDomain = "$appEnvironment.$dnsSubDomain"
@@ -339,7 +339,7 @@ jobs:
                   }
 
                   # Add environment to ingress
-                  if (($environmentIngress -eq "true") -and ($item.environmentIngress -eq $true)) { 
+                  if ($environmentIngress -ne "false") { 
                       $item.host = "$environment.$($item.host)"
                       Write-Output "Updating ingress host for $($item.name) to: $($item.host)"
                   }
@@ -355,7 +355,7 @@ jobs:
 
                   if ($item.name -eq "ingress") {
                       # Add WWW to ingress
-                      if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -eq "false")) {
+                      if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -ne "true")) {
                           Write-Output "Adding www to $($item.name) host"
                           $item.host = "www.$($item.host)"
                       }
@@ -411,7 +411,7 @@ jobs:
                   }
 
                   # Add environment to ingress 
-                  if (($item.Value.host -notmatch "development|staging|production") -and ($item.Value.secondaryhost -notmatch "www") -and ($environmentIngress -eq "true")){
+                  if (($item.Value.host -notmatch "development|staging|production") -and ($item.Value.secondaryhost -notmatch "www") -and ($environmentIngress -ne "false")){
                       $item.Value.host = "$environment.$($item.Value.host)"
                       Write-Output "Updating ingress host for $($item.Key) to: $($item.Value.host)"
                   }
@@ -486,7 +486,7 @@ jobs:
             deployment.image.tag:${{ github.sha }}-${{ inputs.environment }}
             image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
             image.tag:${{ github.sha }}-${{ inputs.environment }}
-            autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas || inputs.maximumReplicas }}
+            autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
