@@ -309,6 +309,7 @@ jobs:
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
           $appName = $chartConfig.name
+          $appConfig.environment = $environment
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
