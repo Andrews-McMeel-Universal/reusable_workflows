@@ -7,11 +7,6 @@ on:
         required: false
         type: string
         description: Type of release
-      environmentCharts:
-        required: false
-        type: string
-        description: Set to true if the repository has separate Helm chart directories for each environment
-        default: 'false'
       version:
         required: false
         type: string
@@ -38,7 +33,7 @@ jobs:
         id: environment-charts
         shell: pwsh
         run: |
-          if (Test-Path -Path (Join-Path $basePath "./deployments/${{ inputs.environment }}-charts")) {
+          if (Test-Path -Path (Join-Path $basePath "./deployments/production-charts")) {
               echo "environmentCharts=true"
               echo "environmentCharts=true" >> $env:GITHUB_ENV
           }

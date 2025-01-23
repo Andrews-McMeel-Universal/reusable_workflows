@@ -12,7 +12,7 @@ on:
         type: string
       AZURE_FUNCTIONAPP_NAME:
         type: string
-        required: true
+        required: false
         description: "set this to your application's name"
         default: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
       AZURE_FUNCTIONAPP_RESOURCEGROUP:
