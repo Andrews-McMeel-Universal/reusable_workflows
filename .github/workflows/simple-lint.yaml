@@ -6,11 +6,12 @@ on:
   workflow_call:
     inputs:
       runPrettier:
-        default: true
+        default: ${{ vars.SIMPLE_LINT_RUN_PRETTIER != 'false' }}
         type: boolean
       prettierPlugins:
         description: Install Prettier plugins, i.e. '@prettier/plugin-php @prettier/plugin-other'
         type: string
+        default: ${{ vars.SIMPLE_LINT_PRETTIER_PLUGINS || '' }}
       onlyChanged:
         default: ${{ vars.SIMPLE_LINT_ONLY_CHANGED || 'true' }}
         type: string
