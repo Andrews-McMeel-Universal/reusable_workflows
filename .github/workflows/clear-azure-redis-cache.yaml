@@ -12,7 +12,7 @@ on:
         type: string
         description: "Name of Resource Group that the Azure Redis Instance is in."
       applicationCacheKey:
-        default: "*"
+        default: ${{ vars.REDIS_CACHE_KEY || '*' }}
         type: string
         description: "Cache key for the application"
     secrets:

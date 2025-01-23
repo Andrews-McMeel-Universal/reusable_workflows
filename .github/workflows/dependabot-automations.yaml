@@ -6,11 +6,11 @@ on:
   workflow_call:
     inputs:
       autoApprove:
-        default: "false"
+        default: ${{ vars.DEPENDABOT_AUTOAPPROVE || '["version-update:semver-minor", "version-update:semver-patch"]' }}
         description: Array of version update to automatically approve (for ex. '["version-update:semver-major", "version-update:semver-minor"]')
         type: string
       autoMerge:
-        default: "false"
+        default: ${{ vars.DEPENDABOT_AUTOMERGE || 'false' }}
         description: Array of version update to automatically merge in (for ex. '["version-update:semver-major", "version-update:semver-minor"]')
         type: string
 

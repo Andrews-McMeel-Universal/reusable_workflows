@@ -4,13 +4,14 @@ on:
   workflow_call:
     inputs:
       environment:
-        required: true
+        required: false
         type: string
+        default: ${{ vars.APPLICATION_CI_ENVIRONMENT || 'development' }}
       projectName:
         required: false
         type: string
         description: Project Directory Name
-        default: ""
+        default: ${{ vars.DOTNET_PROJECT_NAME || ''}}
       DOTNET_VERSION:
         required: false
         type: string

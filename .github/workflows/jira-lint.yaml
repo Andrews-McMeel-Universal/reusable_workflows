@@ -8,11 +8,11 @@ on:
       fail-on-error:
         type: string
         description: A Boolean which, if set to true, fails the GitHub Action when an error occurs. Default true.
-        default: 'true'
+        default: ${{ vars.JIRA_LINT_FAIL_ON_ERROR || 'false' }}
       skip-comments:
         type: string
         description: A Boolean if set to true then action-jira-linter will skip adding lint comments for PR title.
-        default: 'false'
+        default: ${{ vars.JIRA_LINT_SKIP_COMMENTS || 'true' }}
     secrets:
       JIRA_TOKEN:
         required: true

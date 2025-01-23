@@ -7,11 +7,6 @@ on:
         required: false
         type: string
         description: Type of release
-      environmentCharts:
-        required: false
-        type: string
-        description: Set to true if the repository has separate Helm chart directories for each environment
-        default: 'false'
       version:
         required: false
         type: string
@@ -34,8 +29,21 @@ jobs:
         continue-on-error: true
         uses: gregziegan/fetch-latest-release@v2.0.0
 
+      - name: Check if environment charts exist
+        id: environment-charts
+        shell: pwsh
+        run: |
+          if (Test-Path -Path (Join-Path $basePath "./deployments/production-charts")) {
+              echo "environmentCharts=true"
+              echo "environmentCharts=true" >> $env:GITHUB_ENV
+          }
+          else {
+              echo "environmentCharts=false"
+              echo "environmentCharts=false" >> $env:GITHUB_ENV
+          }
+
       - name: Get Chart.yaml appVersion
-        if: ${{ inputs.environmentCharts == 'false' && ! inputs.version }}
+        if: ${{ env.environmentCharts == 'false' && ! inputs.version }}
         id: chartyaml
         uses: rmeneely/get-yaml-value@v1
         with:
@@ -43,7 +51,7 @@ jobs:
           varlist: appVersion
 
       - name: Get Environment Chart.yaml appVersion
-        if: ${{ inputs.environmentCharts == 'true' && ! inputs.version }}
+        if: ${{ env.environmentCharts == 'true' && ! inputs.version }}
         id: environmentchartyaml
         uses: rmeneely/get-yaml-value@v1
         with:

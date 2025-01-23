@@ -4,9 +4,10 @@ on:
   workflow_call:
     inputs:
       projectName:
-        required: true
+        required: false
         type: string
         description: Models Project Directory Name
+        default: ${{ vars.NUGET_PROJECT_NAME }}
       libraryName:
         required: false
         type: string
