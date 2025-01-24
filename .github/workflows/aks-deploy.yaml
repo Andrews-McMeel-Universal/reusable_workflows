@@ -313,7 +313,6 @@ jobs:
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
-          $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
           $clusterIssuer = "letsencrypt-prod"
@@ -325,9 +324,11 @@ jobs:
                       Write-Output "Skipping www redirect for $($item.name)"
                       continue
                   }
+                  # Reset ingress whitelist to input
+                  $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
 
                   # Set ingress whitelist if not set
-                  if (($item.name -eq "ingress") -and ([string]::IsNullOrEmpty($ingressWhitelist))) {
+                  if (($item.name -eq "ingress") -and ($ingressWhitelist -notmatch '^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.((25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.){2}(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)(/(3[0-2]|[1-2]?[0-9]))?$')) {
                       Write-Output "Ingress whitelist not set for $($item.name)"
                       if (($ingressWhitelist -eq "service") -or ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
                           # Use service whitelist
@@ -400,8 +401,11 @@ jobs:
           }
           else {
               foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" })) {
+                  # Reset ingress whitelist to input
+                  $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
+
                   # Set ingress whitelist if not set
-                  if ([string]::IsNullOrEmpty($ingressWhitelist)) {
+                  if ($ingressWhitelist -notmatch '^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.((25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.){2}(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)(/(3[0-2]|[1-2]?[0-9]))?$') {
                       Write-Output "Ingress whitelist not set for $($item.Key)"
                       if (($ingressWhitelist -eq "service") -or ($item.Value.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
                           # Use service whitelist

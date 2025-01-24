@@ -7,10 +7,12 @@ on:
         required: false
         type: string
         description: Models Project Directory Name
+        default: ${{ vars.NUGET_PROJECT_NAME }}
       dotnetVersion:
-        required: true
+        required: false
         type: string
         description: ".NET SDK Version"
+        default: ${{ vars.DOTNET_VERSION }}
       libraries:
         required: false
         type: string
