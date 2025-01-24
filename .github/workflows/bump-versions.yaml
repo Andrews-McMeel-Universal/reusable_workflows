@@ -38,7 +38,7 @@ jobs:
         id: environment-charts
         shell: pwsh
         run: |
-          if (Test-Path -Path (Join-Path $basePath "./deployments/production-charts")) {
+          if (Test-Path -Path "./deployments/production-charts") {
               echo "environmentCharts=true"
               echo "environmentCharts=true" >> $env:GITHUB_ENV
           }
