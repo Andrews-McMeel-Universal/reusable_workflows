@@ -294,8 +294,9 @@ jobs:
         run: |
           # Get charts path
           $basePath = Get-Location
-          if (Test-Path -Path (Join-Path $basePath "./deployments/${{ inputs.environment }}-charts")) {
-              $chartsPath = "./deployments/${{ inputs.environment }}-charts"
+          $environment = "${{ inputs.environment }}"
+          if (Test-Path -Path (Join-Path $basePath "./deployments/$environment-charts")) {
+              $chartsPath = "./deployments/$environment-charts"
           }
           else {
               $chartsPath = "./deployments/charts"
@@ -308,15 +309,21 @@ jobs:
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
           $appName = $chartConfig.name
+          $appConfig.environment = $environment
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
-          $environment = "${{ inputs.environment }}"
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
+          $clusterIssuer = "letsencrypt-prod"
 
           if ($appConfig.schemaVersion -eq "2") {
               foreach ($item in $appConfig.ingress) {
+                  # Skip setting www redirect ingress if not production
+                  if (($item.name -eq "wwwredirect") -and ($environment -ne "production")) {
+                      Write-Output "Skipping www redirect for $($item.name)"
+                      continue
+                  }
                   # Reset ingress whitelist to input
                   $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
 
@@ -347,13 +354,15 @@ jobs:
                   }
 
                   # Add ingressClassName to ingress
-                  Write-Output "Setting ingress class name for $($item.name) to: nginx-$environment"
                   $item.ingressClassName = "nginx-$environment"
 
                   # Reset annotations
                   if ($null -eq $item.annotations) {
                       $item.annotations = @{}
                   }
+
+                  # Add cluster issuer annotation
+                  $item.annotations."cert-manager.io/cluster-issuer" = $clusterIssuer
 
                   if ($item.name -eq "ingress") {
                       # Add WWW to ingress
@@ -422,13 +431,15 @@ jobs:
                   }
 
                   # Add ingressClassName to ingress
-                  Write-Output "Setting ingress class name for $($item.Key) to: nginx-$environment"
                   $item.Value.ingressClassName = "nginx-$environment"
 
                   # Reset annotations
                   if ($null -eq $item.Value.annotations) {
                       $item.Value.annotations = @{}
                   }
+
+                  # Add cluster issuer annotation
+                  $item.Value.annotations."cert-manager.io/cluster-issuer" = $clusterIssuer
 
                   if ( $item.Key -eq "ingress" ) {
                       # Add ingressWhitelist to ingress
@@ -454,6 +465,11 @@ jobs:
                       $item.Value.Remove("annotations")
                   }
               }
+          }
+
+          # Remove www redirect ingress if not production
+          if ($environment -ne "production") {
+              $appConfig.ingress = $appConfig.ingress | Where-Object { $_.name -ne "wwwredirect" }
           }
 
           # Delete redundant keys
