@@ -31,8 +31,9 @@ jobs:
           enable-AzPSSession: true
 
       - name: Purge Azure Front Door cache
-        uses: azure/cli@v2
+        uses: azure/powershell@v2
         with:
+          azPSVersion: "latest"
           inlineScript: |
             if [[ -z "${{ inputs.fdResourceGroup }}" ]]; then
               echo "Front Door Resource Group is required. Please provide the Front Door Resource Group name when calling the workflow."

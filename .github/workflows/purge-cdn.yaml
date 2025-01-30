@@ -40,8 +40,9 @@ jobs:
           enable-AzPSSession: true
 
       - name: Purge CDN cache
-        uses: azure/cli@v2
+        uses: azure/powershell@v2
         with:
+          azPSVersion: "latest"
           inlineScript: |
             if (-not "${{ inputs.cdnResourceGroup }}") {
               Write-Error "CDN Resource Group is required. Please provide the CDN Resource Group name when calling the workflow."
