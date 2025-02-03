@@ -318,6 +318,7 @@ jobs:
           $clusterIssuer = "letsencrypt-prod"
 
           if ($appConfig.schemaVersion -eq "2") {
+              $updatedIngress = @()
               foreach ($item in $appConfig.ingress) {
                   # Skip setting www redirect ingress if not production
                   if (($item.name -eq "wwwredirect") -and ($environment -ne "production")) {
@@ -397,7 +398,17 @@ jobs:
                   if ($item.annotations.Count -eq 0) {
                       $item.Remove("annotations")
                   }
+
+                  $updatedIngress += [PSCustomObject]@{
+                      name = $item.name
+                      host = $item.host
+                      path = $item.path
+                      ingressClassName = $item.ingressClassName
+                      annotations = $item.annotations
+                  }
               }
+              # Ensure ingress is an array
+              $appConfig.ingress = @($updatedIngress)
           }
           else {
               foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" })) {
