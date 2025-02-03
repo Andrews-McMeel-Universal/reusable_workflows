@@ -483,18 +483,19 @@ jobs:
               $appConfig.ingress = $appConfig.ingress | Where-Object { $_.name -ne "wwwredirect" }
           }
 
-          # Delete redundant keys
-          $appConfig.Remove("deployment")
-          $appConfig.Remove("autoscaling")
-          $appConfig.Remove("service")
-          $appConfig.Remove("image")
-          $appConfig.Remove("replicaCount")
-          $appConfig.Remove("resources")
-          $appConfig.Remove("volumes")
-          $appConfig.Remove("cronjobs")
-          $appConfig.Remove("fullnameOverride")
-          $appConfig.Remove("nameOverride")
-          $appConfig.Remove("imagePullSecrets")
+          # Store keys to remove in a separate list
+          $keysToRemove = @()
+
+          foreach ($key in $appConfig.Keys) {
+              if (($key -ne "ingress") -and ($key -ne "environment")) {
+                  $keysToRemove += $key
+              }
+          }
+
+          # Remove keys from the original collection
+          foreach ($key in $keysToRemove) {
+              $appConfig.Remove($key)
+          }
 
           # Write to file
           $appConfig | ConvertTo-Yaml | ForEach-Object { $_ -replace "  name:", "- name:" } | Out-File -FilePath "./values-override.yaml"
