@@ -486,7 +486,7 @@ jobs:
           $appConfig.Remove("imagePullSecrets")
 
           # Write to file
-          $appConfig | ConvertTo-Yaml | Out-File -FilePath "./values-override.yaml"
+          $appConfig | ConvertTo-Yaml | ForEach-Object { $_ -replace "  name:", "- name:" } | Out-File -FilePath "./values-override.yaml"
 
           # Output file content
           Write-Output "---"
