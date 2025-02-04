@@ -130,6 +130,7 @@ jobs:
           else {
               $chartsPath = "./deployments/charts"
           }
+          Write-Output "chartsPath=$chartsPath" >> $env:GITHUB_ENV
           Write-Output "Using charts path: $chartsPath"
           
           $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
@@ -270,6 +271,7 @@ jobs:
       dnsSubDomain: ${{ env.dnsSubDomain }}
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
+      chartsPath: ${{ env.chartsPath }}
 
   deploy:
     name: AKS Deploy
@@ -295,12 +297,7 @@ jobs:
           # Get charts path
           $basePath = Get-Location
           $environment = "${{ inputs.environment }}"
-          if (Test-Path -Path (Join-Path $basePath "./deployments/$environment-charts")) {
-              $chartsPath = "./deployments/$environment-charts"
-          }
-          else {
-              $chartsPath = "./deployments/charts"
-          }
+          $chartsPath = "${{ needs.build.outputs.chartsPath }}"
           Write-Output "Using charts path: $chartsPath"
           
           $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
@@ -498,7 +495,7 @@ jobs:
         uses: azure/k8s-bake@v3
         with:
           renderEngine: "helm"
-          helmChart: ${{ inputs.chartsPath }}
+          helmChart: ${{ needs.build.outputs.chartsPath }}
           releaseName: ${{ needs.build.outputs.release }}
           helm-version: "latest"
           overrideFiles: ./values-override.yaml
