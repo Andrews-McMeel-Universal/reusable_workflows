@@ -315,6 +315,7 @@ jobs:
           $clusterIssuer = "letsencrypt-prod"
 
           if ($appConfig.schemaVersion -eq "2") {
+              $updatedIngress = @()
               foreach ($item in $appConfig.ingress) {
                   # Skip setting www redirect ingress if not production
                   if (($item.name -eq "wwwredirect") -and ($environment -ne "production")) {
@@ -394,7 +395,17 @@ jobs:
                   if ($item.annotations.Count -eq 0) {
                       $item.Remove("annotations")
                   }
+
+                  $updatedIngress += [PSCustomObject]@{
+                      name = $item.name
+                      host = $item.host
+                      path = $item.path
+                      ingressClassName = $item.ingressClassName
+                      annotations = $item.annotations
+                  }
               }
+              # Ensure ingress is an array
+              $appConfig.ingress = @($updatedIngress)
           }
           else {
               foreach ($item in ($appConfig.GetEnumerator() | Where-Object { $_.Key -like "*ingress*" })) {
@@ -469,21 +480,22 @@ jobs:
               $appConfig.ingress = $appConfig.ingress | Where-Object { $_.name -ne "wwwredirect" }
           }
 
-          # Delete redundant keys
-          $appConfig.Remove("deployment")
-          $appConfig.Remove("autoscaling")
-          $appConfig.Remove("service")
-          $appConfig.Remove("image")
-          $appConfig.Remove("replicaCount")
-          $appConfig.Remove("resources")
-          $appConfig.Remove("volumes")
-          $appConfig.Remove("cronjobs")
-          $appConfig.Remove("fullnameOverride")
-          $appConfig.Remove("nameOverride")
-          $appConfig.Remove("imagePullSecrets")
+          # Store keys to remove in a separate list
+          $keysToRemove = @()
+
+          foreach ($key in $appConfig.Keys) {
+              if (($key -ne "ingress") -and ($key -ne "environment")) {
+                  $keysToRemove += $key
+              }
+          }
+
+          # Remove keys from the original collection
+          foreach ($key in $keysToRemove) {
+              $appConfig.Remove($key)
+          }
 
           # Write to file
-          $appConfig | ConvertTo-Yaml | Out-File -FilePath "./values-override.yaml"
+          $appConfig | ConvertTo-Yaml | ForEach-Object { $_ -replace "  name:", "- name:" } | Out-File -FilePath "./values-override.yaml"
 
           # Output file content
           Write-Output "---"
