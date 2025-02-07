@@ -47,8 +47,21 @@ jobs:
               echo "environmentCharts=false" >> $env:GITHUB_ENV
           }
 
+      - name: Check if charts directory exists
+        id: charts-directory
+        shell: pwsh
+        run: |
+          if (Test-Path -Path "./deployments/charts") {
+              echo "charts=true"
+              echo "charts=true" >> $env:GITHUB_ENV
+          }
+          else {
+              echo "charts=false"
+              echo "charts=false" >> $env:GITHUB_ENV
+          }
+
       - name: Get Chart.yaml appVersion
-        if: ${{ env.environmentCharts == 'false' && ! inputs.version }}
+        if: ${{ env.charts == 'true' && env.environmentCharts == 'false' && ! inputs.version }}
         id: chartyaml
         uses: rmeneely/get-yaml-value@v1
         with:
@@ -56,7 +69,7 @@ jobs:
           varlist: appVersion
 
       - name: Get Environment Chart.yaml appVersion
-        if: ${{ env.environmentCharts == 'true' && ! inputs.version }}
+        if: ${{ env.charts == 'true' && env.environmentCharts == 'true' && ! inputs.version }}
         id: environmentchartyaml
         uses: rmeneely/get-yaml-value@v1
         with:
