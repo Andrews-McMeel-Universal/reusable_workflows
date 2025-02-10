@@ -23,7 +23,7 @@ on:
         required: false
         type: string
         description: "Resource Type. Can be either 'frontdoor' or 'cdn'."
-        default: 'cdn'
+        default: ${{ vars.CDN_RESOURCE_TYPE || 'cdn' }}
     secrets:
       azureCredentials:
         required: true
