@@ -74,7 +74,7 @@ jobs:
             }
 
             if ("${{ inputs.resourceType }}" -eq 'frontdoor') {
-              Clear-AzFrontDoorCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPaths '/*'
+              Clear-AzFrontDoorCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPath '/*'
             }
             else {
               Clear-AzCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPath '/*'
