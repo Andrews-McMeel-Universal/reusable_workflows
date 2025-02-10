@@ -39,6 +39,11 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
+      - name: Install PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.2.1
+        with:
+          modules-to-cache: Az.Cdn
+
       - name: Purge CDN cache
         uses: azure/powershell@v2
         with:
