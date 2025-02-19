@@ -74,7 +74,7 @@ jobs:
                   Write-Output "CNAME record '${{ env.hostName }}' already exists. Removing it before adding the new one."
 
                   # Ensure we specify the RecordData (current CNAME target)
-                  Remove-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -Name "${{ env.hostName }}" -ComputerName ${{ secrets.domainController }} -RecordData $existingRecord.RecordData -Force
+                  Remove-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -Name "${{ env.hostName }}" -ComputerName ${{ secrets.domainController }} -RecordData $existingRecord.RecordData.HostNameAlias -RRType "CNAME" -Force
               }
 
               # Add the new CNAME record
