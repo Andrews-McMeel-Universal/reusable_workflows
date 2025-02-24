@@ -25,7 +25,7 @@ on:
         required: false
         type: string
         description: "Maximum number of replicas for the application HPA."
-        default: "30"
+        default: ${{ vars.KUBERNETES_MAXIMUM_REPLICAS || '30' }}
       deploymentTimeout:
         required: false
         type: number
