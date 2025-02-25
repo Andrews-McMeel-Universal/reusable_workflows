@@ -90,6 +90,7 @@ jobs:
               # Remove existing CNAME record if it exists
               if ($existingRecord) {
                   Write-Output "CNAME record '$hostName' already exists. Removing it before adding the new one."
+                  $recordDataAlias = $existingRecord.RecordData.HostNameAlias.TrimEnd('.')
                   Remove-DnsServerResourceRecord -ZoneName "$domainName" -Name "$hostName" -ComputerName $domainController -RecordData $existingRecord.RecordData.HostNameAlias -RRType "CNAME" -Force
               }
 
