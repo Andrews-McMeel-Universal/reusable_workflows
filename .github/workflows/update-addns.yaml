@@ -96,7 +96,7 @@ jobs:
               # Determine the DNS record name
               if ($dnsSubdomainRecords.Count -eq 0) {
                   Write-Host "Detected '$hostName' as a root-level subfolder in DNS. Using '@' as Name."
-                  $dnsRecordName = "@"
+                  $dnsRecordName = "@.$dnsSubdomain"
               }
               else {
                   Write-Host "Detected '$hostName' as a normal record. Using '$hostName' as Name."
