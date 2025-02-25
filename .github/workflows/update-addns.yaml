@@ -79,10 +79,10 @@ jobs:
 
               # Strip the trailing dot from the FQDN
               $aksIngress = "${{ env.aksIngress }}".TrimEnd('.')
-              
+
               # Add the new CNAME record
-              Write-Output "Adding CNAME record for '${{ env.aksIngress }}' to '${{ env.hostName }}.${{ env.domainName }}'"
-              Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "${{ env.aksIngress }}" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} -PassThru
+              Write-Output "Adding CNAME record for '$aksIngress' to '${{ env.hostName }}.${{ env.domainName }}'"
+              Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "$aksIngress" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} -PassThru
           } 
           catch {
               Write-Host "Error updating DNS record: $_"
