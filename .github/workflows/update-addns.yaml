@@ -70,11 +70,22 @@ jobs:
           $domainName = "${{ env.domainName }}"
           $domainController = "${{ secrets.domainController }}"
           $aksIngress = "${{ env.aksIngress }}"
+          $dnsFQDN = "$hostName.$domainName"
+          $dnsSubdomain = ($dnsFQDN -replace "^[^.]+\.", "")
+
+          # Get existing DNS records in subfolder
+          $dnsSubdomainRecords = @(Get-DnsServerResourceRecord -ZoneName "$domainName" -ComputerName $domainController | Where-Object { $_.HostName -like "$dnsSubdomain.*" })
 
           # Update DNS record
           try {
               # Get existing CNAME record
               $existingRecord = Get-DnsServerResourceRecord -ZoneName "$domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$hostName" }
+
+              # Error out if the existing record is not a CNAME record
+              if ($existingRecord -and $existingRecord.RecordType -ne "CNAME") {
+                  Write-Host "Error: Existing record for '$hostName' is not a CNAME record. It is a $($existingRecord.RecordType) record."
+                  exit 1
+              }
 
               # Remove existing CNAME record if it exists
               if ($existingRecord) {
@@ -83,7 +94,7 @@ jobs:
               }
 
               # Determine the DNS record name
-              if ($existingRecord -and $existingRecord.RecordClass -eq "IN") {
+              if ($dnsSubdomainRecords.Count -eq 0) {
                   Write-Host "Detected '$hostName' as a root-level subfolder in DNS. Using '@' as Name."
                   $dnsRecordName = "@"
               }
@@ -96,7 +107,7 @@ jobs:
               $aksIngress = "$aksIngress".TrimEnd('.')
 
               # Add the new CNAME record
-              Write-Output "Adding CNAME record for '$aksIngress' to '$hostName.$domainName'"
+              Write-Output "Adding CNAME record for '$aksIngress' to '$dnsRecordName.$domainName'"
               Add-DnsServerResourceRecordCName -Name "$dnsRecordName" -HostNameAlias "$aksIngress" -ZoneName "$domainName" -ComputerName $domainController -PassThru
           } 
           catch {
