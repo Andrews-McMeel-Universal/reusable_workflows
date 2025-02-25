@@ -76,6 +76,11 @@ jobs:
           # Get existing DNS records in subfolder
           $dnsSubdomainRecords = @(Get-DnsServerResourceRecord -ZoneName "$domainName" -ComputerName $domainController | Where-Object { $_.HostName -like "$dnsSubdomain.*" })
 
+          # run whoami
+          Write-Output "Running whoami"
+          whoami
+
+
           # Update DNS record
           try {
               # Get existing CNAME record
