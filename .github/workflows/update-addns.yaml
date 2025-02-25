@@ -66,6 +66,10 @@ jobs:
         timeout-minutes: 15
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+          $VerbosePreference = "Continue"
+          $DebugPreference = "Continue"
+
           try {
               # Get existing CNAME record
               $existingRecord = Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.hostName }}" -and $_.RecordType -eq "CNAME" }
@@ -86,11 +90,19 @@ jobs:
           } 
           catch {
               Write-Host "Error updating DNS record: $_"
+              Write-Host "Exception Message: $($_.Exception.Message)"
+              Write-Host "Full Exception Details: $($_ | Format-List *)"
               exit 1
           }
 
           # Verify the update
-          Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.hostName }}" } | Format-List
+          try {
+              Write-Output "Verifying the DNS record..."
+              Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.hostName }}" } | Format-List
+          }
+          catch {
+              Write-Host "Error verifying the DNS record: $_"
+          }
 
           # Sync DNS Zone
           try {
