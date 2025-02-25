@@ -66,36 +66,48 @@ jobs:
         timeout-minutes: 15
         shell: pwsh
         run: |
+          $hostName = "${{ env.hostName }}"
+          $domainName = "${{ env.domainName }}"
+          $domainController = "${{ secrets.domainController }}"
+          $aksIngress = "${{ env.aksIngress }}"
+
+          # Update DNS record
           try {
               # Get existing CNAME record
-              $existingRecord = Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.hostName }}" -and $_.RecordType -eq "CNAME" }
+              $existingRecord = Get-DnsServerResourceRecord -ZoneName "$domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$hostName" }
 
+              # Remove existing CNAME record if it exists
               if ($existingRecord) {
-                  Write-Output "CNAME record '${{ env.hostName }}' already exists. Removing it before adding the new one."
+                  Write-Output "CNAME record '$hostName' already exists. Removing it before adding the new one."
+                  Remove-DnsServerResourceRecord -ZoneName "$domainName" -Name "$hostName" -ComputerName $domainController -RecordData $existingRecord.RecordData.HostNameAlias -RRType "CNAME" -Force
+              }
 
-                  # Ensure we specify the RecordData (current CNAME target)
-                  Remove-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -Name "${{ env.hostName }}" -ComputerName ${{ secrets.domainController }} -RecordData $existingRecord.RecordData.HostNameAlias -RRType "CNAME" -Force
+              # Determine the DNS record name
+              if ($existingRecord -and $existingRecord.RecordClass -eq "IN") {
+                  Write-Host "Detected '$hostName' as a root-level subfolder in DNS. Using '@' as Name."
+                  $dnsRecordName = "@"
+              }
+              else {
+                  Write-Host "Detected '$hostName' as a normal record. Using '$hostName' as Name."
+                  $dnsRecordName = $hostName
               }
 
               # Strip the trailing dot from the FQDN
-              $aksIngress = "${{ env.aksIngress }}".TrimEnd('.')
+              $aksIngress = "$aksIngress".TrimEnd('.')
 
               # Add the new CNAME record
-              Write-Output "Adding CNAME record for '$aksIngress' to '${{ env.hostName }}.${{ env.domainName }}'"
-              Add-DnsServerResourceRecordCName -Name "${{ env.hostName }}" -HostNameAlias "$aksIngress" -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} -PassThru
+              Write-Output "Adding CNAME record for '$aksIngress' to '$hostName.$domainName'"
+              Add-DnsServerResourceRecordCName -Name "$dnsRecordName" -HostNameAlias "$aksIngress" -ZoneName "$domainName" -ComputerName $domainController -PassThru
           } 
           catch {
               Write-Host "Error updating DNS record: $_"
               
               if ($_.Exception) {
-                  Write-Host "Exception Type: $($_.Exception.GetType().FullName)"
                   Write-Host "Exception Message: $($_.Exception.Message)"
                   
                   if ($_.Exception.InnerException) {
                       Write-Host "Inner Exception Message: $($_.Exception.InnerException.Message)"
                   }
-                  
-                  Write-Host "Stack Trace: $($_.ScriptStackTrace)"
               }
 
               Write-Host "Full Error Details: $($_ | Out-String)"
@@ -105,7 +117,7 @@ jobs:
           # Verify the update
           try {
               Write-Output "Verifying the DNS record..."
-              Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.hostName }}" } | Format-List
+              Get-DnsServerResourceRecord -ZoneName "$domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$hostName" } | Format-List
           }
           catch {
               Write-Host "Error verifying the DNS record: $_"
@@ -113,8 +125,8 @@ jobs:
 
           # Sync DNS Zone
           try {
-              Write-Output "Syncing DNS Zone '${{ env.domainName }}'"
-              Sync-DnsServerZone -Name "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }}
+              Write-Output "Syncing DNS Zone '$domainName'"
+              Sync-DnsServerZone -Name "$domainName" -ComputerName $domainController
           } 
           catch {
               Write-Host "Skipping zone sync. Zone is currently being synced."
