@@ -66,10 +66,6 @@ jobs:
         timeout-minutes: 15
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          $VerbosePreference = "Continue"
-          $DebugPreference = "Continue"
-
           try {
               # Get existing CNAME record
               $existingRecord = Get-DnsServerResourceRecord -ZoneName "${{ env.domainName }}" -ComputerName ${{ secrets.domainController }} | Where-Object { $_.HostName -eq "${{ env.hostName }}" -and $_.RecordType -eq "CNAME" }
@@ -90,8 +86,19 @@ jobs:
           } 
           catch {
               Write-Host "Error updating DNS record: $_"
-              Write-Host "Exception Message: $($_.Exception.Message)"
-              Write-Host "Full Exception Details: $($_ | Format-List *)"
+              
+              if ($_.Exception) {
+                  Write-Host "Exception Type: $($_.Exception.GetType().FullName)"
+                  Write-Host "Exception Message: $($_.Exception.Message)"
+                  
+                  if ($_.Exception.InnerException) {
+                      Write-Host "Inner Exception Message: $($_.Exception.InnerException.Message)"
+                  }
+                  
+                  Write-Host "Stack Trace: $($_.ScriptStackTrace)"
+              }
+
+              Write-Host "Full Error Details: $($_ | Out-String)"
               exit 1
           }
 
