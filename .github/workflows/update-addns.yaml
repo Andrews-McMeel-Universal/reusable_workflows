@@ -70,11 +70,6 @@ jobs:
           $domainName = "${{ env.domainName }}"
           $domainController = "${{ secrets.domainController }}"
           $aksIngress = "${{ env.aksIngress }}"
-          $dnsFQDN = "$hostName.$domainName"
-          $dnsSubdomain = ($dnsFQDN -replace "^[^.]+\.", "")
-
-          # Get existing DNS records in subfolder
-          $dnsSubdomainRecords = @(Get-DnsServerResourceRecord -ZoneName "$domainName" -ComputerName $domainController | Where-Object { $_.HostName -like "$dnsSubdomain.*" })
 
           # Update DNS record
           try {
@@ -104,29 +99,14 @@ jobs:
                       Write-Host "Inner Exception Message: $($_.Exception.InnerException.Message)"
                   }
               }
-
-              Write-Host "Full Error Details: $($_ | Out-String)"
               exit 1
           }
 
           # Add new CNAME record
           try {
-              # Determine the DNS record name
-              if ($dnsSubdomainRecords.Count -eq 0) {
-                  Write-Host "Detected '$hostName' as a root-level subfolder in DNS. Using '@' as Name."
-                  $dnsRecordName = "@.$dnsSubdomain"
-              }
-              else {
-                  Write-Host "Detected '$hostName' as a normal record. Using '$hostName' as Name."
-                  $dnsRecordName = $hostName
-              }
-
-              # Strip the trailing dot from the FQDN
-              $aksIngress = "$aksIngress".TrimEnd('.')
-
               # Add the new CNAME record
-              Write-Output "Adding CNAME record for '$aksIngress' to '$dnsRecordName.$domainName'"
-              Add-DnsServerResourceRecordCName -Name "$dnsRecordName" -HostNameAlias "$aksIngress" -ZoneName "$domainName" -ComputerName $domainController -PassThru
+              Write-Output "Adding CNAME record for '$aksIngress' to '$hostName'"
+              Add-DnsServerResourceRecordCName -Name "$hostName" -HostNameAlias "$aksIngress" -ZoneName "$domainName" -ComputerName $domainController -PassThru
           } 
           catch {
               Write-Host "Error updating DNS record: $_"
@@ -138,8 +118,6 @@ jobs:
                       Write-Host "Inner Exception Message: $($_.Exception.InnerException.Message)"
                   }
               }
-
-              Write-Host "Full Error Details: $($_ | Out-String)"
               exit 1
           }
 
