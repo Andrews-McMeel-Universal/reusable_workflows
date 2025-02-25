@@ -93,7 +93,24 @@ jobs:
                   $recordDataAlias = $existingRecord.RecordData.HostNameAlias.TrimEnd('.')
                   Remove-DnsServerResourceRecord -ZoneName "$domainName" -Name "$hostName" -ComputerName $domainController -RecordData $recordDataAlias -RRType "CNAME" -Force
               }
+          }
+          catch {
+              Write-Host "Error removing existing DNS record: $_"
+              
+              if ($_.Exception) {
+                  Write-Host "Exception Message: $($_.Exception.Message)"
+                  
+                  if ($_.Exception.InnerException) {
+                      Write-Host "Inner Exception Message: $($_.Exception.InnerException.Message)"
+                  }
+              }
 
+              Write-Host "Full Error Details: $($_ | Out-String)"
+              exit 1
+          }
+
+          # Add new CNAME record
+          try {
               # Determine the DNS record name
               if ($dnsSubdomainRecords.Count -eq 0) {
                   Write-Host "Detected '$hostName' as a root-level subfolder in DNS. Using '@' as Name."
