@@ -71,7 +71,7 @@ jobs:
           $domainController = "${{ secrets.domainController }}"
           $aksIngress = "${{ env.aksIngress }}"
 
-          # Update DNS record
+          # Remove existing CNAME record
           try {
               # Get existing CNAME record
               $existingRecord = Get-DnsServerResourceRecord -ZoneName "$domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$hostName" }
@@ -82,7 +82,7 @@ jobs:
                   exit 1
               }
 
-              # Remove existing CNAME record if it exists
+              # Remove record
               if ($existingRecord) {
                   Write-Output "CNAME record '$hostName' already exists. Removing it before adding the new one."
                   $recordDataAlias = $existingRecord.RecordData.HostNameAlias.TrimEnd('.')
@@ -91,10 +91,7 @@ jobs:
           }
           catch {
               Write-Host "Error removing existing DNS record: $_"
-              
               if ($_.Exception) {
-                  Write-Host "Exception Message: $($_.Exception.Message)"
-                  
                   if ($_.Exception.InnerException) {
                       Write-Host "Inner Exception Message: $($_.Exception.InnerException.Message)"
                   }
@@ -110,10 +107,7 @@ jobs:
           } 
           catch {
               Write-Host "Error updating DNS record: $_"
-              
               if ($_.Exception) {
-                  Write-Host "Exception Message: $($_.Exception.Message)"
-                  
                   if ($_.Exception.InnerException) {
                       Write-Host "Inner Exception Message: $($_.Exception.InnerException.Message)"
                   }
