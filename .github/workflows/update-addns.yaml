@@ -86,7 +86,7 @@ jobs:
               if ($existingRecord) {
                   Write-Output "CNAME record '$hostName' already exists. Removing it before adding the new one."
                   Remove-DnsServerResourceRecord -ZoneName "$domainName" -Name "$hostName" -ComputerName $domainController -RecordData $existingRecord.RecordData.HostNameAlias -RRType "CNAME" -Force
-                  Write-Output "Removed existing CNAME record for '$hostName'"
+                  Write-Output "Removed existing CNAME record for '$hostName.$domainName'"
               }
           }
           catch {
@@ -102,7 +102,7 @@ jobs:
           # Add new CNAME record
           try {
               # Add the new CNAME record
-              Write-Output "Adding CNAME record for '$aksIngress' to '$hostName'"
+              Write-Output "Adding CNAME record for '$aksIngress' to '$hostName.$domainName'"
               Add-DnsServerResourceRecordCName -Name "$hostName" -HostNameAlias "$aksIngress" -ZoneName "$domainName" -ComputerName $domainController -PassThru
           } 
           catch {
