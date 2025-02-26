@@ -294,6 +294,12 @@ jobs:
               continue
             fi
             
+            # Skip FUNCTIONS_WORKER_RUNTIME and AzureWebJobsStorage
+            if [[ "$key" == "FUNCTIONS_WORKER_RUNTIME" || "$key" == "AzureWebJobsStorage" ]]; then
+              echo "Skipping $key as it is a reserved key"
+              continue
+            fi
+
             echo "Adding $key to app settings"
             if [[ "${{ inputs.environment }}" == "production" ]]; then
               az functionapp config appsettings set \
