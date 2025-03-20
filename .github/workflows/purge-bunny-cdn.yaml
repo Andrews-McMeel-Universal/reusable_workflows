@@ -1,0 +1,35 @@
+name: Purge Bunny CDN
+
+on:
+  workflow_call:
+    inputs:
+      CDN_DOMAIN:
+        required: false
+        type: string
+        description: "CDN Domain."
+        default: ${{ vars.BUNNY_CDN_DOMAIN }}
+    secrets:
+      BUNNY_CDN_API_KEY:
+        required: true
+
+jobs:
+  purge-cdn:
+    name: Purge Bunny CDN Cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purge Bunny CDN cache
+        run: |
+          response_code=$(curl -o /dev/null -s -w "%{http_code}" --fail-with-body \
+          -X POST \
+          --url "https://api.bunny.net/purge?url=https%3A%2F%2F${CDN_DOMAIN}%2F%2A&async=false" \
+          --header "AccessKey: ${ACCESS_KEY}")
+
+          if [[ "$response_code" -ne 200 ]]; then
+            echo "Failed to purge CDN cache. HTTP response code: $response_code"
+            exit 1
+          fi
+
+          echo "CDN cache purged successfully"
+        env:
+          ACCESS_KEY: ${{ secrets.BUNNY_CDN_API_KEY }}
+          CDN_DOMAIN: ${{ inputs.BUNNY_CDN_DOMAIN }}
