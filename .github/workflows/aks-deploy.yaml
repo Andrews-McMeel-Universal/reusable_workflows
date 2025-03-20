@@ -652,7 +652,6 @@ jobs:
         uses: getsentry/action-release@v3
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.sentryAuthToken }}
-          SENTRY_ORG: ${{ github.repository_owner }}
           SENTRY_PROJECT: ${{ github.event.repository.name }}
           SENTRY_URL: ${{ env.NEXT_PUBLIC_SENTRY_DSN }}
         with:
