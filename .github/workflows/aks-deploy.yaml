@@ -100,7 +100,7 @@ on:
         required: false
       PAT_ACTION_CI:
         required: false
-      SENTRY_AUTH_TOKEN:
+      sentryAuthToken:
         required: false
 
 jobs:
