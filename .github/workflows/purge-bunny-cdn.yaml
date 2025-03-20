@@ -3,7 +3,7 @@ name: Purge Bunny CDN
 on:
   workflow_call:
     inputs:
-      CDN_DOMAIN:
+      BUNNY_CDN_DOMAIN:
         required: false
         type: string
         description: "CDN Domain."
