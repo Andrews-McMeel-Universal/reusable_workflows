@@ -645,6 +645,18 @@ jobs:
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
+      - name: Create Sentry release
+        if: env.SENTRY_AUTH_TOKEN && env.NEXT_PUBLIC_SENTRY_DSN
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ env.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ github.repository_owner }}
+          SENTRY_PROJECT: ${{ github.event.repository.name }}
+          SENTRY_URL: ${{ env.NEXT_PUBLIC_SENTRY_DSN }}
+        with:
+          environment: ${{ inputs.environment }}
+          release: ${{ github.event.release.tag_name || github.sha }}
+
       - name: Get Current Date
         id: date
         run: |
