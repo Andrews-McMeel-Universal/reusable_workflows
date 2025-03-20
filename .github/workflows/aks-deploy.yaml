@@ -648,7 +648,7 @@ jobs:
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
       - name: Create Sentry release
-        if: env.SENTRY_AUTH_TOKEN && env.NEXT_PUBLIC_SENTRY_DSN
+        if: env.NEXT_PUBLIC_SENTRY_DSN
         uses: getsentry/action-release@v3
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
