@@ -81,6 +81,11 @@ on:
         type: string
         description: "Check out submodules"
         default: ${{ vars.GIT_CHECKOUT_SUBMODULES }}
+      publishSentryRelease:
+        required: false
+        type: string
+        description: "Publish Sentry release"
+        default: ${{ vars.PUBLISH_SENTRY_RELEASE || 'true' }}
     secrets:
       azureClusterName:
         required: true
@@ -648,7 +653,7 @@ jobs:
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
       - name: Create Sentry release
-        if: env.NEXT_PUBLIC_SENTRY_DSN
+        if: env.NEXT_PUBLIC_SENTRY_DSN && inputs.publishSentryRelease == 'true'
         uses: getsentry/action-release@v3
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.sentryAuthToken }}
