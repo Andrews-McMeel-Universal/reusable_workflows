@@ -100,6 +100,8 @@ on:
         required: false
       PAT_ACTION_CI:
         required: false
+      sentryAuthToken:
+        required: false
 
 jobs:
   build:
@@ -644,6 +646,18 @@ jobs:
           az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.dnsSubDomain }}" --cname "${AKS_INGRESS}" --ttl 3600
 
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
+
+      - name: Create Sentry release
+        if: env.NEXT_PUBLIC_SENTRY_DSN
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.sentryAuthToken }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ github.event.repository.name }}
+          SENTRY_URL: ${{ env.NEXT_PUBLIC_SENTRY_DSN }}
+        with:
+          environment: ${{ inputs.environment }}
+          release: ${{ github.event.release.tag_name || github.sha }}
 
       - name: Get Current Date
         id: date
