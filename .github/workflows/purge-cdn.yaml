@@ -24,13 +24,21 @@ on:
         type: string
         description: "Resource Type. Can be either 'frontdoor' or 'cdn'."
         default: ${{ vars.CDN_RESOURCE_TYPE || 'frontdoor' }}
+      bunnyCdnDomain:
+        required: false
+        type: string
+        description: "Bunny CDN Domain. Set to the domain of your Bunny CDN."
+        default: ${{ vars.BUNNY_CDN_DOMAIN }}
     secrets:
       azureCredentials:
         required: true
+      bunnyCdnApiKey:
+        required: false
 
 jobs:
-  purge-cdn:
-    name: Purge CDN Cache
+  purge-azure-cdn:
+    name: Purge Azure CDN Cache
+    if: inputs.resourceType == 'frontdoor' || inputs.resourceType == 'cdn'
     runs-on: ubuntu-latest
     steps:
       - name: Login via Az module
@@ -39,7 +47,7 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
-      - name: Purge CDN cache
+      - name: Purge Azure CDN cache
         uses: azure/powershell@v2
         with:
           azPSVersion: "latest"
@@ -79,3 +87,25 @@ jobs:
             else {
               Clear-AzCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPath '/*'
             }
+
+  purge-bunny-cdn:
+    name: Purge Bunny CDN Cache
+    if: inputs.resourceType == 'bunny'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purge Bunny CDN cache
+        run: |
+          response_code=$(curl -o /dev/null -s -w "%{http_code}" --fail-with-body \
+          -X POST \
+          --url "https://api.bunny.net/purge?url=https%3A%2F%2F${CDN_DOMAIN}%2F%2A&async=false" \
+          --header "AccessKey: ${ACCESS_KEY}")
+
+          if [[ "$response_code" -ne 200 ]]; then
+            echo "Failed to purge CDN cache. HTTP response code: $response_code"
+            exit 1
+          fi
+
+          echo "CDN cache purged successfully"
+        env:
+          ACCESS_KEY: ${{ secrets.bunnyCdnApiKey }}
+          CDN_DOMAIN: ${{ inputs.bunnyCdnDomain }}
