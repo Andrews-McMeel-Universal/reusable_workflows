@@ -31,7 +31,7 @@ on:
         default: ${{ vars.BUNNY_CDN_DOMAIN }}
     secrets:
       azureCredentials:
-        required: true
+        required: false
       bunnyCdnApiKey:
         required: false
 
