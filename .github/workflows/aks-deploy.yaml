@@ -482,6 +482,18 @@ jobs:
               }
           }
 
+          # Ensure the service annotations are set properly
+          if ($appConfig.service -and $appConfig.service.annotations) {
+              # Ensure the service has the correct internal load balancer annotation
+              if (-not $appConfig.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal") {
+                  Write-Output "Setting service.beta.kubernetes.io/azure-load-balancer-internal annotation for the service"
+                  $appConfig.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal" = "true"
+              }
+          }
+          else {
+              Write-Output "No service found in values.yaml to set internal load balancer annotation."
+          }
+
           # Remove www redirect ingress if not production
           if ($environment -ne "production") {
               $appConfig.ingress = $appConfig.ingress | Where-Object { $_.name -ne "wwwredirect" }
