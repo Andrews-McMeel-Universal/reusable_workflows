@@ -329,11 +329,10 @@ jobs:
                       Write-Output "Skipping www redirect for $($item.name)"
                       continue
                   }
-                  # Reset ingress whitelist to input
-                  $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
 
                   # Set ingress whitelist if not set
-                  if (($item.name -eq "ingress") -and ($ingressWhitelist -notmatch '^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.((25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.){2}(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)(/(3[0-2]|[1-2]?[0-9]))?$')) {
+                  $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
+                  if ($ingressWhitelist -notmatch '^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.((25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.){2}(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)(/(3[0-2]|[1-2]?[0-9]))?$') {
                       Write-Output "Ingress whitelist not set for $($item.name)"
                       if (($ingressWhitelist -eq "service") -or ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
                           # Use service whitelist
@@ -376,10 +375,6 @@ jobs:
                           $item.host = "www.$($item.host)"
                       }
 
-                      # Add ingressWhitelist to ingress
-                      Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
-                      
                       # Add webAuthentication to main ingress
                       if ($webAuthentication -eq "true") {
                           Write-Output "Adding basic auth to $($item.name)"
@@ -396,6 +391,13 @@ jobs:
                           $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = "207.67.20.252"
                       }
                       Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")"
+                  }
+
+                  # Ensure the ingress whitelist is set for all other ingresses except admin-ingress
+                  if ($item.name -ne "admin-ingress") {
+                      # Add ingressWhitelist to ingress
+                      Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
+                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
                   }
 
                   # Remove annotations if empty
