@@ -378,10 +378,10 @@ jobs:
                           $updatedIngress += [PSCustomObject]@{
                               name = "wwwredirect"
                               host = $item.host
-                              paths = @{
+                              paths = [
                                 - path = "/(.*)"
                                   pathType = "Prefix"
-                              }
+                              ]
                               ingressClassName = $item.ingressClassName
                               annotations = @{
                                   "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
