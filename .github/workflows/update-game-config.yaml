@@ -46,7 +46,7 @@ jobs:
       - name: Install PowerShell modules
         shell: pwsh
         run: |
-          Install-Module -Name SimplySql:1.9.1,Az
+          Install-Module -Name SimplySql:1.9.1,Az -Force
 
       - name: Update Game Configs
         shell: pwsh

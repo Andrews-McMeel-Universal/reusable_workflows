@@ -123,7 +123,7 @@ jobs:
       - name: Install PowerShell modules
         shell: pwsh
         run: |
-          Install-Module -Name powershell-yaml
+          Install-Module -Name powershell-yaml -Force
 
       - name: Extract Helm values
         id: setenvs
@@ -296,7 +296,7 @@ jobs:
       - name: Install PowerShell modules
         shell: pwsh
         run: |
-          Install-Module -Name powershell-yaml
+          Install-Module -Name powershell-yaml -Force
 
       - name: Create values override file
         shell: pwsh
@@ -690,7 +690,7 @@ jobs:
       - name: Install PowerShell modules
         shell: pwsh
         run: |
-          Install-Module -Name AzTable,Az.Storage,Az.Resources
+          Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
 
       - name: Record deployment information in Azure Storage Table
         shell: pwsh
