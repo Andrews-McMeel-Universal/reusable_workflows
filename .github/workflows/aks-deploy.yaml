@@ -376,15 +376,16 @@ jobs:
                       if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -ne "true")) {
                           # Add www redirect ingress
                           $updatedIngress += [PSCustomObject]@{
-                            name = "wwwredirect"
-                            host = $item.host
-                            paths = @{
-                                path = "/(.*)"
-                                pathType = "Prefix"
-                            }
-                            ingressClassName = $item.ingressClassName
-                            annotations = @{
-                                "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
+                              name = "wwwredirect"
+                              host = $item.host
+                              paths = @{
+                                  path = "/(.*)"
+                                  pathType = "Prefix"
+                              }
+                              ingressClassName = $item.ingressClassName
+                              annotations = @{
+                                  "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
+                              }
                           }
 
                           Write-Output "Adding www to $($item.name) host"
