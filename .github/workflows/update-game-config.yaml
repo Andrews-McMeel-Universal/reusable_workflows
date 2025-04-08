@@ -44,9 +44,9 @@ jobs:
           environment: ${{ inputs.environment }}
 
       - name: Install PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2.1
-        with:
-          modules-to-cache: SimplySql:1.9.1, Az
+        shell: pwsh
+        run: |
+          Install-Module -Name SimplySql:1.9.1,Az
 
       - name: Update Game Configs
         shell: pwsh

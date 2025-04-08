@@ -121,9 +121,9 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
       - name: Install PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2.1
-        with:
-          modules-to-cache: powershell-yaml
+        shell: pwsh
+        run: |
+          Install-Module -Name powershell-yaml
 
       - name: Extract Helm values
         id: setenvs
@@ -294,9 +294,9 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Install PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2.1
-        with:
-          modules-to-cache: powershell-yaml
+        shell: pwsh
+        run: |
+          Install-Module -Name powershell-yaml
 
       - name: Create values override file
         shell: pwsh
@@ -688,9 +688,9 @@ jobs:
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
       - name: Install PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.2.1
-        with:
-          modules-to-cache: AzTable, Az.Storage, Az.Resources
+        shell: pwsh
+        run: |
+          Install-Module -Name AzTable,Az.Storage,Az.Resources
 
       - name: Record deployment information in Azure Storage Table
         shell: pwsh
