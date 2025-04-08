@@ -176,7 +176,7 @@ jobs:
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
           # Set ingress
-          if ($appConfig.schemaVersion -eq "2") {
+          if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -gt "2.0.0")) {
               $ingress = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).host
           }
           else {
@@ -321,7 +321,7 @@ jobs:
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
           $clusterIssuer = "letsencrypt-prod"
 
-          if ($appConfig.schemaVersion -eq "2") {
+          if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -gt "2.0.0")) {
               $updatedIngress = @()
               foreach ($item in $appConfig.ingress) {
                   # Skip setting www redirect ingress if not production
