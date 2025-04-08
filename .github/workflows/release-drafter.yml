@@ -6,6 +6,10 @@ on:
       - main
   pull_request:
     types: [opened, reopened, synchronize]
+  workflow_call:
+    secrets:
+      GITHUB_TOKEN:
+        required: true
 
 permissions:
   contents: write
