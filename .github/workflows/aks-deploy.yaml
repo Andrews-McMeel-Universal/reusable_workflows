@@ -379,7 +379,7 @@ jobs:
                               name = "wwwredirect"
                               host = $item.host
                               paths = @{
-                                  path = "/(.*)"
+                                - path = "/(.*)"
                                   pathType = "Prefix"
                               }
                               ingressClassName = $item.ingressClassName
