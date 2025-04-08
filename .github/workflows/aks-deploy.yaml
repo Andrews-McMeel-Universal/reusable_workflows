@@ -324,6 +324,9 @@ jobs:
           if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -gt "2.0.0")) {
               $updatedIngress = @()
               foreach ($item in $appConfig.ingress) {
+                  # Set redirectToWWW to false by default
+                  $redirectToWWW = $false
+
                   # Skip setting www redirect ingress if not production
                   if (($item.name -eq "wwwredirect") -and ($environment -ne "production")) {
                       Write-Output "Skipping www redirect for $($item.name)"
@@ -371,6 +374,19 @@ jobs:
                   if ($item.name -eq "ingress") {
                       # Add WWW to ingress
                       if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -ne "true")) {
+                          # Add www redirect ingress
+                          $updatedIngress += [PSCustomObject]@{
+                            name = "wwwredirect"
+                            host = $item.host
+                            paths = @{
+                                path = "/(.*)"
+                                pathType = "Prefix"
+                            }
+                            ingressClassName = $item.ingressClassName
+                            annotations = @{
+                                "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
+                          }
+
                           Write-Output "Adding www to $($item.name) host"
                           $item.host = "www.$($item.host)"
                       }
@@ -408,7 +424,7 @@ jobs:
                   $updatedIngress += [PSCustomObject]@{
                       name = $item.name
                       host = $item.host
-                      path = $item.path
+                      paths = $item.paths
                       ingressClassName = $item.ingressClassName
                       annotations = $item.annotations
                   }
