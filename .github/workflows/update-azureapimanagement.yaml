@@ -50,6 +50,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install PowerShell modules
+        shell: pwsh
+        run: |
+          Install-Module -Name AzTable -Force
+
       - name: Login via Az module
         uses: azure/login@v2
         with:
@@ -60,9 +65,6 @@ jobs:
         id: getappinfo
         shell: pwsh
         run: |
-          Install-Module -Name AzTable -Force
-          Import-Module AzTable
-
           # Define the storage account and table name
           $appInfoTableName = "DeployedApplications"
           $storageAccountName = "amucloudapps"
