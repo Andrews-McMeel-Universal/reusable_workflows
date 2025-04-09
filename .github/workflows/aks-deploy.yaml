@@ -394,6 +394,7 @@ jobs:
                               ingressClassName = $item.ingressClassName
                               annotations = @{
                                   "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
+                                  "cert-manager.io/cluster-issuer" = $clusterIssuer
                               }
                           }
 
