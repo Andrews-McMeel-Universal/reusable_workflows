@@ -179,7 +179,7 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -ge "2.0.0")) {
               $ingress = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).host
-              if (($appConfig.ingress.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -ne "true")) {
+              if (($appConfig.ingress.redirectToWWW -eq $true) -and ($appEnvironment -eq "production") -and ($environmentIngress -ne "true")) {
                   $wwwIngress = $true
               }
           }
