@@ -695,7 +695,7 @@ jobs:
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
           # Add www ingress if needed
-          WWWINGRESS="${{ needs.build.outputs.wwwIngress }}"
+          WWWINGRESS="${${{ needs.build.outputs.wwwIngress }},,}"
           if [ "${WWWINGRESS}" == "true" ]; then
             INGRESSES=("www.${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }}" "${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }}")
           else
