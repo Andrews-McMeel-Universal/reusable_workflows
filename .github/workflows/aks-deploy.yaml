@@ -331,9 +331,6 @@ jobs:
           if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -ge "2.0.0")) {
               $updatedIngress = @()
               foreach ($item in $appConfig.ingress) {
-                  # Set redirectToWWW to false by default
-                  $redirectToWWW = $false
-
                   # Skip setting www redirect ingress if not production
                   if (($item.name -eq "wwwredirect") -and ($environment -ne "production")) {
                       Write-Output "Skipping www redirect for $($item.name)"
