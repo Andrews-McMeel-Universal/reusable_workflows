@@ -697,15 +697,15 @@ jobs:
           # Add www ingress if needed
           WWWINGRESS=$(echo "${{ needs.build.outputs.wwwIngress }}" | tr '[:upper:]' '[:lower:]')
           if [ "${WWWINGRESS}" == "true" ]; then
-            INGRESSES=("www.${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }}" "${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }}")
+            INGRESSES=("www.${{ needs.build.outputs.dnsSubDomain }}" "${{ needs.build.outputs.dnsSubDomain }}")
           else
-            INGRESSES=("${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }}")
+            INGRESSES=("${{ needs.build.outputs.dnsSubDomain }}")
           fi
 
           # Update DNS record
           for INGRESS in "${INGRESSES[@]}"; do
-            echo "Updating DNS record for ${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }} to $AKS_INGRESS"
-            az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.dnsSubDomain }}" --cname "${AKS_INGRESS}" --ttl 3600
+            echo "Updating DNS record for ${INGRESS} to $AKS_INGRESS"
+            az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${INGRESS}" --cname "${AKS_INGRESS}" --ttl 3600
           done
 
       - name: Create Sentry release
