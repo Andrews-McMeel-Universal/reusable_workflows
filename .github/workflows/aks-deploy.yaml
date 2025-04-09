@@ -386,6 +386,7 @@ jobs:
                               name = "wwwredirect"
                               host = $item.host
                               path = "/(.*)"
+                              pathType = $item.pathType
                               ingressClassName = $item.ingressClassName
                               annotations = @{
                                   "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
@@ -431,6 +432,7 @@ jobs:
                       name = $item.name
                       host = $item.host
                       path = $item.path
+                      pathType = $item.pathType
                       ingressClassName = $item.ingressClassName
                       annotations = $item.annotations
                   }
