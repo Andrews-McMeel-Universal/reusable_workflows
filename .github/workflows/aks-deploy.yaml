@@ -213,6 +213,7 @@ jobs:
           Write-Output "dnsSubDomain=$dnsSubDomain" >> $env:GITHUB_ENV
           Write-Output "ingress=$ingress"
           Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+          Write-Output "wwwIngress=$wwwIngress"
           Write-Output "wwwIngress=$wwwIngress" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
@@ -694,7 +695,7 @@ jobs:
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
 
           # Add www ingress if needed
-          WWWINGRESS = "${{ needs.build.outputs.wwwIngress }}"
+          WWWINGRESS="${{ needs.build.outputs.wwwIngress }}"
           if [ "${WWWINGRESS}" == "true" ]; then
             INGRESSES=("www.${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }}" "${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }}")
           else
