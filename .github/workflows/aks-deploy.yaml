@@ -176,8 +176,12 @@ jobs:
           Write-Output "release=$release" >> $env:GITHUB_ENV
 
           # Set ingress
-          if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -gt "2.0.0")) {
+          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -ge "2.0.0")) {
               $ingress = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).host
+              if (($appConfig.ingress.redirectToWWW -eq $true) -and ($appEnvironment -eq "production") -and ($environmentIngress -ne "true")) {
+                  $wwwIngress = $true
+              }
           }
           else {
               $ingress = $appConfig.ingress.host
@@ -209,6 +213,8 @@ jobs:
           Write-Output "dnsSubDomain=$dnsSubDomain" >> $env:GITHUB_ENV
           Write-Output "ingress=$ingress"
           Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+          Write-Output "wwwIngress=$wwwIngress"
+          Write-Output "wwwIngress=$wwwIngress" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -279,6 +285,7 @@ jobs:
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
       chartsPath: ${{ env.chartsPath }}
+      wwwIngress: ${{ env.wwwIngress }}
 
   deploy:
     name: AKS Deploy
@@ -321,7 +328,7 @@ jobs:
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
           $clusterIssuer = "letsencrypt-prod"
 
-          if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -gt "2.0.0")) {
+          if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -ge "2.0.0")) {
               $updatedIngress = @()
               foreach ($item in $appConfig.ingress) {
                   # Skip setting www redirect ingress if not production
@@ -371,6 +378,18 @@ jobs:
                   if ($item.name -eq "ingress") {
                       # Add WWW to ingress
                       if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -ne "true")) {
+                          # Add www redirect ingress
+                          $updatedIngress += [PSCustomObject]@{
+                              name = "wwwredirect"
+                              host = $item.host
+                              path = "/(.*)"
+                              ingressClassName = $item.ingressClassName
+                              annotations = @{
+                                  "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
+                                  "cert-manager.io/cluster-issuer" = $clusterIssuer
+                              }
+                          }
+
                           Write-Output "Adding www to $($item.name) host"
                           $item.host = "www.$($item.host)"
                       }
@@ -659,16 +678,28 @@ jobs:
       - name: Create or Update Public DNS Record
         id: dns
         run: |
+          # Set AKS cluster ingress
           if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
             INGRESS="${{ secrets.azureClusterName }}-${{ inputs.environment }}"
           else
             INGRESS="${{ secrets.azureClusterName }}"
           fi
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
-          echo "Updating DNS record for ${{ needs.build.outputs.dnsSubDomain }}.${{ needs.build.outputs.domainName }} to $AKS_INGRESS"
-          az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${{ needs.build.outputs.dnsSubDomain }}" --cname "${AKS_INGRESS}" --ttl 3600
-
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
+
+          # Add www ingress if needed
+          WWWINGRESS=$(echo "${{ needs.build.outputs.wwwIngress }}" | tr '[:upper:]' '[:lower:]')
+          if [ "${WWWINGRESS}" == "true" ]; then
+            INGRESSES=("www.${{ needs.build.outputs.dnsSubDomain }}" "${{ needs.build.outputs.dnsSubDomain }}")
+          else
+            INGRESSES=("${{ needs.build.outputs.dnsSubDomain }}")
+          fi
+
+          # Update DNS record
+          for INGRESS in "${INGRESSES[@]}"; do
+            echo "Updating DNS record for ${INGRESS} to $AKS_INGRESS"
+            az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${INGRESS}" --cname "${AKS_INGRESS}" --ttl 3600
+          done
 
       - name: Create Sentry release
         if: env.NEXT_PUBLIC_SENTRY_DSN && inputs.publishSentryRelease == 'true'
