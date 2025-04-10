@@ -9,6 +9,24 @@ on:
         type: boolean
         description: Dry run
         default: false
+  workflow_call:
+    inputs:
+      isdryrun:
+        type: boolean
+        description: Dry run
+        default: false
+      syncRepository:
+        type: string
+        description: The repository to sync with
+        default: ${{ vars.SYNC_REPO }}
+      syncRepositoryBranch:
+        type: string
+        description: The branch to sync with
+        default: ${{ vars.SYNC_REPO_BRANCH }}
+    secrets:
+      PAT_ACTION_CI:
+        required: true
+        description: Personal Access Token for GitHub Actions
 
 jobs:
   repo-sync:
@@ -20,16 +38,16 @@ jobs:
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
 
-      - name: actions-template-sync
+      - name: Sync with Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}
         uses: AndreasAugustin/actions-template-sync@v2
         with:
-          github_token: ${{ secrets.PAT_ACTION_CI }}
-          source_repo_path: Andrews-McMeel-Universal/.github
-          upstream_branch: main
+          source_gh_token: ${{ secrets.PAT_ACTION_CI }}
+          source_repo_path: Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}
+          upstream_branch: ${{ inputs.syncRepositoryBranch || vars.SYNC_REPO_BRANCH || 'main' }}
           pr_labels: sync
-          pr_commit_msg: 🔄 Synchronize with @Andrews-McMeel-Universal/.github
-          pr_title: 🔄 Sync with @Andrews-McMeel-Universal/.github
-          pr_branch_name_prefix: sync/dotgithub/
+          pr_commit_msg: 🔄 Synchronize with @Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}
+          pr_title: 🔄 Sync with @Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}
+          pr_branch_name_prefix: sync/
           pr_reviewers: Andrews-McMeel-Universal/devops-engineers
           is_dry_run: ${{ inputs.isdryrun || 'false' }}
           git_user_name: amutechtest
