@@ -1,5 +1,6 @@
 .github/CODEOWNERS
 .github/workflows/linters.yml
+.github/workflows/release-drafter.yml
 *Secrets.ps1
 README.md
 Secrets-example.json
