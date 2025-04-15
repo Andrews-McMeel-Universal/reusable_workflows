@@ -418,8 +418,7 @@ jobs:
                   }
 
                   # Add hostnames to domains variable
-                      $domains += $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
-                  }
+                  $domains += $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
               }
               # Ensure ingress is an array
               $appConfig.ingress = @($updatedIngress)
