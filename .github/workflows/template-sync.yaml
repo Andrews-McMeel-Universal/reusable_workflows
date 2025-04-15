@@ -52,3 +52,4 @@ jobs:
           is_dry_run: ${{ inputs.isdryrun || 'false' }}
           git_user_name: amutechtest
           git_user_email: amu_deploy@amuniversal.com
+          target_gh_token: ${{ secrets.PAT_ACTION_CI }}
