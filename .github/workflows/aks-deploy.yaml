@@ -688,7 +688,7 @@ jobs:
           fi
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
-          INGRESSES=("${{ steps.values-override.outputs.domains }}")
+          INGRESSES=($(echo "${{ needs.build.outputs.domains }}" | tr ' ' '\n' | sort -u | sed 's/^\(.*\)$/\1/' | tr '\n' ' '))
 
           # Update DNS record
           for INGRESS in "${INGRESSES[@]}"; do
