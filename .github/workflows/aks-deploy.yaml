@@ -493,8 +493,7 @@ jobs:
                   }
 
                   # Add hostnames to domains variable
-                      $domains += $item.Value.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
-                  }
+                  $domains += $item.Value.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
               }
           }
 
