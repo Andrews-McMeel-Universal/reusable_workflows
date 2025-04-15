@@ -690,6 +690,12 @@ jobs:
           echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
           INGRESSES=($(echo "${{ steps.values-override.outputs.domains }}" | tr ' ' '\n' | sort -u | sed 's/^\(.*\)$/\1/' | tr '\n' ' '))
 
+          # Check if INGRESSES is empty
+          if [ -z "${INGRESSES}" ]; then
+            echo "No domains found in values-override.yaml"
+            exit 1
+          fi
+
           # Update DNS record
           for INGRESS in "${INGRESSES[@]}"; do
             echo "Updating DNS record for ${INGRESS} to $AKS_INGRESS"
