@@ -544,9 +544,9 @@ jobs:
           Write-Output "---"
           Write-Output "# Source: DNS domains"
           Write-Output "domains=$domains"
-          Write-Output "domains=$domains" >> $env:GITHUB_ENV
+          Write-Output "domains=$domains" >> $GITHUB_OUTPUT
           Write-Output "dnsPrimaryDomain=$dnsPrimaryDomain"
-          Write-Output "dnsPrimaryDomain=$dnsPrimaryDomain" >> $env:GITHUB_ENV
+          Write-Output "dnsPrimaryDomain=$dnsPrimaryDomain" >> $GITHUB_OUTPUT
 
       - name: Bake Helm Templates
         id: bake
