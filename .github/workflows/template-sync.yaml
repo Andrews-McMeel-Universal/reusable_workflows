@@ -48,7 +48,7 @@ jobs:
           pr_commit_msg: 🔄 Synchronize with @Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}
           pr_title: 🔄 Sync with @Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}
           pr_branch_name_prefix: sync/
-          pr_reviewers: Andrews-McMeel-Universal/devops-engineers
+          pr_reviewers: "@Andrews-McMeel-Universal/devops-engineers"
           is_dry_run: ${{ inputs.isdryrun || 'false' }}
           git_user_name: amutechtest
           git_user_email: amu_deploy@amuniversal.com
