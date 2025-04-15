@@ -392,7 +392,7 @@ jobs:
                   }
 
                   # Add www redirect to ingress
-                  if (($item.name -ne "ingress") -and ("${{ needs.build.outputs.wwwIngress }}" -eq "true") -and ($item.redirectToWWW -ne $false) -and ($item.host -match ${{ needs.build.outputs.ingress }}) -or (($item.name -ne "ingress") -and ($item.redirectToWWW -eq $true))) {
+                  if (($item.name -ne "ingress") -and ("${{ needs.build.outputs.wwwIngress }}" -eq "true") -and ($item.redirectToWWW -ne $false) -and ($item.host -match "${{ needs.build.outputs.ingress }}") -or (($item.name -ne "ingress") -and ($item.redirectToWWW -eq $true))) {
                       Write-Output "Adding www to $($item.name) host"
                       $item.host = "www.$($item.host)"
                   }
