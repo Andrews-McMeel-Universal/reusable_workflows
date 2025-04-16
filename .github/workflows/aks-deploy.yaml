@@ -687,11 +687,13 @@ jobs:
             INGRESS="${{ secrets.azureClusterName }}"
           fi
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
-          echo "aksIngress=${AKS_INGRESS}" >> $GITHUB_OUTPUT
-          INGRESSES=($(echo "${{ steps.values-override.outputs.domains }}" | tr ' ' '\n' | sort -u | sed 's/^\(.*\)$/\1/' | tr '\n' ' '))
+          echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
+
+          # Populate INGRESSES array safely
+          mapfile -t INGRESSES < <(echo "${{ steps.values-override.outputs.domains }}" | tr ' ' '\n' | sort -u)
 
           # Check if INGRESSES is empty
-          if [ -z "${INGRESSES}" ]; then
+          if [ "${#INGRESSES[@]}" -eq 0 ]; then
             echo "No domains found in values-override.yaml"
             exit 1
           fi
@@ -699,7 +701,12 @@ jobs:
           # Update DNS record
           for INGRESS in "${INGRESSES[@]}"; do
             echo "Updating DNS record for ${INGRESS} to $AKS_INGRESS"
-            az network dns record-set cname set-record --resource-group "AMU_DNS_RG" --zone-name "${{ needs.build.outputs.domainName }}" --record-set-name "${INGRESS}" --cname "${AKS_INGRESS}" --ttl 3600
+            az network dns record-set cname set-record \
+              --resource-group "AMU_DNS_RG" \
+              --zone-name "${{ needs.build.outputs.domainName }}" \
+              --record-set-name "${INGRESS}" \
+              --cname "${AKS_INGRESS}" \
+              --ttl 3600
           done
 
       - name: Create Sentry release
