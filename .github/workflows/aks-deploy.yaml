@@ -371,7 +371,7 @@ jobs:
                       }
 
                       # Set ingress host to primary domain variable
-                      $dnsPrimaryDomain = $item.host
+                      $dnsPrimaryDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
 
                       # Add webAuthentication to main ingress
                       if ($webAuthentication -eq "true") {
@@ -479,7 +479,7 @@ jobs:
                       }
 
                       # Set ingress host to primary domain variable
-                      $dnsPrimaryDomain = $item.Value.host
+                      $dnsPrimaryDomain = $item.Value.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
                   }
                   elseif (($item.Key -eq "adminingress" ) -and ($adminIngressWhitelist -ne "")){
                       # Add ingressWhitelist to admin ingress
