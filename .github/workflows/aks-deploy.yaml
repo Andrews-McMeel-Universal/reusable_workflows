@@ -190,6 +190,12 @@ jobs:
           # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
 
+          # Add environment to ingress if needed
+          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          if ($environmentIngress -ne "false") {
+              $ingress = "$appEnvironment.$ingress"
+          }
+
           Write-Output "domainName=$domainName"
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
           Write-Output "ingress=$ingress"
