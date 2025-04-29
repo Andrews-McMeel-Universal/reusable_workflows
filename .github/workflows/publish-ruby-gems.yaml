@@ -1,0 +1,85 @@
+name: Publish Ruby Gem
+
+on:
+  workflow_call:
+    inputs:
+      rubyGemName:
+        description: Name of the Ruby gem to publish
+        required: false
+        type: string
+        default: ${{ vars.RUBY_GEM_NAME }}
+    secrets:
+      GEMINABOX_API_KEY:
+        description: API key for the geminabox service
+        required: true
+
+jobs:
+  deploy:
+    name: Publish Ruby Gem
+    runs-on: azure
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Read Ruby Version
+      id: ruby-version
+      run: |
+        echo "version=$(cat .ruby-version)" >> "$GITHUB_OUTPUT"
+    
+    - name: Extract Bundler version from Gemfile.lock
+      id: bundler-version
+      run: |
+        if [[ -f Gemfile.lock ]]; then
+          version=$(awk '/BUNDLED WITH/{getline; print $1}' Gemfile.lock)
+          if [[ -n "$version" ]]; then
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+          else
+            echo "Bundler version not found in Gemfile.lock"
+            exit 1
+          fi
+        else
+          echo "Gemfile.lock not found"
+          exit 1
+        fi
+
+    - name: Install dependencies for Ruby build
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          build-essential libssl-dev libreadline-dev \
+          zlib1g-dev libyaml-dev libgdbm-dev libncurses5-dev \
+          libffi-dev curl git autoconf bison
+
+    - name: Install ruby-build
+      run: |
+        git clone https://github.com/rbenv/ruby-build.git
+        sudo ./ruby-build/install.sh
+
+    - name: Install Ruby from .ruby-version
+      run: |
+        RUBY_VERSION="${{ steps.ruby-version.outputs.version }}"
+        PREFIX="$HOME/.rubies/$RUBY_VERSION"
+        ruby-build "$RUBY_VERSION" "$PREFIX"
+        echo "$PREFIX/bin" >> $GITHUB_PATH
+        echo "GEM_HOME=$HOME/.gem" >> $GITHUB_ENV
+        echo "GEM_PATH=$HOME/.gem" >> $GITHUB_ENV
+        echo "PATH=$HOME/.gem/bin:$PATH" >> $GITHUB_ENV
+
+    - name: Verify Ruby install
+      run: |
+        ruby --version
+        gem --version
+
+    - name: Install Bundler
+      run: gem install bundler --version ${{ steps.bundler-version.outputs.version }}
+
+    - name: Bundle Install
+      run: bundle install
+
+    - name: Build the Gem
+      run: |
+        gem build ${{ inputs.RUBY_GEM_NAME }}.gemspec -o ${{ inputs.RUBY_GEM_NAME }}.gem
+
+    - name: Publish gem
+      run: |
+        curl -u '${{ secrets.GEMINABOX_API_KEY }}:' -F "file=@${{ inputs.RUBY_GEM_NAME }}.gem" https://gems.amuniversal.com/upload
