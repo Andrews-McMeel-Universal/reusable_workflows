@@ -78,8 +78,8 @@ jobs:
 
     - name: Build the Gem
       run: |
-        gem build ${{ inputs.RUBY_GEM_NAME }}.gemspec -o ${{ inputs.RUBY_GEM_NAME }}.gem
+        gem build ${{ inputs.rubyGemName }}.gemspec -o ${{ inputs.rubyGemName }}.gem
 
     - name: Publish gem
       run: |
-        curl -u '${{ secrets.GEMINABOX_API_KEY }}:' -F "file=@${{ inputs.RUBY_GEM_NAME }}.gem" https://gems.amuniversal.com/upload
+        curl -u '${{ secrets.GEMINABOX_API_KEY }}:' -F "file=@${{ inputs.rubyGemName }}.gem" https://gems.amuniversal.com/upload
