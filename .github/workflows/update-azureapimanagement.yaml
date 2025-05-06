@@ -129,50 +129,64 @@ jobs:
           foreach ($version in $ApiVersions) {
               # Construct the Swagger URL for each version
               $SwaggerURL = "https://$serviceFqdn/swagger/v$version/swagger.json"
-              
-              try {
-                  # Pull down Swagger JSON
-                  $SwaggerResponse = Invoke-WebRequest -Uri $SwaggerURL -UseBasicParsing -ErrorAction Stop
+              $attempt = 0
+              $maxRetries = 3
+              $delaySeconds = 10
+              $success = $false
 
-                  # Check if the versioned API exists
-                  if ($SwaggerResponse.StatusCode -eq 200) {
-                      $SwaggerDiscoverySuccessful = $true
-
-                      # Get Swagger JSON content
-                      Write-Output "Importing API version V${version}: $SwaggerURL"
-                      $SwaggerContent = $SwaggerResponse.Content -replace "/v${version}", ""
-
-                      # Generate a unique API ID for each version
-                      $versionedApiId = "$ApiId-v$version"
-
-                      # Save Swagger JSON to file
-                      $SwaggerContent | Out-File -FilePath $SwaggerFileName -Encoding utf8
-
-                      # Import the versioned API
-                      Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerFileName -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
-
-                      # Retrieve and update the API object
-                      $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
-                      $Api.ServiceURL = "$ServiceURL/v${version}"
-                      $Api.SubscriptionRequired = $ApiSubscriptionRequired
-
-                      # Associate the versioned API with a product
-                      Set-AzApiManagementApi -InputObject $Api
-                      Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
-                      if ($ApiProductId -ne "AZ-WebServices") {
-                          Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
-                      }
-
-                      # Remove the original API spec
-                      if ($OriginalVersion) {
-                          Remove-AzApiManagementApi -Context $Context -ApiId $ApiId
+              $SwaggerResponse = $null
+              while ($attempt -lt $maxRetries -and -not $success) {
+                  try {
+                      $attempt++
+                      # Pull down Swagger JSON
+                      $SwaggerResponse = Invoke-WebRequest -Uri $SwaggerURL -UseBasicParsing -ErrorAction Stop
+                      $success = $true
+                  }
+                  catch {
+                      Write-Output "Attempt $attempt for API version V${version} failed: $($_.Exception.Message)"
+                      if ($attempt -lt $maxRetries) {
+                          Write-Output "Retrying in $delaySeconds seconds..."
+                          Start-Sleep -Seconds $delaySeconds
                       }
                   }
               }
-              catch {
-                  Write-Output "API version V${version} (${SwaggerURL}): $($_.Exception.Message)"
+
+              # Check if the versioned API exists
+              if ($success -and $SwaggerResponse.StatusCode -eq 200) {
+                  $SwaggerDiscoverySuccessful = $true
+
+                  # Get Swagger JSON content
+                  Write-Output "Importing API version V${version}: $SwaggerURL"
+                  $SwaggerContent = $SwaggerResponse.Content -replace "/v${version}", ""
+
+                  # Generate a unique API ID for each version
+                  $versionedApiId = "$ApiId-v$version"
+
+                  # Save Swagger JSON to file
+                  $SwaggerContent | Out-File -FilePath $SwaggerFileName -Encoding utf8
+
+                  # Import the versioned API
+                  Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerFileName -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
+
+                  # Retrieve and update the API object
+                  $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
+                  $Api.ServiceURL = "$ServiceURL/v${version}"
+                  $Api.SubscriptionRequired = $ApiSubscriptionRequired
+
+                  # Associate the versioned API with a product
+                  Set-AzApiManagementApi -InputObject $Api
+                  Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
+                  if ($ApiProductId -ne "AZ-WebServices") {
+                      Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $ApiProductId
+                  }
+
+                  # Remove the original API spec
+                  if ($OriginalVersion) {
+                      Remove-AzApiManagementApi -Context $Context -ApiId $ApiId
+                  }
               }
           }
+
           # Error out if no Swagger JSON was reachable
           if (-not $SwaggerDiscoverySuccessful) {
               Write-Error "ERROR: No Swagger JSON was reachable for any version."
