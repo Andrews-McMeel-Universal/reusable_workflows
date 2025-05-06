@@ -45,7 +45,7 @@ jobs:
       - name: Clear Redis Cache
         shell: pwsh
         run: |
-          $CacheKey = "${{ inputs.applicationCacheKey }}"
+          $CacheKeys = "${{ inputs.applicationCacheKey }}"
           $ResourceGroupName = "${{ inputs.resourceGroupName }}"
           $Environment = "${{ inputs.environment }}"
 
@@ -60,22 +60,26 @@ jobs:
               $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName $ResourceGroupName).PrimaryKey
 
               Write-Host "Authenticating to $RedisHostname..." -ForegroundColor DarkGray
-              $RedisCommands = "AUTH $RedisKey
-              SELECT 0
-              EVAL 'return redis.call(\'del\', unpack(redis.call(\'keys\', ARGV[1])))' 0 $CacheKey"
-              Write-Host "Clearing cache key: $CacheKey" -ForegroundColor DarkGray
-              $RedisResult = $RedisCommands | redis-cli -h $RedisHostname -p $RedisPort
 
-              # Check if output from cache clearing command has correct status message
-              if ($RedisResult -match '^\d+$') {
-                  Write-Host "Successfully flushed cache for $RedisHostname" -ForegroundColor Green
-              }
-              elseif ($RedisResult -match 'Wrong number of args calling Redis command From Lua script') {
-                  Write-Host "Cache key $CacheKey missing in $RedisHostname" -ForegroundColor Yellow
-              }
-              else {
-                  Write-Host "Cache key $CacheKey status unknown in $RedisHostname" -ForegroundColor Red
-                  Write-Host "Full output: $RedisResult"
+              # Loop through cache keys
+              foreach ($Key in $CacheKeys.Split(',')) {
+                  $RedisCommands = "AUTH $RedisKey
+                  SELECT 0
+                  EVAL 'return redis.call(\'del\', unpack(redis.call(\'keys\', ARGV[1])))' 0 $Key"
+                  Write-Host "Clearing cache key: $Key" -ForegroundColor DarkGray
+                  $RedisResult = $RedisCommands | redis-cli -h $RedisHostname -p $RedisPort
+
+                  # Check if output from cache clearing command has correct status message
+                  if ($RedisResult -match '^\d+$') {
+                      Write-Host "Successfully flushed '$Key' cache key for $RedisHostname" -ForegroundColor Green
+                  }
+                  elseif ($RedisResult -match 'Wrong number of args calling Redis command From Lua script') {
+                      Write-Host "Cache key '$Key' missing in $RedisHostname" -ForegroundColor Yellow
+                  }
+                  else {
+                      Write-Host "Cache key '$Key' status unknown in $RedisHostname" -ForegroundColor Red
+                      Write-Host "Full output: $RedisResult"
+                  }
               }
           }
 
