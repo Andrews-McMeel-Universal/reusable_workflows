@@ -232,8 +232,8 @@ jobs:
         if: ${{ github.event.release.tag_name != '' }}
         id: major-release
         run: |
-            MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            echo "major_release=${MAJOR_RELEASE}" >> $GITHUB_OUTPUT
+          MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
+          echo "major_release=${MAJOR_RELEASE}" >> $GITHUB_OUTPUT
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -254,7 +254,6 @@ jobs:
           context: ${{ inputs.dockerFilePath }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             ${{ env.buildArguments }}
 
