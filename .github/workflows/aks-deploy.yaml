@@ -243,15 +243,6 @@ jobs:
           flavor: |
             latest=false
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ inputs.dockerFilePath }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          build-args: |
-            ${{ env.buildArguments }}
-
       - name: Enable write access if image has already been deployed
         run: |
           IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" --query "digest" -o tsv || echo "")
@@ -261,6 +252,17 @@ jobs:
             echo "Enabling write access for image manifest."
             az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --write-enabled true
           fi
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.dockerFilePath }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            ${{ env.buildArguments }}
+          cache-from: type=registry,ref=${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}-buildcache
+          cache-to: type=registry,ref=${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}-buildcache,mode=max
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
