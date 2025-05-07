@@ -238,7 +238,7 @@ jobs:
             type=raw,value=${{ inputs.environment }}
             type=raw,value=latest,enable=${{ inputs.environment == 'production' }}
             type=raw,value=stable,enable=${{ inputs.environment == 'production' }}
-            type=semver,value=${{ github.event.release.tag_name }},enable=${{ github.event.release.tag_name != '' }}
+            type=semver,value=${{ github.event.release.tag_name }},pattern={{version}},enable=${{ github.event.release.tag_name != '' }}
             type=semver,value=${{ github.event.release.tag_name }},pattern={{major}},enable=${{ github.event.release.tag_name != '' }}
 
       - name: Build and push Docker image
