@@ -228,13 +228,6 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
-      - name: Get major release version
-        if: ${{ github.event.release.tag_name != '' }}
-        id: major-release
-        run: |
-          MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-          echo "major_release=${MAJOR_RELEASE}" >> $GITHUB_OUTPUT
-
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -245,8 +238,8 @@ jobs:
             type=raw,value=${{ inputs.environment }}
             type=raw,value=latest,enable=${{ inputs.environment == 'production' }}
             type=raw,value=stable,enable=${{ inputs.environment == 'production' }}
-            type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event.release.tag_name != '' }}
-            type=raw,value=${{ steps.major-release.outputs.major_release }},enable=${{ steps.major-release.outputs.major_release != '' }}
+            type=semver,value=${{ github.event.release.tag_name }},enable=${{ github.event.release.tag_name != '' }}
+            type=semver,value=${{ github.event.release.tag_name }},pattern={{major}},enable=${{ github.event.release.tag_name != '' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -266,7 +259,6 @@ jobs:
             echo "Enabling write access for image manifest."
             az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --write-enabled true
           fi
-
 
       - name: Push Docker Image
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
