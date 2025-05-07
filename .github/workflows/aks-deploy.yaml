@@ -240,6 +240,8 @@ jobs:
             type=raw,value=stable,enable=${{ inputs.environment == 'production' }}
             type=semver,value=${{ github.event.release.tag_name }},pattern={{version}},enable=${{ github.event.release.tag_name != '' }}
             type=semver,value=${{ github.event.release.tag_name }},pattern={{major}},enable=${{ github.event.release.tag_name != '' }}
+          flavor: |
+            latest=false
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
