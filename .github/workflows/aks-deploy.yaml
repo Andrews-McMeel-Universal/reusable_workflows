@@ -262,9 +262,6 @@ jobs:
             az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --write-enabled true
           fi
 
-      - name: Push Docker Image
-        run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
-
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
         uses: jdcargile/ms-teams-notification@v1.4
