@@ -211,6 +211,15 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           contentTypes: BuildArg Env
+          buildArgPredicate: ";"
+
+      - name: Insert new line after build arguments
+        id: insert-new-line
+        run: |
+          buildArguments=$(echo "${{ steps.get-envs.outputs.buildArguments }}" | sed 's/^ ; //g' | sed 's/; /\n/g')
+          echo 'buildArguments<<EOF' >> $GITHUB_ENV
+          echo "$buildArguments" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
 
       - name: Login to Azure Container Registry
         uses: azure/docker-login@v2
@@ -219,11 +228,20 @@ jobs:
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
-      - name: Build Docker Image
-        run: |
-          REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
-          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}-${{ inputs.environment }}"
-          docker build ${{ steps.get-envs.outputs.buildArguments }} -t "${IMAGE_NAME}" ${{ inputs.dockerFilePath }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.registryHostName }}/${{ github.event.repository.name }}
+          tags: |
+            type=raw,value=${{ github.sha }}-${{ inputs.environment }}
+            type=raw,value=${{ inputs.environment }}
+            type=raw,value=latest,enable=${{ inputs.environment == 'production' }}
+            type=raw,value=stable,enable=${{ inputs.environment == 'production' }}
+            type=semver,value=${{ github.event.release.tag_name }},pattern={{version}},enable=${{ github.event.release.tag_name != '' }}
+            type=semver,value=${{ github.event.release.tag_name }},pattern={{major}},enable=${{ github.event.release.tag_name != '' }}
+          flavor: |
+            latest=false
 
       - name: Enable write access if image has already been deployed
         run: |
@@ -235,23 +253,14 @@ jobs:
             az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --write-enabled true
           fi
 
-      - name: Tag Docker Image
-        run: |
-          REGISTRY_REPO="${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
-          IMAGE_NAME="${REGISTRY_REPO}:${{ github.sha }}-${{ inputs.environment }}"
-          if [[ "${{ inputs.environment }}" == "production" ]] ; then
-            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:latest"
-            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:stable"
-          fi
-          if [[ "${{ github.event.release.tag_name }}" != "" ]]; then
-            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:${{ github.event.release.tag_name }}"
-            MAJOR_RELEASE=$(echo "${{ github.event.release.tag_name }}" | cut -d "." -f 1)
-            docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:${MAJOR_RELEASE}"
-          fi
-          docker tag "${IMAGE_NAME}" "${REGISTRY_REPO}:${{ inputs.environment }}"
-
-      - name: Push Docker Image
-        run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.dockerFilePath }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            ${{ env.buildArguments }}
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
