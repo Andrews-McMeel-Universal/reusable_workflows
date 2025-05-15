@@ -82,4 +82,10 @@ jobs:
 
     - name: Publish gem
       run: |
+        RESPONSE=$(curl -o /dev/null -s -w "%{http_code}\n"  https://gems.amuniversal.com)
+        if [[ "$RESPONSE" -ne 200 ]]; then
+          echo "Geminabox service is not available. HTTP response code: $RESPONSE"
+          exit 1
+        fi
+
         curl -u '${{ secrets.GEMINABOX_API_KEY }}:' -F "file=@${{ inputs.rubyGemName }}.gem" https://gems.amuniversal.com/upload
