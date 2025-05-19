@@ -68,17 +68,17 @@ jobs:
                   # Create a temporary Lua script file
                   $TempScriptPath = [System.IO.Path]::GetTempFileName() + ".lua"
                   Set-Content -Path $TempScriptPath -Value @"
-                  local cursor = '0'
-                  repeat
-                      local result = redis.call('SCAN', cursor, 'MATCH', ARGV[1], 'COUNT', 1000)
-                      cursor = result[1]
-                      local keys = result[2]
-                      if #keys > 0 then
-                          redis.call('DEL', unpack(keys))
-                      end
-                  until cursor == '0'
-                  return 'OK'
-                  "@
+              local cursor = '0'
+              repeat
+                  local result = redis.call('SCAN', cursor, 'MATCH', ARGV[1], 'COUNT', 1000)
+                  cursor = result[1]
+                  local keys = result[2]
+                  if #keys > 0 then
+                      redis.call('DEL', unpack(keys))
+                  end
+              until cursor == '0'
+              return 'OK'
+          "@
 
                   Write-Host "Clearing cache key: $Key" -ForegroundColor DarkGray
                   $RedisResult = redis-cli -h $RedisHostname -p $RedisPort --pass $RedisKey --eval $TempScriptPath , $Key
