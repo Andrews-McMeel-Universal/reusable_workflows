@@ -63,22 +63,41 @@ jobs:
 
               # Loop through cache keys
               foreach ($Key in $CacheKeys.Split(',')) {
-                  $RedisCommands = "AUTH $RedisKey
+                  if ([string]::IsNullOrWhiteSpace($Key)) { continue }
+
+                  $RedisCommands = @"
+                  AUTH $RedisKey
                   SELECT 0
-                  EVAL 'return redis.call(\'del\', unpack(redis.call(\'keys\', ARGV[1])))' 0 $Key"
+                  local cursor = '0'
+                  repeat
+                      local result = redis.call('SCAN', cursor, 'MATCH', ARGV[1], 'COUNT', 1000)
+                      cursor = result[1]
+                      local keys = result[2]
+                      if #keys > 0 then
+                          redis.call('DEL', unpack(keys))
+                      end
+                  until cursor == '0'
+                  return 'OK'
+                  "@
+
                   Write-Host "Clearing cache key: $Key" -ForegroundColor DarkGray
-                  $RedisResult = $RedisCommands | redis-cli -h $RedisHostname -p $RedisPort
+                  $RedisResult = redis-cli -h $RedisHostname -p $RedisPort --eval "$RedisCommands" , "$Key"
 
                   # Check if output from cache clearing command has correct status message
-                  if ($RedisResult -match '^\d+$') {
+                  if ($RedisResult -match '^OK$') {
                       Write-Host "Successfully flushed '$Key' cache key for $RedisHostname" -ForegroundColor Green
                   }
                   elseif ($RedisResult -match 'Wrong number of args calling Redis command From Lua script') {
                       Write-Host "Cache key '$Key' missing in $RedisHostname" -ForegroundColor Yellow
                   }
+                  elseif ($RedisResult -match 'too many results to unpack') {
+                      Write-Host "Cache key '$Key' has too many results to unpack in $RedisHostname" -ForegroundColor Yellow
+                      exit 1
+                  }
                   else {
                       Write-Host "Cache key '$Key' status unknown in $RedisHostname" -ForegroundColor Red
                       Write-Host "Full output: $RedisResult"
+                      exit 1
                   }
               }
           }
