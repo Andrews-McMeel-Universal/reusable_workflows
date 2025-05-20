@@ -72,9 +72,9 @@ jobs:
             echo "$sanitized"
           }
 
-          PR_BRANCH=$(sanitize "$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
-          PR_TITLE=$(sanitize "$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
-          PR_DESC=$(sanitize "$(echo "${{ env.githubPrDescription }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
+          PR_BRANCH=$(sanitize "$(echo '${{ env.githubPrBranch }}' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
+          PR_TITLE=$(sanitize "$(echo '${{ env.githubPrTitle }}' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
+          PR_DESC=$(sanitize "$(echo '${{ env.githubPrDescription }}' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
 
           echo "PR branch: ${PR_BRANCH}"
           echo "PR title: ${PR_TITLE}"
