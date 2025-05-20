@@ -68,6 +68,7 @@ jobs:
                   # Create a temporary Lua script file
                   $TempScriptPath = [System.IO.Path]::GetTempFileName() + ".lua"
                   Set-Content -Path $TempScriptPath -Value @"
+              AUTH $RedisKey
               local cursor = '0'
               repeat
                   local result = redis.call('SCAN', cursor, 'MATCH', ARGV[1], 'COUNT', 1000)
@@ -81,9 +82,7 @@ jobs:
           "@
 
                   Write-Host "Clearing cache key: $Key" -ForegroundColor DarkGray
-                  $RedisResult = redis-cli -h $RedisHostname -p $RedisPort --pass $RedisKey --eval $TempScriptPath , $Key
-                  $RedisResult = ($RedisResult -join "`n").Trim()
-                  Write-Host "Redis CLI output: $RedisResult"
+                  $RedisResult = redis-cli -h $RedisHostname -p $RedisPort --eval $TempScriptPath , $Key
 
                   # Check if output from cache clearing command has correct status message
                   if ($RedisResult -match '^OK$') {
