@@ -66,7 +66,10 @@ jobs:
         id: jira-ticket
         run: |
           sanitize() {
-            echo "$1" | sed 's/[`$&|;<>(){}[]*?!\\'"'"'"]//g'
+            # Use parameter expansion to remove disallowed characters
+            # This keeps only A-Z, a-z, 0-9, -, and _
+            sanitized="${1//[^A-Za-z0-9_-]/}"
+            echo "$sanitized"
           }
 
           PR_BRANCH=$(sanitize "$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
