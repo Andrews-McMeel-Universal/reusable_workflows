@@ -65,9 +65,16 @@ jobs:
       - name: Get Jira ticket ID
         id: jira-ticket
         run: |
-          PR_BRANCH=$(echo "${{ env.githubPrBranch }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
-          PR_TITLE=$(echo "${{ env.githubPrTitle }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
-          PR_DESC=$(echo "${{ env.githubPrDescription }}" | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)
+          sanitize() {
+            # Use parameter expansion to remove disallowed characters
+            # This keeps only A-Z, a-z, 0-9, -, and _
+            sanitized="${1//[^A-Za-z0-9_-]/}"
+            echo "$sanitized"
+          }
+
+          PR_BRANCH=$(sanitize "$(echo '${{ env.githubPrBranch }}' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
+          PR_TITLE=$(sanitize "$(echo '${{ env.githubPrTitle }}' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
+          PR_DESC=$(sanitize "$(echo '${{ env.githubPrDescription }}' | grep -Eo "\b[A-Z][A-Z0-9_]+-[1-9][0-9]*" || true)")
 
           echo "PR branch: ${PR_BRANCH}"
           echo "PR title: ${PR_TITLE}"
