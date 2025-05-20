@@ -24,7 +24,7 @@ env:
 jobs:
   jira-lint:
     name: Run Jira Lint
-    if: ${{ !contains(github.head_ref, 'sync') && !contains(github.event.pull_request.labels.*.name, 'disable-jira-linter') }}
+    if: ${{ github.actor != 'amutechtest' && github.actor != 'dependabot[bot]' && !contains(github.head_ref, 'sync') && !contains(github.event.pull_request.labels.*.name, 'disable-jira-linter') }}
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve Jira issue key from PR
