@@ -58,6 +58,17 @@ jobs:
                 echo "::warning::A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
                 echo "ticket-found=false" >> $GITHUB_OUTPUT
             fi
+          else
+            echo "ticket-found=true"
+            echo "ticket-found=true" >> $GITHUB_OUTPUT
+            echo "jira-ticket-id=${JIRA_TICKET_ID}" 
+            echo "jira-ticket-id=${JIRA_TICKET_ID}" >> $GITHUB_OUTPUT
+            echo "jira-ticket-id-branch=${PR_BRANCH}"
+            echo "jira-ticket-id-branch=${PR_BRANCH}" >> $GITHUB_OUTPUT
+            echo "jira-ticket-id-title=${PR_TITLE}"
+            echo "jira-ticket-id-title=${PR_TITLE}" >> $GITHUB_OUTPUT
+            echo "jira-ticket-id-desc=${PR_DESC}"
+            echo "jira-ticket-id-desc=${PR_DESC}" >> $GITHUB_OUTPUT
           fi
 
       - name: Check if missing Jira issue key comment exists
