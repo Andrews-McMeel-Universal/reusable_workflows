@@ -36,8 +36,13 @@ jobs:
           }
 
           # Safely assign to local variables
-          PR_BRANCH='${{ env.githubPrBranch }}'
-          PR_TITLE='${{ env.githubPrTitle }}'
+          read -r PR_BRANCH <<'EOF'
+          ${{ env.githubPrBranch }}
+          EOF
+
+          read -r PR_TITLE <<'EOF'
+          ${{ env.githubPrTitle }}
+          EOF
 
           for var in ${PR_BRANCH} ${PR_TITLE}; do JIRA_TICKET_ID=$(extract_jira_id "$var" | grep -E ".") && break ; done
 
