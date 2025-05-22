@@ -49,6 +49,12 @@ jobs:
           $ResourceGroupName = "${{ inputs.resourceGroupName }}"
           $Environment = "${{ inputs.environment }}"
 
+          # Check if Environment is set
+          if ([string]::IsNullOrWhiteSpace($Environment)) {
+              Write-Host "Environment is not set. Exiting..." -ForegroundColor Red
+              exit 1
+          }
+
           # Get list of Redis instances using tags
           $Redis = Get-AzRedisCache -ResourceGroupName "$ResourceGroupName" | Where-Object { $_.Tag.Values -eq "$Environment" }
 
