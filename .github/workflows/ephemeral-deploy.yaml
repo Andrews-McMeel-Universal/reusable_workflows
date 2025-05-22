@@ -65,15 +65,15 @@ jobs:
       - name: Get Jira ticket ID
         id: jira-ticket
         run: |
-          # Safely assign to local variables
-          PR_BRANCH='${{ env.githubPrBranch }}'
-          PR_TITLE='${{ env.githubPrTitle }}'
-          PR_DESC='${{ env.githubPrDescription }}'
-
           extract_jira_id() {
             input="$1"
             printf "%s\n" "$input" | grep -Eo '\b[A-Z][A-Z0-9_]+-[1-9][0-9]*' | head -n1 | tr -cd 'A-Za-z0-9_-'
           }
+
+          # Safely assign to local variables
+          PR_BRANCH='${{ env.githubPrBranch }}'
+          PR_TITLE='${{ env.githubPrTitle }}'
+          PR_DESC='${{ env.githubPrDescription }}'
 
           for var in ${PR_BRANCH} ${PR_TITLE} ${PR_DESC}; do JIRA_TICKET_ID=$(extract_jira_id "$var" | grep -E ".") && break ; done
 
