@@ -82,7 +82,7 @@ jobs:
           "@
 
                   Write-Host "Clearing cache key: $Key" -ForegroundColor DarkGray
-                  $RedisResult = redis-cli -h $RedisHostname -p $RedisPort --eval $TempScriptPath , $Key
+                  $RedisResult = redis-cli -u rediss://:${RedisKey}@${RedisHostname}:${RedisPort} --eval $TempScriptPath , $Key
 
                   # Check if output from cache clearing command has correct status message
                   if ($RedisResult -match '^OK$') {
