@@ -61,7 +61,7 @@ jobs:
           # Loop through Redis instances
           $Redis | ForEach-Object {
               $RedisHostname = $_.HostName
-              $RedisPort = $_.Port
+              $RedisPort = "6380"
               $RedisName = $_.Name
               $RedisKey = (Get-AzRedisCacheKey -Name $RedisName -ResourceGroupName $ResourceGroupName).PrimaryKey
 
