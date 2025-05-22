@@ -68,7 +68,6 @@ jobs:
                   # Create a temporary Lua script file
                   $TempScriptPath = [System.IO.Path]::GetTempFileName() + ".lua"
                   Set-Content -Path $TempScriptPath -Value @"
-              AUTH $RedisKey
               local cursor = '0'
               repeat
                   local result = redis.call('SCAN', cursor, 'MATCH', ARGV[1], 'COUNT', 1000)
