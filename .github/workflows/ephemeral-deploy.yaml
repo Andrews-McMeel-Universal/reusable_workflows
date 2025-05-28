@@ -383,12 +383,44 @@ jobs:
           $username = "amu_deploy@amuniversal.com"
           $token = "${{ secrets.JIRA_TOKEN }}"
           $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$token)))
-          $response = Invoke-RestMethod -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Uri $uri -Method Get
+          $headers = @{
+              Authorization = ("Basic {0}" -f $base64AuthInfo)
+              "Content-Type" = "application/json"
+          }
+
+          try {
+              $response = Invoke-RestMethod -Headers $headers -Uri $uri -Method Get
+              Write-Output "Ticket $ticket found."
+          }
+          catch {
+              Write-Error "Exception occurred while fetching ticket: $_"
+              exit 1
+          }
+
           $comments = $response.fields.comment.comments
           foreach ($comment in $comments) {
               if ($comment.body -match "This ticket has been linked to an ephemeral deployment.") {
                   Write-Output "comment-found=true" >> $env:GITHUB_OUTPUT
+                  $commentFound = $true
                   break
+              }
+          }
+
+          if (-not $commentFound) {
+              $commentTransition = "In QA (Ephemeral)"
+              Write-Output "Comment not found. Proceeding to update status."
+
+              $transitionsUri = "$uri/transitions"
+              $transitionsResponse = Invoke-RestMethod -Headers $headers -Uri $transitionsUri -Method Get
+              $targetTransition = $transitionsResponse.transitions | Where-Object { $_.name -eq $commentTransition }
+
+              if ($null -ne $targetTransition) {
+                  $transitionBody = @{ transition = @{ id = $targetTransition.id } } | ConvertTo-Json -Depth 10
+                  Invoke-RestMethod -Headers $headers -Uri $transitionsUri -Method Post -Body $transitionBody
+                  Write-Output "Transitioned ticket to '$commentTransition'."
+              }
+              else {
+                  Write-Error "Transition to '$commentTransition' not found."
               }
           }
 
