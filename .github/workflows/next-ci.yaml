@@ -30,6 +30,11 @@ on:
         required: false
         type: string
         default: ${{ vars.APPLICATION_CI_RUN_JEST_TESTS || 'true' }}
+      GITHUB_RUNNER:
+        required: false
+        type: string
+        description: "The type of runner to use"
+        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'azure' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -40,7 +45,7 @@ jobs:
   build:
     name: Build App
     if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.githubRunner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,7 +89,7 @@ jobs:
     name: Unit Tests
     if: ${{ inputs.RUN_JEST_TESTS == 'true' }}
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.githubRunner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -114,7 +119,7 @@ jobs:
     name: Integration Tests
     if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' || inputs.CHECK_SIZE_LIMIT == 'true' }}
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.githubRunner }}
     timeout-minutes: 25
     steps:
       - name: Checkout
