@@ -620,7 +620,7 @@ jobs:
 
       - name: Update .env Kubernetes secret
         run: |
-          if kubectl get secret | grep -q "${{ needs.build.outputs.appName }}-config-secret"; then
+          if kubectl get secret | grep -q "^${{ needs.build.outputs.appName }}-config-secret"; then
               kubectl delete secret "${{ needs.build.outputs.appName }}-config-secret"
           fi
           kubectl create secret generic "${{ needs.build.outputs.appName }}-config-secret" --validate='warn' --from-env-file ${{ github.workspace }}/.env
