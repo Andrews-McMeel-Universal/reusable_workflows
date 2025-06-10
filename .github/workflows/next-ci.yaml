@@ -45,7 +45,7 @@ jobs:
   build:
     name: Build App
     if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ${{ inputs.githubRunner }}
+    runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,7 +89,7 @@ jobs:
     name: Unit Tests
     if: ${{ inputs.RUN_JEST_TESTS == 'true' }}
     needs: [build]
-    runs-on: ${{ inputs.githubRunner }}
+    runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -119,7 +119,7 @@ jobs:
     name: Integration Tests
     if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' || inputs.CHECK_SIZE_LIMIT == 'true' }}
     needs: [build]
-    runs-on: ${{ inputs.githubRunner }}
+    runs-on: ${{ inputs.GITHUB_RUNNER }}
     timeout-minutes: 25
     steps:
       - name: Checkout
