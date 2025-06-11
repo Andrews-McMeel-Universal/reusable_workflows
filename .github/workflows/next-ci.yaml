@@ -135,7 +135,7 @@ jobs:
 
       - name: Install Playwright Browsers
         if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' }}
-        run: yarn playwright install
+        run: yarn playwright install --with-deps
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
