@@ -107,6 +107,8 @@ jobs:
       - name: Use cache-yarn-install action
         if: ${{ inputs.YARN_INSTALL == 'true' }}
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+        with:
+          enable-corepack: ${{ inputs.COREPACK_INSTALL }}
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -138,6 +140,8 @@ jobs:
       - name: Use cache-yarn-install action
         if: ${{ inputs.YARN_INSTALL == 'true' }}
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+        with:
+          enable-corepack: ${{ inputs.COREPACK_INSTALL }}
 
       - name: Install Playwright Browsers
         if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' }}
