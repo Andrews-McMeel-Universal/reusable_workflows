@@ -358,6 +358,10 @@ jobs:
                           $ingressWhitelist = "0.0.0.0/0"
                       }
                   }
+                  elseif ($webAuthentication -eq "true") {
+                      Write-Output "Web authentication is enabled, setting ingress whitelist to '0.0.0.0/0' for $($item.name)"
+                      $ingressWhitelist = "0.0.0.0/0"
+                  }
 
                   # Add environment to ingress
                   if ($environmentIngress -ne "false") { 
