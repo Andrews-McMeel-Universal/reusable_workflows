@@ -35,6 +35,10 @@ on:
         type: string
         description: "The type of runner to use"
         default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'azure' }}
+      COREPACK_INSTALL:
+        required: false
+        type: string
+        default: ${{ vars.APPLICATION_CI_COREPACK_INSTALL || 'true' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -60,6 +64,8 @@ jobs:
       - name: Use cache-yarn-install action
         if: ${{ inputs.YARN_INSTALL == 'true' }}
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+        with:
+          enable-corepack: ${{ inputs.COREPACK_INSTALL }}
 
       - name: Lint javascript
         if: ${{ inputs.LINT_JS == 'true' }}
