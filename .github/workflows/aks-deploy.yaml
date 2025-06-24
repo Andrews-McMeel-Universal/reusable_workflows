@@ -425,6 +425,10 @@ jobs:
                   # Ensure the ingress whitelist is set for all other ingresses except admin-ingress
                   if ($item.name -ne "admin-ingress") {
                       # Add ingressWhitelist to ingress
+                      if ($webAuthentication -eq "true") {
+                          $ingressWhitelist = "0.0.0.0/0"
+                          Write-Output "Web authentication is enabled, setting ingress whitelist to '0.0.0.0/0'
+                      }
                       Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
                       $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
                   }
