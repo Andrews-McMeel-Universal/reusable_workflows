@@ -86,6 +86,11 @@ on:
         type: string
         description: "Publish Sentry release"
         default: ${{ vars.PUBLISH_SENTRY_RELEASE || 'true' }}
+      haHostname:
+        required: false
+        type: string
+        description: "The hostname for the high availability service"
+        default: ${{ vars.HA_HOSTNAME || 'false' }}
     secrets:
       azureClusterName:
         required: true
@@ -320,6 +325,7 @@ jobs:
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          $haHostname = "${{ inputs.haHostname }}" -replace '"', '' -replace "'", ""
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
           $clusterIssuer = "letsencrypt-prod"
@@ -366,6 +372,13 @@ jobs:
                   # Add environment to ingress
                   if ($environmentIngress -ne "false") { 
                       $item.host = "$environment.$($item.host)"
+                      Write-Output "Updating ingress host for $($item.name) to: $($item.host)"
+                  }
+
+                  # Add datacenter location to ingress if HA hostname is enabled
+                  $datacenterLocation = (az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv)
+                  if ($haHostname -eq "true") {
+                      $item.host = "$($item.host).$datacenterLocation"
                       Write-Output "Updating ingress host for $($item.name) to: $($item.host)"
                   }
 
