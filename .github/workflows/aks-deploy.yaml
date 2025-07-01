@@ -381,13 +381,13 @@ jobs:
                       $subDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
                       $domainName = "${{ needs.build.outputs.domainName }}"
                       $item.host = "$subDomain.$datacenterLocation.$domainName"
-                      Write-Output "Adding datacenter location to ingress $($item.name): $($item.host)"
+                      Write-Output "Adding datacenter location to $($item.name): $($item.host)"
                   }
 
                   # Add environment to ingress
                   if ($environmentIngress -ne "false") { 
                       $item.host = "$environment.$($item.host)"
-                      Write-Output "Adding environment to ingress $($item.name): $($item.host)"
+                      Write-Output "Adding environment to $($item.name): $($item.host)"
                   }
 
                   # Add ingressClassName to ingress
