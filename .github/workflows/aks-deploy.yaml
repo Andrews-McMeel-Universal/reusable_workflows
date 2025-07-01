@@ -305,6 +305,11 @@ jobs:
         run: |
           Install-Module -Name powershell-yaml -Force
 
+      - name: Login via Az module
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+
       - name: Create values override file
         id: values-override
         shell: pwsh
@@ -369,16 +374,16 @@ jobs:
                       $ingressWhitelist = "0.0.0.0/0"
                   }
 
-                  # Add environment to ingress
-                  if ($environmentIngress -ne "false") { 
-                      $item.host = "$environment.$($item.host)"
-                      Write-Output "Updating ingress host for $($item.name) to: $($item.host)"
-                  }
-
                   # Add datacenter location to ingress if HA hostname is enabled
                   if ($haHostname -eq "true") {
                       $datacenterLocation = (az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv || "centralus").ToLower()
                       $item.host = "$($item.host).$datacenterLocation"
+                      Write-Output "Updating ingress host for $($item.name) to: $($item.host)"
+                  }
+
+                  # Add environment to ingress
+                  if ($environmentIngress -ne "false") { 
+                      $item.host = "$environment.$($item.host)"
                       Write-Output "Updating ingress host for $($item.name) to: $($item.host)"
                   }
 
