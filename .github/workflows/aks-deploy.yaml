@@ -376,8 +376,8 @@ jobs:
                   }
 
                   # Add datacenter location to ingress if HA hostname is enabled
-                  $datacenterLocation = (az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv)
                   if ($haHostname -eq "true") {
+                      $datacenterLocation = (az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv || "centralus").ToLower()
                       $item.host = "$($item.host).$datacenterLocation"
                       Write-Output "Updating ingress host for $($item.name) to: $($item.host)"
                   }
