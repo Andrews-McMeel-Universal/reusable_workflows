@@ -86,11 +86,11 @@ on:
         type: string
         description: "Publish Sentry release"
         default: ${{ vars.PUBLISH_SENTRY_RELEASE || 'true' }}
-      haHostname:
+      haIngress:
         required: false
         type: string
-        description: "The hostname for the high availability service"
-        default: ${{ vars.HA_HOSTNAME || 'false' }}
+        description: "Enable high availability hostname for ingress (ingress with datacenter location)"
+        default: ${{ vars.HA_INGRESS || 'false' }}
     secrets:
       azureClusterName:
         required: true
@@ -306,7 +306,7 @@ jobs:
           Install-Module -Name powershell-yaml -Force
 
       - name: Login via Az module
-        if: inputs.haHostname == 'true'
+        if: inputs.haIngress == 'true'
         uses: azure/login@v2
         with:
           creds: "${{ secrets.azureCredentials }}"
@@ -331,7 +331,7 @@ jobs:
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
-          $haHostname = "${{ inputs.haHostname }}" -replace '"', '' -replace "'", ""
+          $haIngress = "${{ inputs.haIngress }}" -replace '"', '' -replace "'", ""
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
           $clusterIssuer = "letsencrypt-prod"
@@ -376,7 +376,7 @@ jobs:
                   }
 
                   # Add datacenter location to ingress if HA hostname is enabled
-                  if ($haHostname -eq "true") {
+                  if ($haIngress -eq "true") {
                       $datacenterLocation = (az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv || "centralus").ToLower()
 
                       $subDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
