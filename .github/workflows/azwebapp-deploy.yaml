@@ -89,7 +89,7 @@ jobs:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Deploy to Azure Web App (production)
-        if: ${{ inputs.environment }} == 'production'
+        if: ${{ inputs.environment == 'production' }}
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
@@ -97,7 +97,7 @@ jobs:
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
       
       - name: Deploy to Azure Web App (staging)
-        if: ${{ inputs.environment }} != 'production'
+        if: ${{ inputs.environment != 'production' }}
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
