@@ -123,7 +123,7 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
-          package: "${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}/publish"
+          package: "${{ github.workspace }}/publish"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
       
       - name: Deploy to Azure Web App (staging)
@@ -132,7 +132,7 @@ jobs:
         with:
           app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
           slot-name: ${{ inputs.environment }}
-          package: "${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}/publish"
+          package: "${{ github.workspace }}/publish"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
 
       - name: Enable identity for Azure Web App
