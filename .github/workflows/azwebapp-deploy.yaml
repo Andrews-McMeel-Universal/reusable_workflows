@@ -79,9 +79,33 @@ jobs:
           dotnet build --configuration Release --output ./output
           popd
 
-
       - name: Install dependencies
         run: dotnet restore
+
+      - name: Publish Web App
+        run: |
+          pushd './${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}'
+          WEB_APP_PROJECT=$(find . \( -name '*Api.csproj' -o -name '*Web.csproj' \))
+          if [ -z "${WEB_APP_PROJECT}" ]; then
+            echo "No Web App project found. Skipping publish step."
+            exit 0
+          else
+            echo "Publishing Web App project: ${WEB_APP_PROJECT}"
+            dotnet publish "${WEB_APP_PROJECT}" --configuration Release --output ./publish
+          fi
+          popd
+
+      - name: Publish Web Jobs
+        run: |
+          for project in $(find . -name '*Job.csproj'); do
+            echo "Publishing project: ${project}"
+            pushd "$(dirname "${project}")"
+            PROJECT_FILE=${project##*/}
+            PROJECT_BASE=${PROJECT_FILE%.Job.csproj}
+            PROJECT_SHORTNAME=${PROJECT_BASE#*.}
+            dotnet publish "${project}" --configuration Release --output "./publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
+            popd
+          done
 
       - name: Login via Az module
         uses: azure/login@v2
@@ -93,7 +117,7 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
-          package: "${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}/output"
+          package: "${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}/publish"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
       
       - name: Deploy to Azure Web App (staging)
@@ -102,7 +126,7 @@ jobs:
         with:
           app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
           slot-name: ${{ inputs.environment }}
-          package: "${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}/output"
+          package: "${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}/publish"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
 
       - name: Enable identity for Azure Web App
