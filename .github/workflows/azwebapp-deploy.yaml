@@ -1,0 +1,297 @@
+name: Azure WebJobs Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
+      DOTNET_VERSION:
+        default: ${{ vars.DOTNET_VERSION }}
+        type: string
+      AZURE_WEBAPP_NAME:
+        type: string
+        required: false
+        description: "set this to your application's name"
+        default: ${{ vars.AZURE_WEBAPP_NAME }}
+      AZURE_WEBAPP_RESOURCEGROUP:
+        type: string
+        default: "AMU_Serverless_RG"
+      AZURE_WEBAPP_PACKAGE_PATH:
+        description: "set this to the path to your web app project, defaults to the repository root"
+        type: string
+        default: ${{ vars.AZURE_WEBAPP_PACKAGE_PATH || '.' }}
+      checkoutRef:
+        required: false
+        type: string
+        description: "The branch, tag, or SHA to checkout"
+        default: ${{ github.ref }}
+      deploymentWebhook:
+        required: false
+        type: string
+        description: "The webhook URL for the deployment status"
+        default: ${{ vars.MSTEAMS_DEPLOYMENT_WEBHOOK }}
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+      AZUREAPPSERVICE_PUBLISHPROFILE:
+        required: true
+      PAT_ACTION_CI:
+        required: false
+
+jobs:
+  vars:
+    name: Set Environment Variables
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get environment hostname
+        run: |
+          if [[ "${{ inputs.environment }}" == "production" ]] ; then
+              echo "hostname=${{ inputs.AZURE_WEBAPP_NAME }}" >> $GITHUB_ENV
+          else
+              echo "hostname=${{ inputs.AZURE_WEBAPP_NAME }}-${{ inputs.environment }}" >> $GITHUB_ENV
+          fi
+    outputs:
+      hostname: ${{ env.hostname }}
+
+  build-and-deploy:
+    name: Deploy to ${{ inputs.environment }}
+    environment:
+      name: ${{ inputs.environment }}
+      url: https://${{ needs.vars.outputs.hostname }}.azurewebsites.net
+    needs: [vars]
+    runs-on: ubuntu-latest
+    env:
+      PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkoutRef }}
+
+      - name: Install jq apt package
+        run: sudo apt-get update -y && sudo apt-get install jq -y
+
+      - name: Retrieve .NET version
+        id: dotnet-version
+        run: |
+          DOTNET_VERSION=$(find . -name '*.csproj' -exec grep -h '<TargetFramework>net' {} + | sed -E 's/.*<TargetFramework>net([0-9]+\.[0-9]+)<\/TargetFramework>.*/\1/' | sort -V | tail -n1)
+          echo "DOTNET_VERSION=${DOTNET_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Setup application platform
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.DOTNET_VERSION || steps.dotnet-version.outputs.DOTNET_VERSION }}
+
+      - name: Add AMU GitHub Packages nuget source
+        if: ${{ env.PAT_ACTION_CI }}
+        run: |
+          dotnet nuget add source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --name "AMU GitHub Packages" --username "amu_deploy@amuniversal.com" --password "${{ secrets.PAT_ACTION_CI }}" --store-password-in-clear-text
+
+      - name: Install Dependencies
+        run: |
+          pushd './${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}'
+          dotnet build --configuration Release --output ./output
+          popd
+
+
+      - name: Install dependencies
+        run: dotnet restore
+
+      - name: Publish Web App
+        run: dotnet publish ./AzureWebJobExample.Web/AzureWebJobExample.Web.csproj -c Release -o "${{ github.workspace }}/publish"
+
+      - name: Publish Timer WebJob
+        run: dotnet publish ./AzureWebJobExample.Timer/AzureWebJobExample.Timer.csproj -c Release -o "${{ github.workspace }}/publish/App_Data/Jobs/continuous/TimerJob"
+
+      - name: Publish Queue WebJob
+        run: dotnet publish ./AzureWebJobExample.Queue/AzureWebJobExample.Queue.csproj -c Release -o "${{ github.workspace }}/publish/App_Data/Jobs/continuous/QueueJob"
+
+      - name: Login via Az module
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
+
+      - name: Deploy to Azure Web App (production)
+        if: ${{ inputs.environment }} == 'production'
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
+          package: .
+      
+      - name: Deploy to Azure Web App (staging)
+        if: ${{ inputs.environment }} != 'production'
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
+          slot-name: ${{ inputs.environment }}
+          package: "${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}/output"
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+
+      - name: Restart Azure Web App
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+                az webapp restart \
+                  -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_WEBAPP_NAME }}" | tee
+            else
+                az webapp restart \
+                  -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+                  --slot "${{ inputs.environment }}" | tee
+            fi
+
+      - name: Enable identity for Azure Web App
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+              az webapp identity assign \
+                -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_WEBAPP_NAME }}" | tee
+            else
+              az webapp identity assign \
+                -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+                --slot "${{ inputs.environment }}" | tee
+            fi
+
+      - name: Get Azure Web App Managed Identity
+        id: identity
+        run: |
+          set -eu
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            IDENTITY=$(az webapp identity show \
+              -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_WEBAPP_NAME }}" | tee)
+          else
+            IDENTITY=$(az webapp identity show \
+              -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+              --slot "${{ inputs.environment }}" | tee)
+          fi
+          echo "webAppIdentity=$(echo $IDENTITY | jq -r '.principalId')" >> $GITHUB_ENV
+
+      - name: Retrieve key vault name
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            ENVIRONMENT="${{ inputs.environment }}"
+            REPOSITORY_NAME="${{ github.event.repository.name }}"
+
+            echo -e "Searching for key vault with tags: \"repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}\""
+            KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
+
+            # Check if key vault was found
+            if [[ -z "$KEYVAULT_NAME" ]]; then
+              echo "Key Vault not found with tags: repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}"
+              exit 1
+            fi
+
+            # Get key vault object
+            KEYVAULT_NAME=${KEYVAULT_NAME// /}
+            echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_ENV
+
+      - name: Assign Azure Web App System Managed Identity to Key Vault
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
+            # Retrieve the Key Vault ID
+            keyVaultId=$(az keyvault show --name ${{ env.keyVaultName }} --query id --output tsv)
+            
+            # Assign the Key Vault Secrets User role to the managed identity using object ID and principal type
+            az role assignment create --role "Key Vault Secrets User" --assignee-object-id ${{ env.webAppIdentity }} --assignee-principal-type ServicePrincipal  --scope $keyVaultId
+      
+      - name: Retrieve environment variables
+        if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
+        id: get-envs
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
+          contentTypes: Env
+          environmentVariableSeparator: "\n"
+
+      - name: Add environment variables to web app
+        run: |
+          set -eu
+          # Store the environment variables output into a separate variable
+          ENV_VARS_OUTPUT='${{ steps.get-envs.outputs.environmentVariables }}'
+
+          # Get current app settings
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            APPSETTINGS=$(az webapp config appsettings list \
+              -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_WEBAPP_NAME }}")
+          else
+            APPSETTINGS=$(az webapp config appsettings list \
+              -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+              -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+              --slot "${{ inputs.environment }}")
+          fi
+
+          # Use a while loop to read and process each environment variable and trim output
+          echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
+            echo "Processing variable: $key=$value"
+            VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
+
+            # Search for the key in app settings
+            APPSETTING_VALUE=$(echo "${APPSETTINGS}" | jq -r ".[] | select(.name == \"$key\") | .value")
+
+            # Check if the value is set to a keyvault reference
+            if [[ "${APPSETTING_VALUE}" == "@Microsoft.KeyVault"* ]]; then
+              echo "Skipping $key as it is already a keyvault reference"
+              continue
+            fi
+            
+            # Skip FUNCTIONS_WORKER_RUNTIME and AzureWebJobsStorage
+            if [[ "$key" == "FUNCTIONS_WORKER_RUNTIME" || "$key" == "AzureWebJobsStorage" ]]; then
+              echo "Skipping $key as it is a reserved key"
+              continue
+            fi
+
+            echo "Adding $key to app settings"
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+              az webapp config appsettings set \
+                -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
+              echo "Successfully added $key to app settings"
+            else
+              az webapp config appsettings set \
+                -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+                --slot "${{ inputs.environment }}" \
+                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
+              echo "Successfully added $key to app settings"
+            fi
+          done
+
+      - name: Send Failed Deployment report to Teams
+        if: failure() && (inputs.environment != 'development')
+        uses: jdcargile/ms-teams-notification@v1.4
+        with:
+          github-token: ${{ github.token }} # this will use the runner's token.
+          ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
+          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Failed ${{ inputs.environment }} Deployment"
+          notification-color: 17a2b8
+          timezone: America/Chicago
+          verbose-logging: true
+
+      - name: Send Succeeded Deployment report to Teams
+        if: success() && (inputs.environment != 'development')
+        uses: jdcargile/ms-teams-notification@v1.4
+        with:
+          github-token: ${{ github.token }} # this will use the runner's token.
+          ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
+          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Successful ${{ inputs.environment }} Deployment"
+          notification-color: 28a745
+          timezone: America/Chicago
+          verbose-logging: true
