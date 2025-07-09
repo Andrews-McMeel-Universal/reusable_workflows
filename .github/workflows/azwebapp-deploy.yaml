@@ -82,7 +82,6 @@ jobs:
 
       - name: Publish Web App
         run: |
-          pushd './${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}'
           WEB_APP_PROJECT=$(find . \( -name '*Api.csproj' -o -name '*Web.csproj' \))
           if [ -z "${WEB_APP_PROJECT}" ]; then
             echo "No Web App project found. Skipping publish step."
