@@ -90,7 +90,7 @@ jobs:
 
       - name: Publish Web Jobs
         run: |
-          for PROJECT in $(find . -name '*Job.csproj'); do
+          while IFS= read -r -d '' PROJECT; do
             echo "Publishing project: ${PROJECT}"
 
             # Extract project name and base name
@@ -105,7 +105,7 @@ jobs:
             # Publish the project to the specified output directory
             echo "Running dotnet publish for ${PROJECT}"
             dotnet publish "${PROJECT}" -c Release -o "${{ github.workspace }}/publish/app_data/jobs/continuous/${PROJECT_SHORTNAME}Job"
-          done
+          done < <(find . -type f -name '*Job.csproj' -print0)
 
       - name: Get slot name
         id: slot-name
