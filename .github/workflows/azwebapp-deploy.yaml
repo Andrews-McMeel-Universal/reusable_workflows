@@ -99,7 +99,7 @@ jobs:
         run: |
           for project in $(find . -name '*Job.csproj'); do
             echo "Publishing project: ${project}"
-            pushd "$(dirname "${project}")"
+            pushd "${project}"
             PROJECT_FILE=${project##*/}
             PROJECT_BASE=${PROJECT_FILE%.Job.csproj}
             PROJECT_SHORTNAME=${PROJECT_BASE#*.}
