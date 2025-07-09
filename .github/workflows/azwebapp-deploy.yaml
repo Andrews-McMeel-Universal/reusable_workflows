@@ -75,9 +75,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pushd './${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}'
-          dotnet build --configuration Release --output ./output
-          popd
+          dotnet build -c Release
 
       - name: Install dependencies
         run: dotnet restore
@@ -91,7 +89,7 @@ jobs:
             exit 0
           else
             echo "Publishing Web App project: ${WEB_APP_PROJECT}"
-            dotnet publish "${WEB_APP_PROJECT}" --configuration Release --output "${{ github.workspace }}/publish"
+            dotnet publish "${WEB_APP_PROJECT}" -c Release -o "${{ github.workspace }}/publish"
           fi
 
       - name: Publish Web Jobs
@@ -110,31 +108,31 @@ jobs:
 
             # Publish the project to the specified output directory
             echo "Running dotnet publish for ${PROJECT}"
-            dotnet publish "${PROJECT}" --configuration Release --output "${{ github.workspace }}/publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
+            dotnet publish "${PROJECT}" -c Release -o "${{ github.workspace }}/publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
           done
+
+      - name: Get slot name
+        id: slot-name
+        run: |
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            echo "slot-name=production" >> $GITHUB_OUTPUT
+          else
+            echo "slot-name=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Login via Az module
         uses: azure/login@v2
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
-      - name: Deploy to Azure Web App (production)
-        if: ${{ inputs.environment == 'production' }}
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
+          slot-name: ${{ steps.slot-name.outputs.slot-name }}
           app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
           package: "${{ github.workspace }}/publish"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
       
-      - name: Deploy to Azure Web App (staging)
-        if: ${{ inputs.environment != 'production' }}
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
-          slot-name: ${{ inputs.environment }}
-          package: "${{ github.workspace }}/publish"
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
-
       - name: Enable identity for Azure Web App
         uses: azure/cli@v2
         with:
