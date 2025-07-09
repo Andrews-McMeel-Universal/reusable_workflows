@@ -73,12 +73,9 @@ jobs:
         run: |
           dotnet nuget add source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --name "AMU GitHub Packages" --username "amu_deploy@amuniversal.com" --password "${{ secrets.PAT_ACTION_CI }}" --store-password-in-clear-text
 
-      - name: Install Dependencies
+      - name: Build solution
         run: |
           dotnet build -c Release
-
-      - name: Install dependencies
-        run: dotnet restore
 
       - name: Publish Web App
         run: |
@@ -102,12 +99,12 @@ jobs:
             PROJECT_SHORTNAME=${PROJECT_BASE#*.}
 
             echo "Publishing ${PROJECT_SHORTNAME} Job"
-            echo "Output path: ${{ github.workspace }}/publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
-            mkdir -p "${{ github.workspace }}/publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
+            echo "Output path: ${{ github.workspace }}/publish/app_data/jobs/continuous/${PROJECT_SHORTNAME}Job"
+            mkdir -p "${{ github.workspace }}/publish/app_data/jobs/continuous/${PROJECT_SHORTNAME}Job"
 
             # Publish the project to the specified output directory
             echo "Running dotnet publish for ${PROJECT}"
-            dotnet publish "${PROJECT}" -c Release -o "${{ github.workspace }}/publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
+            dotnet publish "${PROJECT}" -c Release -o "${{ github.workspace }}/publish/app_data/jobs/continuous/${PROJECT_SHORTNAME}Job"
           done
 
       - name: Get slot name
