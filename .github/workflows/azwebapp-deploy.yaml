@@ -91,20 +91,26 @@ jobs:
             exit 0
           else
             echo "Publishing Web App project: ${WEB_APP_PROJECT}"
-            dotnet publish "${WEB_APP_PROJECT}" --configuration Release --output ./publish
+            dotnet publish "${WEB_APP_PROJECT}" --configuration Release --output "${{ github.workspace }}/publish"
           fi
-          popd
 
       - name: Publish Web Jobs
         run: |
-          for project in $(find . -name '*Job.csproj'); do
-            echo "Publishing project: ${project}"
-            pushd "${project}"
-            PROJECT_FILE=${project##*/}
+          for PROJECT in $(find . -name '*Job.csproj'); do
+            echo "Publishing project: ${PROJECT}"
+
+            # Extract project name and base name
+            PROJECT_FILE=${PROJECT##*/}
             PROJECT_BASE=${PROJECT_FILE%.Job.csproj}
             PROJECT_SHORTNAME=${PROJECT_BASE#*.}
-            dotnet publish "${project}" --configuration Release --output "./publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
-            popd
+
+            echo "Publishing ${PROJECT_SHORTNAME} Job"
+            echo "Output path: ${{ github.workspace }}/publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
+            mkdir -p "${{ github.workspace }}/publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
+
+            # Publish the project to the specified output directory
+            echo "Running dotnet publish for ${PROJECT}"
+            dotnet publish "${PROJECT}" --configuration Release --output "${{ github.workspace }}/publish/App_Data/Jobs/continuous/${PROJECT_SHORTNAME}Job"
           done
 
       - name: Login via Az module
