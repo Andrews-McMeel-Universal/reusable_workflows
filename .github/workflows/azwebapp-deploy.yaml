@@ -17,7 +17,7 @@ on:
         default: ${{ vars.AZURE_WEBAPP_NAME }}
       AZURE_WEBAPP_RESOURCEGROUP:
         type: string
-        default: "AMU_Serverless_RG"
+        default: ${{ vars.AZURE_WEBAPP_RESOURCE_GROUP || 'AMU_Serverless_RG' }}
       AZURE_WEBAPP_PACKAGE_PATH:
         description: "set this to the path to your web app project, defaults to the repository root"
         type: string
@@ -41,26 +41,10 @@ on:
         required: false
 
 jobs:
-  vars:
-    name: Set Environment Variables
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get environment hostname
-        run: |
-          if [[ "${{ inputs.environment }}" == "production" ]] ; then
-              echo "hostname=${{ inputs.AZURE_WEBAPP_NAME }}" >> $GITHUB_ENV
-          else
-              echo "hostname=${{ inputs.AZURE_WEBAPP_NAME }}-${{ inputs.environment }}" >> $GITHUB_ENV
-          fi
-    outputs:
-      hostname: ${{ env.hostname }}
-
   build-and-deploy:
     name: Deploy to ${{ inputs.environment }}
     environment:
       name: ${{ inputs.environment }}
-      url: https://${{ needs.vars.outputs.hostname }}.azurewebsites.net
-    needs: [vars]
     runs-on: ubuntu-latest
     env:
       PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
@@ -99,15 +83,6 @@ jobs:
       - name: Install dependencies
         run: dotnet restore
 
-      - name: Publish Web App
-        run: dotnet publish ./AzureWebJobExample.Web/AzureWebJobExample.Web.csproj -c Release -o "${{ github.workspace }}/publish"
-
-      - name: Publish Timer WebJob
-        run: dotnet publish ./AzureWebJobExample.Timer/AzureWebJobExample.Timer.csproj -c Release -o "${{ github.workspace }}/publish/App_Data/Jobs/continuous/TimerJob"
-
-      - name: Publish Queue WebJob
-        run: dotnet publish ./AzureWebJobExample.Queue/AzureWebJobExample.Queue.csproj -c Release -o "${{ github.workspace }}/publish/App_Data/Jobs/continuous/QueueJob"
-
       - name: Login via Az module
         uses: azure/login@v2
         with:
@@ -118,7 +93,8 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ inputs.AZURE_WEBAPP_NAME }}
-          package: .
+          package: "${{ inputs.AZURE_WEBAPP_PACKAGE_PATH }}/output"
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
       
       - name: Deploy to Azure Web App (staging)
         if: ${{ inputs.environment }} != 'production'
