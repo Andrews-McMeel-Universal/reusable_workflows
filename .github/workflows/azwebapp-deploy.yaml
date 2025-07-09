@@ -98,7 +98,7 @@ jobs:
             PROJECT_BASE=${PROJECT_NAME%.Job}
             PROJECT_SHORTNAME=${PROJECT_BASE##*.}
 
-            TARGET_DIR="${{ github.workspace }}/publish/app_data/jobs/continuous/${PROJECT_SHORTNAME}Job"
+            TARGET_DIR="${{ github.workspace }}/publish/app_data/jobs/continuous/${PROJECT_NAME"
             echo "Output path: $TARGET_DIR"
             mkdir -p "$TARGET_DIR"
 
