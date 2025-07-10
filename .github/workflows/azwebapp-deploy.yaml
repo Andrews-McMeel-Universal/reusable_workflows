@@ -139,20 +139,19 @@ jobs:
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
       
       - name: Enable identity for Azure Web App
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            set -eu
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-              az webapp identity assign \
-                -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_WEBAPP_NAME }}" | tee
-            else
-              az webapp identity assign \
-                -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
-                --slot "${{ inputs.environment }}" | tee
-            fi
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ("${{ inputs.environment }}" -eq "production") {
+            az webapp identity assign `
+              -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" `
+              -n "${{ inputs.AZURE_WEBAPP_NAME }}"
+          } else {
+            az webapp identity assign `
+              -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" `
+              -n "${{ inputs.AZURE_WEBAPP_NAME }}" `
+              --slot "${{ inputs.environment }}"
+          }
 
       - name: Get Azure Web App Managed Identity
         id: identity
@@ -171,36 +170,33 @@ jobs:
           echo "webAppIdentity=$(echo $IDENTITY | jq -r '.principalId')" >> $GITHUB_ENV
 
       - name: Retrieve key vault name
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            set -eu
-            ENVIRONMENT="${{ inputs.environment }}"
-            REPOSITORY_NAME="${{ github.event.repository.name }}"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $ENVIRONMENT="${{ inputs.environment }}"
+          $REPOSITORY_NAME="${{ github.event.repository.name }}"
 
-            echo -e "Searching for key vault with tags: \"repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}\""
-            KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
+          Write-Host "Searching for key vault with tags: repository-name=$REPOSITORY_NAME; environment=$ENVIRONMENT"
+          $keyVaultName = az keyvault list --query "[?tags.\"repository-name\" == '$REPOSITORY_NAME' && tags.environment == '$ENVIRONMENT'].name" --output tsv
 
-            # Check if key vault was found
-            if [[ -z "$KEYVAULT_NAME" ]]; then
-              echo "Key Vault not found with tags: repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}"
-              exit 1
-            fi
+          if ([string]::IsNullOrWhiteSpace($keyVaultName)) {
+            Write-Error "Key Vault not found with tags: repository-name=$REPOSITORY_NAME; environment=$ENVIRONMENT"
+            exit 1
+          }
 
-            # Get key vault object
-            KEYVAULT_NAME=${KEYVAULT_NAME// /}
-            echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_ENV
+          echo "keyVaultName=$keyVaultName" >> $env:GITHUB_ENV
 
       - name: Assign Azure Web App System Managed Identity to Key Vault
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            set -eu
-            # Retrieve the Key Vault ID
-            keyVaultId=$(az keyvault show --name ${{ env.keyVaultName }} --query id --output tsv)
-            
-            # Assign the Key Vault Secrets User role to the managed identity using object ID and principal type
-            az role assignment create --role "Key Vault Secrets User" --assignee-object-id ${{ env.webAppIdentity }} --assignee-principal-type ServicePrincipal  --scope $keyVaultId
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $keyVaultId = az keyvault show --name "${{ env.keyVaultName }}" --query id --output tsv
+
+          az role assignment create `
+            --role "Key Vault Secrets User" `
+            --assignee-object-id "${{ env.webAppIdentity }}" `
+            --assignee-principal-type ServicePrincipal `
+            --scope $keyVaultId
       
       - name: Retrieve environment variables
         if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
@@ -269,20 +265,19 @@ jobs:
           done
 
       - name: Restart Azure Web App
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            set -eu
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-                az webapp restart \
-                  -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_WEBAPP_NAME }}" | tee
-            else
-                az webapp restart \
-                  -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
-                  --slot "${{ inputs.environment }}" | tee
-            fi
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ("${{ inputs.environment }}" -eq "production") {
+            az webapp restart `
+              -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" `
+              -n "${{ inputs.AZURE_WEBAPP_NAME }}"
+          } else {
+            az webapp restart `
+              -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" `
+              -n "${{ inputs.AZURE_WEBAPP_NAME }}" `
+              --slot "${{ inputs.environment }}"
+          }
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
