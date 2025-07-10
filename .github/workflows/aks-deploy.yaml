@@ -469,7 +469,10 @@ jobs:
                   }
 
                   # Add hostnames to domains variable
-                  $domains += $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
+                  if ($null -ne $item.host -or $item.host -ne "" -or $item.host -ne " ") {
+                      $domains += $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
+                      Write-Output "Adding $($item.host) to domains list"
+                  }
               }
               # Ensure ingress is an array
               $appConfig.ingress = @($updatedIngress)
@@ -544,8 +547,9 @@ jobs:
                   }
 
                   # Add hostnames to domains variable
-                  if ($null -ne $item.Value.host -or $item.Value.host -ne "") {
+                  if ($null -ne $item.Value.host -or $item.Value.host -ne "" -or $item.Value.host -ne " ") {
                       $domains += $item.Value.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
+                      Write-Output "Adding $($item.Value.host) to domains list"
                   }
               }
           }
