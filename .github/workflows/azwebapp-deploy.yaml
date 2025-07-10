@@ -175,9 +175,11 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          $REPOSITORY_NAME = "${{ github.event.repository.name }}"
+          $ENVIRONMENT = "${{ inputs.environment }}"
 
           Write-Host "Searching for key vault with tags: repository-name=$REPOSITORY_NAME; environment=$ENVIRONMENT"
-          $keyVaultName = (Get-AzKeyVault -Tag @{"environment" = "${{ inputs.environment }}" } | Get-AzKeyVault -Tag @{"repository-name" = "${{ github.event.repository.name }}" }).VaultName
+          $keyVaultName = (Get-AzKeyVault -Tag @{"environment" = "$ENVIRONMENT"} | Get-AzKeyVault -Tag @{"repository-name" = "$REPOSITORY_NAME"}).VaultName
 
           if ([string]::IsNullOrWhiteSpace($keyVaultName)) {
             Write-Error "Key Vault not found with tags: repository-name=$REPOSITORY_NAME; environment=$ENVIRONMENT"
