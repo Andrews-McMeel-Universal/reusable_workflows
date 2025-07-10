@@ -741,7 +741,7 @@ jobs:
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
 
           # Populate INGRESSES array safely
-          mapfile -t INGRESSES < <(echo "${{ steps.values-override.outputs.domains }}" | tr ' ' '\n' | sort -u)
+          mapfile -t INGRESSES < <(echo "${{ steps.values-override.outputs.domains }}" | sed "s/ $//g" | tr ' ' '\n' | sort -u)
 
           # Check if INGRESSES is empty
           if [ "${#INGRESSES[@]}" -eq 0 ]; then
