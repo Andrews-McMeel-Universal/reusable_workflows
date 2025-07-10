@@ -155,6 +155,7 @@ jobs:
 
       - name: Get Azure Web App Managed Identity
         id: identity
+        shell: bash
         run: |
           set -eu
           if [[ "${{ inputs.environment }}" == "production" ]]; then
