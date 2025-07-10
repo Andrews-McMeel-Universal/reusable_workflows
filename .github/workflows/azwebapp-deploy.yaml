@@ -45,7 +45,7 @@ jobs:
     name: Deploy to ${{ inputs.environment }}
     environment:
       name: ${{ inputs.environment }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     env:
       PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
     steps:
@@ -55,10 +55,14 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Install jq apt package
+        if: runner.os == 'Linux'
+        shell: bash
         run: sudo apt-get update -y && sudo apt-get install jq -y
 
       - name: Retrieve .NET version
+        if: runner.os == 'Linux' && inputs.DOTNET_VERSION == ''
         id: dotnet-version
+        shell: bash
         run: |
           DOTNET_VERSION=$(find . -name '*.csproj' -exec grep -h '<TargetFramework>net' {} + | sed -E 's/.*<TargetFramework>net([0-9]+\.[0-9]+)<\/TargetFramework>.*/\1/' | sort -V | tail -n1)
           echo "DOTNET_VERSION=${DOTNET_VERSION}" >> $GITHUB_OUTPUT
@@ -70,14 +74,17 @@ jobs:
 
       - name: Add AMU GitHub Packages nuget source
         if: ${{ env.PAT_ACTION_CI }}
+        shell: bash
         run: |
           dotnet nuget add source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --name "AMU GitHub Packages" --username "amu_deploy@amuniversal.com" --password "${{ secrets.PAT_ACTION_CI }}" --store-password-in-clear-text
 
       - name: Build solution
+        shell: bash
         run: |
           dotnet build -c Release
 
       - name: Publish Web App
+        shell: bash
         run: |
           WEB_APP_PROJECT=$(find . \( -name '*Api.csproj' -o -name '*Web.csproj' \))
           if [ -z "${WEB_APP_PROJECT}" ]; then
@@ -89,6 +96,7 @@ jobs:
           fi
 
       - name: Publish Web Jobs
+        shell: bash
         run: |
           while IFS= read -r -d '' PROJECT; do
             echo "Publishing project: ${PROJECT}"
@@ -109,6 +117,7 @@ jobs:
 
       - name: Get slot name
         id: slot-name
+        shell: bash
         run: |
           if [[ "${{ inputs.environment }}" == "production" ]]; then
             echo "slot-name=production" >> $GITHUB_OUTPUT
@@ -204,6 +213,7 @@ jobs:
           environmentVariableSeparator: "\n"
 
       - name: Add environment variables to web app
+        shell: bash
         run: |
           set -eu
           # Store the environment variables output into a separate variable
