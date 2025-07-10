@@ -469,10 +469,12 @@ jobs:
                   }
 
                   # Add hostnames to domains variable
-                  if ($null -ne $item.host -or $item.host -ne "" -or $item.host -ne " ") {
-                      $domains += $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
-                      Write-Output "Adding $($item.host) to domains list"
+                  if ($item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", "" -eq "" -or $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", "" -eq " " -or $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", "" -eq $null) {
+                      Write-Output "Skipping adding empty hostname $($item.host) to domains list"
+                      continue
                   }
+                  $domains += $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
+                  Write-Output "Adding $($item.host) to domains list"
               }
               # Ensure ingress is an array
               $appConfig.ingress = @($updatedIngress)
@@ -547,10 +549,12 @@ jobs:
                   }
 
                   # Add hostnames to domains variable
-                  if ($null -ne $item.Value.host -or $item.Value.host -ne "" -or $item.Value.host -ne " ") {
-                      $domains += $item.Value.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
-                      Write-Output "Adding $($item.Value.host) to domains list"
+                  if ($item.Value.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", "" -eq "" -or $item.Value.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", "" -eq " " -or $item.Value.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", "" -eq $null) {
+                      Write-Output "Skipping adding empty hostname $($item.Value.host) to domains list"
+                      continue
                   }
+                  $domains += $item.Value.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
+                  Write-Output "Adding $($item.Value.host) to domains list"
               }
           }
 
