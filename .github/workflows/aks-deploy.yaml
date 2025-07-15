@@ -210,7 +210,7 @@ jobs:
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
-        uses: Andrews-McMeel-Universal/get-envs@bug/DEVOPS-714/failed-dam-interface-deploys
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
@@ -628,7 +628,7 @@ jobs:
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
 
       - name: Generate .env file from Azure Key Vaults
-        uses: Andrews-McMeel-Universal/get-envs@bug/DEVOPS-714/failed-dam-interface-deploys
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
