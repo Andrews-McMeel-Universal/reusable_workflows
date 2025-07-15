@@ -203,7 +203,7 @@ jobs:
       - name: Retrieve environment variables
         if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
         id: get-envs
-        uses: Andrews-McMeel-Universal/get-envs@v1
+        uses: Andrews-McMeel-Universal/get-envs@bug/DEVOPS-714/failed-dam-interface-deploys
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
