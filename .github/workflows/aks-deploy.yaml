@@ -220,6 +220,7 @@ jobs:
 
       - name: Insert new line after build arguments
         id: insert-new-line
+        shell: bash
         run: |
           buildArguments=$(echo "${{ steps.get-envs.outputs.buildArguments }}" | sed 's/^ ; //g' | sed 's/; /\n/g')
           echo 'buildArguments<<EOF' >> $GITHUB_ENV
@@ -249,6 +250,7 @@ jobs:
             latest=false
 
       - name: Enable write access if image has already been deployed
+        shell: bash
         run: |
           IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" --query "digest" -o tsv || echo "")
           if [ -z "${IMAGE_MANIFEST}" ]; then
@@ -634,6 +636,7 @@ jobs:
 
       - name: Get AKS cluster resource group
         id: aks-resource-group
+        shell: bash
         run: |
           AKS_RESOURCE_GROUP=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].resourceGroup" -o tsv)
           echo "AKS_RESOURCE_GROUP=${AKS_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
@@ -646,6 +649,7 @@ jobs:
 
       - name: Switch Kubernetes Namespace
         id: namespace
+        shell: bash
         run: |
           if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
             kubectl config set-context --current --namespace="${{ inputs.environment }}"
@@ -655,6 +659,7 @@ jobs:
           fi
 
       - name: Update .env Kubernetes secret
+        shell: bash
         run: |
           if kubectl get secret | grep -q "^${{ needs.build.outputs.appName }}-config-secret"; then
               kubectl delete secret "${{ needs.build.outputs.appName }}-config-secret"
@@ -662,6 +667,7 @@ jobs:
           kubectl create secret generic "${{ needs.build.outputs.appName }}-config-secret" --validate='warn' --from-env-file ${{ github.workspace }}/.env
 
       - name: Update basic web authentication Kubernetes secret
+        shell: bash
         run: |
           if [[ "${{ inputs.webAuthentication }}" == "true" ]]; then
               if [[ -z "${{ secrets.webAuthenticationUsername }}" ]] || [[ -z "${{ secrets.webAuthenticationPassword }}" ]]; then
@@ -687,6 +693,7 @@ jobs:
 
       - name: Get previous image tag used in deployment
         id: get-previous-image
+        shell: bash
         run: |
           PREVIOUS_IMAGE=$(kubectl get deployment "${{ needs.build.outputs.appName }}" -n "${{ steps.namespace.outputs.namespace }}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}')
           if [ -z "${PREVIOUS_IMAGE}" ]; then
@@ -710,6 +717,7 @@ jobs:
 
       - name: Unlock and untag previous ACR image
         if: ${{ steps.get-previous-image.outputs.previousImage != '' }}
+        shell: bash
         run: |
           PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ steps.get-previous-image.outputs.previousImage }}" --query "digest" -o tsv || true)
           if [[ -n "$PREVIOUS_MANIFEST" ]] && [[ "${{ steps.get-previous-image.outputs.previousImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" ]]; then
@@ -731,6 +739,7 @@ jobs:
           fi
 
       - name: Disable delete access for newly deployed image
+        shell: bash
         run: |
           IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" --query "digest" -o tsv)
           if [ -z "${IMAGE_MANIFEST}" ]; then
@@ -740,6 +749,7 @@ jobs:
 
       - name: Create or Update Public DNS Record
         id: dns
+        shell: bash
         run: |
           # Set AKS cluster ingress
           if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
@@ -784,6 +794,7 @@ jobs:
 
       - name: Get Current Date
         id: date
+        shell: bash
         run: |
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
@@ -827,6 +838,7 @@ jobs:
               } -UpdateExisting | Out-Null
 
       - name: Create deployment summary
+        shell: bash
         run: |
           echo "### ${{ needs.build.outputs.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
           echo "- **Application Name**: ${{ needs.build.outputs.appName }}" >> $GITHUB_STEP_SUMMARY
