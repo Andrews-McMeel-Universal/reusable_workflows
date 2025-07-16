@@ -17,6 +17,7 @@ on:
         required: false
         type: string
         description: Shared Library Name
+        default: ${{ vars.DOTNET_LIBRARIES }}
       checkoutRef:
         required: false
         type: string
