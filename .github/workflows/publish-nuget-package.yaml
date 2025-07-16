@@ -67,7 +67,7 @@ jobs:
 
       - name: Push ${{ steps.project-name.outputs.projectName }} Package
         if: ${{ ! inputs.libraries }}
-        working-directory: "${{ steps.project-name.outputs.projectName }}/"
+        working-directory: "${{ steps.project-name.outputs.projectName }}/bin/Release/"
         run: dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
 
       - name: Push ${{ steps.project-name.outputs.projectName }} Packages
@@ -75,6 +75,6 @@ jobs:
         run: |
           LIBRARIES=(${{ inputs.libraries }})
           for LIBRARY in "${LIBRARIES[@]}"; do
-            cd "${{ github.workspace }}/${{ steps.project-name.outputs.projectName }}/${LIBRARY}/"
+            cd "${{ github.workspace }}/${{ steps.project-name.outputs.projectName }}/${LIBRARY}/bin/Release/"
             dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
           done
