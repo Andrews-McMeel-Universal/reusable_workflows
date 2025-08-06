@@ -163,9 +163,11 @@ jobs:
           # Set the max replicas based on the environment
           $appEnvironment = "${{ inputs.environment }}"
           if ($appEnvironment -eq "development") {
+              $minReplicas = 1
               $maxReplicas = 2
           }
           elseif ($appEnvironment -eq "staging") {
+              $minReplicas = 2
               $maxReplicas = 4
           }
           else {
@@ -286,6 +288,7 @@ jobs:
       domainName: ${{ env.domainName }}
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
+      minReplicas: ${{ env.minReplicas }}
       chartsPath: ${{ env.chartsPath }}
       wwwIngress: ${{ env.wwwIngress }}
 
@@ -626,6 +629,7 @@ jobs:
             image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
+            autoscaling.minReplicas:${{ needs.build.outputs.minReplicas }}
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
