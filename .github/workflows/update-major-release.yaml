@@ -16,10 +16,16 @@ on:
         options:
           - "2"
           - "1"
+      environment:
+        description: The environment to deploy to
+        required: false
+        default: production
 
 jobs:
   tag:
+    name: Tag major release
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'production' }}
     steps:
       - uses: actions/checkout@v4
         with:
