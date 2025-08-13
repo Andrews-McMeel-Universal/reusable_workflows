@@ -375,6 +375,10 @@ jobs:
                           $ingressWhitelist = "0.0.0.0/0"
                       }
                   }
+                  elseif ($item.privateIngress -eq "true") {
+                      Write-Output "Private ingress is enabled, setting ingress whitelist to service whitelist for $($item.name)"
+                      $ingressWhitelist = $serviceIngressWhitelist
+                  }
                   elseif ($webAuthentication -eq "true") {
                       Write-Output "Web authentication is enabled, setting ingress whitelist to '0.0.0.0/0' for $($item.name)"
                       $ingressWhitelist = "0.0.0.0/0"
