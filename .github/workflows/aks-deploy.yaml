@@ -683,7 +683,7 @@ jobs:
                   exit 1
               fi
           
-              if kubectl get secret | grep -q "${{ needs.build.outputs.appName }}-basic-auth"; then
+              if kubectl get secret "${{ needs.build.outputs.appName }}-basic-auth" > /dev/null 2>&1; then
                   kubectl delete secret "${{ needs.build.outputs.appName }}-basic-auth"
               fi
               htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
