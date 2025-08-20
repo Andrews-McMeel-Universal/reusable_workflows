@@ -91,11 +91,13 @@ jobs:
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1
 
-  unit-tests:
-    name: Unit Tests
-    if: ${{ inputs.RUN_JEST_TESTS == 'true' }}
+  tests:
+    name: Run CI Tests
     needs: [build]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
+    strategy:
+      matrix:
+        test: [unit, integration]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -120,55 +122,28 @@ jobs:
         uses: Andrews-McMeel-Universal/cache-next-build@v1
 
       - name: Run Jest tests
-        if: ${{ inputs.RUN_JEST_TESTS == 'true' }}
+        if: ${{ matrix.test == 'unit' && inputs.RUN_JEST_TESTS == 'true' }}
         run: yarn test:unit:ci
 
-  integration-tests:
-    name: Integration Tests
-    if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' || inputs.CHECK_SIZE_LIMIT == 'true' }}
-    needs: [build]
-    runs-on: ${{ inputs.GITHUB_RUNNER }}
-    timeout-minutes: 25
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use cache-next-install action
-        if: ${{ inputs.YARN_INSTALL == 'false' }}
-        uses: Andrews-McMeel-Universal/cache-next-install@v1
-
-      - name: Use cache-yarn-install action
-        if: ${{ inputs.YARN_INSTALL == 'true' }}
-        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
-        with:
-          enable-corepack: ${{ inputs.COREPACK_INSTALL }}
-
       - name: Install Playwright Browsers
-        if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' }}
+        if: ${{ matrix.test == 'integration' && inputs.RUN_PLAYWRIGHT_TESTS == 'true' }}
         run: yarn playwright install --with-deps
 
-      - name: Use .env cache action
-        uses: Andrews-McMeel-Universal/get-envs@v1
-        with:
-          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ inputs.environment }}
-
-      - name: Use cache-next-build action
-        uses: Andrews-McMeel-Universal/cache-next-build@v1
-
       - name: Run Playwright tests
-        if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' }}
+        if: ${{ matrix.test == 'integration' && inputs.RUN_PLAYWRIGHT_TESTS == 'true' }}
         run: yarn test:integration:ci
 
-      - uses: actions/upload-artifact@v4
-        if: inputs.RUN_PLAYWRIGHT_TESTS == 'true' && always()
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.test == 'integration' && inputs.RUN_PLAYWRIGHT_TESTS == 'true' && always() }}
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
 
-      - uses: andresz1/size-limit-action@v1
-        if: ${{ inputs.CHECK_SIZE_LIMIT == 'true' }}
+      - name: Check Size Limit
+        uses: andresz1/size-limit-action@v1
+        if: ${{ matrix.test == 'integration' && inputs.CHECK_SIZE_LIMIT == 'true' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # The size-limit-action tries to run a
