@@ -172,9 +172,12 @@ jobs:
           }
           else {
               $maxReplicas = $appConfig.autoscaling.maxReplicas
+              $minReplicas = $appConfig.autoscaling.minReplicas
           }
           Write-Output "maxReplicas=$maxReplicas"
           Write-Output "maxReplicas=$maxReplicas" >> $env:GITHUB_ENV
+          Write-Output "minReplicas=$minReplicas"
+          Write-Output "minReplicas=$minReplicas" >> $env:GITHUB_ENV
 
           # Set image tag
           $release = "$appName-${{ github.sha }}" -replace '(^.{53})(.*$)', '$1'
