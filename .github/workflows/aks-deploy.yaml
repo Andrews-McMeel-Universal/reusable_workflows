@@ -450,7 +450,7 @@ jobs:
                       }
                   }
                   elseif ($item.name -eq "admin-ingress") {
-                      if ($adminIngressWhitelist -ne "") {
+                      if ($adminIngressWhitelist -ne "207.67.20.252") {
                           $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
                       }
                       else {
