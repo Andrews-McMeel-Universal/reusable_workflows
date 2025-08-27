@@ -380,7 +380,7 @@ jobs:
                   }
                   elseif ($item.privateIngress -eq "true") {
                       Write-Output "Private ingress is enabled, setting ingress whitelist to service whitelist for $($item.name)"
-                      if ($adminIngressWhitelist -ne "") {
+                      if ($adminIngressWhitelist -ne "207.67.20.252") {
                           $ingressWhitelist = $adminIngressWhitelist
                       }
                       else {
