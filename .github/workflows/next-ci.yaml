@@ -140,6 +140,9 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.55.0-noble
       options: --user 1001
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -163,7 +166,7 @@ jobs:
         uses: Andrews-McMeel-Universal/cache-next-build@v1
 
       - name: Run Playwright tests
-        run: yarn test:integration:ci
+        run: npx playwright test --project=${{ matrix.browser }}
 
       - uses: actions/upload-artifact@v4
         if: always()
