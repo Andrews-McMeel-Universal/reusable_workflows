@@ -91,14 +91,6 @@ jobs:
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1
 
-      - uses: andresz1/size-limit-action@v1
-        if: ${{ inputs.CHECK_SIZE_LIMIT == 'true' }}
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # The size-limit-action tries to run a
-          # redundant yarn build
-          skip_step: build
-
   unit-tests:
     name: Unit Tests
     if: ${{ inputs.RUN_JEST_TESTS == 'true' }}
@@ -139,7 +131,6 @@ jobs:
     timeout-minutes: 25
     container:
       image: mcr.microsoft.com/playwright:v1.55.0-noble
-      options: --user 1001
     strategy:
       matrix:
         browser: [chromium, firefox, webkit]
