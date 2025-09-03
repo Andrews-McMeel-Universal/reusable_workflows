@@ -147,6 +147,10 @@ jobs:
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
         with:
           enable-corepack: ${{ inputs.COREPACK_INSTALL }}
+
+      - name: Install Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
