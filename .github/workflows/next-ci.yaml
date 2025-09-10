@@ -143,8 +143,8 @@ jobs:
         with:
           enable-corepack: ${{ inputs.COREPACK_INSTALL }}
 
-      - name: Install Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+      - name: Install Playwright Browsers
+        run: yarn playwright install --with-deps
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
