@@ -161,7 +161,7 @@ jobs:
       - name: Cache Playwright APT dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: libnss3
+          packages: libnss3 libatk1.0-0 libatk-bridge2.0-0
           version: 1.0
 
       - name: Install Playwright Browsers
