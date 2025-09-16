@@ -158,6 +158,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-playwright-
 
+      - name: Cache Playwright APT dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libnss3
+          version: 1.0
+
       - name: Install Playwright Browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: yarn playwright install --with-deps
