@@ -92,7 +92,7 @@ jobs:
 
             # Jest Files
             case "$FILE" in
-              src/*|*.js|*.jsx|*.ts|*.tsx|jest.config.*|**/jest.*|**/__tests__/*|**/*.test.*|**/package.json|**/yarn.lock)
+              src/*|*.js|*.jsx|*.ts|*.tsx|jest.config.*|**/jest.*|**/*.test.*|**/package.json|**/yarn.lock)
                 RUN_JEST=true
                 ;;
             esac
