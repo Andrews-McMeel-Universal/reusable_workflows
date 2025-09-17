@@ -63,7 +63,6 @@ jobs:
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             BASE=${{ github.event.pull_request.base.sha }}
             HEAD=${{ github.event.pull_request.head.sha }}
-            CHANGED_FILES=$(git diff --name-only $BASE..$HEAD)
           else
             # For pushes, GitHub provides before/after
             BASE="${{ github.event.before }}"
@@ -85,7 +84,7 @@ jobs:
 
             # Lintable Files
             case "$FILE" in
-              src/*|public/*|playwright/*|.storybook/*|**/*.json|**/*.scss|**/*.css|**/*.config.*|**/*.json)
+              src/*|public/*|playwright/*|.storybook/*|**/*.json|**/*.scss|**/*.css|**/*.config.*)
                 RUN_LINTER=true
                 ;;
             esac
@@ -177,8 +176,8 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    if: ${{ inputs.RUN_JEST_TESTS == 'true' && needs.build.outputs.run-jest == 'true' }}
-    needs: [build]
+    if: ${{ inputs.RUN_JEST_TESTS == 'true' && needs.debug-changes.outputs.run-jest == 'true' }}
+    needs: [debug-changes,build]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
@@ -208,8 +207,8 @@ jobs:
 
   playwright-tests:
     name: Playwright Tests
-    if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' && needs.build.outputs.run-playwright == 'true' }}
-    needs: [build]
+    if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' && needs.debug-changes.outputs.run-playwright == 'true' }}
+    needs: [debug-changes,build]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     timeout-minutes: 25
     steps:
