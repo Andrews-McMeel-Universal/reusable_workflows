@@ -65,9 +65,9 @@ jobs:
 
           # Determine the range of commits to analyze
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            BASE_COMMIT=${{ github.event.pull_request.base.sha }}
-            HEAD_COMMIT=${{ github.event.pull_request.head.sha }}
-            CHANGED_FILES=$(git diff --name-only $BASE_COMMIT..$HEAD_COMMIT)
+            BASE=${{ github.event.pull_request.base.sha }}
+            HEAD=${{ github.event.pull_request.head.sha }}
+            CHANGED_FILES=$(git diff --name-only $BASE..$HEAD)
           else
             # For pushes, GitHub provides before/after
             BASE="${{ github.event.before }}"
