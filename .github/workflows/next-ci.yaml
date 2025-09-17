@@ -74,8 +74,6 @@ jobs:
             fi
           fi
 
-          echo "Changed files: $CHANGED_FILES"
-
           # Initialize flags
           RUN_JEST=false
           RUN_PLAYWRIGHT=false
