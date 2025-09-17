@@ -124,7 +124,9 @@ jobs:
           fi
 
           echo "run-jest=$RUN_JEST" >> "$GITHUB_OUTPUT"
+          echo "run-jest=$RUN_JEST"
           echo "run-playwright=$RUN_PLAYWRIGHT" >> "$GITHUB_OUTPUT"
+          echo "run-playwright=$RUN_PLAYWRIGHT"
 
       - name: Use cache-next-install action
         if: ${{ inputs.YARN_INSTALL == 'false' }}
