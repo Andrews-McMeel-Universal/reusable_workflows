@@ -121,12 +121,6 @@ jobs:
 
       - name: Run Jest tests
         run: yarn test:unit:ci
-      
-      - name: Upload Jest Report
-        if: always()
-        uses: IgnusG/jest-report-action@v2.3.3
-        with:
-          access-token: ${{ secrets.GITHUB_TOKEN }}
 
   playwright-tests:
     name: Playwright Tests
