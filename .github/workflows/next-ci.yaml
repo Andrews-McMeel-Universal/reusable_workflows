@@ -115,17 +115,6 @@ jobs:
             fi
           done < <(git diff --name-only -z "$BASE" "$HEAD")
 
-          if [[ "$RUN_JEST" == false ]]; then
-            if git diff -U0 "$BASE" "$HEAD" -- . | LC_ALL=C grep -Eiq '^\+.*(jest|@jest/|describe\(|it\(|test\()'; then
-              RUN_JEST=true
-            fi
-          fi
-          if [[ "$RUN_PLAYWRIGHT" == false ]]; then
-            if git diff -U0 "$BASE" "$HEAD" -- . | LC_ALL=C grep -Eiq '^\+.*(playwright|@playwright/test)'; then
-              RUN_PLAYWRIGHT=true
-            fi
-          fi
-
           echo "---"
           echo "Determined actions to run:"
           echo "run-linter=$RUN_LINTER" >> "$GITHUB_OUTPUT"
