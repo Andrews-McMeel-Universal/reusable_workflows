@@ -166,7 +166,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    if: ${{ inputs.RUN_JEST_TESTS == 'true' }}
+    if: ${{ inputs.RUN_JEST_TESTS == 'true' && needs.build.outputs.run-jest == 'true' }}
     needs: [build]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
@@ -193,12 +193,11 @@ jobs:
         uses: Andrews-McMeel-Universal/cache-next-build@v1
 
       - name: Run Jest tests
-        if: ${{ inputs.RUN_JEST_TESTS == 'true' }}
         run: yarn test:unit:ci
 
   playwright-tests:
     name: Playwright Tests
-    if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' }}
+    if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' && needs.build.outputs.run-playwright == 'true' }}
     needs: [build]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     timeout-minutes: 25
