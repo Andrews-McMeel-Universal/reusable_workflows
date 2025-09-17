@@ -78,6 +78,7 @@ jobs:
           RUN_JEST=false
           RUN_PLAYWRIGHT=false
 
+          echo "Files changed between $BASE and $HEAD:"
           while IFS= read -r -d '' FILE; do
             echo " - $FILE"
 
