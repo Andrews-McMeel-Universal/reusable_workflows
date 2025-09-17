@@ -75,6 +75,7 @@ jobs:
           fi
 
           # Initialize flags
+          RUN_LINTER=false
           RUN_JEST=false
           RUN_PLAYWRIGHT=false
 
