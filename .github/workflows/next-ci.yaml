@@ -22,10 +22,6 @@ on:
         required: false
         type: string
         default: ${{ vars.APPLICATION_CI_LINT_JS || 'true' }}
-      CHECK_SIZE_LIMIT:
-        required: false
-        type: string
-        default: ${{ vars.APPLICATION_CI_CHECK_SIZE_LIMIT || 'true' }}
       RUN_JEST_TESTS:
         required: false
         type: string
@@ -46,8 +42,8 @@ on:
         required: true
 
 jobs:
-  build:
-    name: Build App
+  debug-changes:
+    name: Debug Changed Files
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
@@ -87,16 +83,23 @@ jobs:
           while IFS= read -r -d '' FILE; do
             echo " - $FILE"
 
+            # Lintable Files
+            case "$FILE" in
+              src/*|public/*|playwright/*|.storybook/*|**/*.json|**/*.scss|**/*.css|**/*.config.*|**/*.json)
+                RUN_LINTER=true
+                ;;
+            esac
+
             # Jest Files
             case "$FILE" in
-              src/*|*.js|*.jsx|*.ts|*.tsx|**/jest.config.*|jest.config.*|**/jest.*|**/__tests__/*|**/*.test.*)
+              src/*|*.js|*.jsx|*.ts|*.tsx|**/jest.config.*|jest.config.*|**/jest.*|**/__tests__/*|**/*.test.*|**/package.json|**/yarn.lock)
                 RUN_JEST=true
                 ;;
             esac
 
             # Playwright Files
             case "$FILE" in
-              src/*|playwright/*|**/*.spec.ts|**/*.spec.tsx|playwright.config.*|**/playwright.*)
+              src/*|playwright/*|**/*.spec.ts|**/*.spec.tsx|playwright.config.*|**/playwright.*|**/package.json|**/yarn.lock)
                 RUN_PLAYWRIGHT=true
                 ;;
             esac
@@ -127,6 +130,25 @@ jobs:
           echo "run-jest=$RUN_JEST"
           echo "run-playwright=$RUN_PLAYWRIGHT" >> "$GITHUB_OUTPUT"
           echo "run-playwright=$RUN_PLAYWRIGHT"
+          echo "run-linter=$RUN_LINTER" >> "$GITHUB_OUTPUT"
+          echo "run-linter=$RUN_LINTER"
+
+    outputs:
+      run-linter: ${{ steps.changed-files.outputs.run-linter }}
+      run-jest: ${{ steps.changed-files.outputs.run-jest }}
+      run-playwright: ${{ steps.changed-files.outputs.run-playwright }}
+
+  build:
+    name: Build App
+    if: ${{ needs.debug-changes.outputs.run-linter == 'true' || needs.debug-changes.outputs.run-jest == 'true' || needs.debug-changes.outputs.run-playwright == 'true' }}
+    runs-on: ${{ inputs.GITHUB_RUNNER }}
+    needs: [debug-changes]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+          fetch-depth: 0
 
       - name: Use cache-next-install action
         if: ${{ inputs.YARN_INSTALL == 'false' }}
@@ -161,10 +183,6 @@ jobs:
 
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1
-
-    outputs:
-      run-jest: ${{ steps.changed-files.outputs.run-jest }}
-      run-playwright: ${{ steps.changed-files.outputs.run-playwright }}
 
   unit-tests:
     name: Unit Tests
