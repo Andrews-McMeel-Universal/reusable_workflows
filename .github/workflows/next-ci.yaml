@@ -89,7 +89,7 @@ jobs:
           environment: ${{ inputs.environment }}
 
       - name: Use cache-next-build action
-        uses: Andrews-McMeel-Universal/cache-next-build@v1
+        uses: Andrews-McMeel-Universal/cache-next-build@story/DEVOPS-733/improve-ci-tests-runtime
 
   unit-tests:
     name: Unit Tests
@@ -117,7 +117,7 @@ jobs:
           environment: ${{ inputs.environment }}
 
       - name: Use cache-next-build action
-        uses: Andrews-McMeel-Universal/cache-next-build@v1
+        uses: Andrews-McMeel-Universal/cache-next-build@story/DEVOPS-733/improve-ci-tests-runtime
 
       - name: Run Jest tests
         run: yarn test:unit:ci
@@ -152,7 +152,7 @@ jobs:
           environment: ${{ inputs.environment }}
 
       - name: Use cache-next-build action
-        uses: Andrews-McMeel-Universal/cache-next-build@v1
+        uses: Andrews-McMeel-Universal/cache-next-build@story/DEVOPS-733/improve-ci-tests-runtime
 
       - name: Run Playwright tests
         run: yarn test:integration:ci
