@@ -57,6 +57,75 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
 
+      - name: Get changed files
+        id: changed-files
+        shell: bash
+        run: |
+          IFS=$'\n\t'
+
+          # Determine the range of commits to analyze
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_COMMIT=${{ github.event.pull_request.base.sha }}
+            HEAD_COMMIT=${{ github.event.pull_request.head.sha }}
+            CHANGED_FILES=$(git diff --name-only $BASE_COMMIT..$HEAD_COMMIT)
+          else
+            # For pushes, GitHub provides before/after
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+            # Fallback if 'before' is empty (e.g., first push)
+            if [[ -z "$BASE" ]]; then
+              BASE="$(git rev-list -n 2 "$HEAD" | tail -n 1 || true)"
+            fi
+          fi
+
+          echo "Changed files: $CHANGED_FILES"
+
+          # Initialize flags
+          RUN_JEST=false
+          RUN_PLAYWRIGHT=false
+
+          while IFS= read -r -d '' FILE; do
+            echo " - $FILE"
+
+            # Jest Files
+            case "$FILE" in
+              src/*|*.js|*.jsx|*.ts|*.tsx|**/jest.config.*|jest.config.*|**/jest.*|**/__tests__/*|**/*.test.*)
+                RUN_JEST=true
+                ;;
+            esac
+
+            # Playwright Files
+            case "$FILE" in
+              src/*|playwright/*|**/*.spec.ts|**/*.spec.tsx|playwright.config.*|**/playwright.*)
+                RUN_PLAYWRIGHT=true
+                ;;
+            esac
+
+            # Content-based detection
+            if [[ -f "$FILE" ]] && LC_ALL=C grep -Iq . -- "$FILE"; then
+              if LC_ALL=C grep -Eiq -- '(^|[^A-Za-z])jest([^A-Za-z]|$)|@jest/|describe\(|it\(|test\(' "$FILE"; then
+                RUN_JEST=true
+              fi
+              if LC_ALL=C grep -Eiq -- '(^|[^A-Za-z])playwright([^A-Za-z]|$)|@playwright/test' "$FILE"; then
+                RUN_PLAYWRIGHT=true
+              fi
+            fi
+          done < <(git diff --name-only -z "$BASE" "$HEAD")
+
+          if [[ "$RUN_JEST" == false ]]; then
+            if git diff -U0 "$BASE" "$HEAD" -- . | LC_ALL=C grep -Eiq '^\+.*(jest|@jest/|describe\(|it\(|test\()'; then
+              RUN_JEST=true
+            fi
+          fi
+          if [[ "$RUN_PLAYWRIGHT" == false ]]; then
+            if git diff -U0 "$BASE" "$HEAD" -- . | LC_ALL=C grep -Eiq '^\+.*(playwright|@playwright/test)'; then
+              RUN_PLAYWRIGHT=true
+            fi
+          fi
+
+          echo "run-jest=$RUN_JEST" >> "$GITHUB_OUTPUT"
+          echo "run-playwright=$RUN_PLAYWRIGHT" >> "$GITHUB_OUTPUT"
+
       - name: Use cache-next-install action
         if: ${{ inputs.YARN_INSTALL == 'false' }}
         uses: Andrews-McMeel-Universal/cache-next-install@v1
@@ -90,6 +159,10 @@ jobs:
 
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1
+
+    outputs:
+      run-jest: ${{ steps.changed-files.outputs.run-jest }}
+      run-playwright: ${{ steps.changed-files.outputs.run-playwright }}
 
   unit-tests:
     name: Unit Tests
