@@ -92,14 +92,14 @@ jobs:
 
             # Jest Files
             case "$FILE" in
-              src/*|*.js|*.jsx|*.ts|*.tsx|**/jest.config.*|jest.config.*|**/jest.*|**/__tests__/*|**/*.test.*|**/package.json|**/yarn.lock)
+              src/*|*.js|*.jsx|*.ts|*.tsx|jest.config.*|**/jest.*|**/__tests__/*|**/*.test.*|**/package.json|**/yarn.lock)
                 RUN_JEST=true
                 ;;
             esac
 
             # Playwright Files
             case "$FILE" in
-              src/*|playwright/*|**/*.spec.ts|**/*.spec.tsx|playwright.config.*|**/playwright.*|**/package.json|**/yarn.lock)
+              src/*|playwright/*|**/*.spec.ts|**/*.spec.tsx|playwright.*|**/package.json|**/yarn.lock)
                 RUN_PLAYWRIGHT=true
                 ;;
             esac
