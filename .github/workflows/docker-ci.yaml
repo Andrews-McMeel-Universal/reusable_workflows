@@ -49,6 +49,7 @@ jobs:
         run: |
           echo "::add-mask::${{ inputs.envEncryptionSecret }}"
           ENV_ENCRYPTION_SECRET="$(echo ${{ inputs.envEncryptionSecret }} | base64 --decode 2>/dev/null)"
+          echo "::add-mask::${ENV_ENCRYPTION_SECRET}"
           echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
 
       - name: Generate .env file from Azure Key Vaults
