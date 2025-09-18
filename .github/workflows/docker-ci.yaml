@@ -39,6 +39,13 @@ jobs:
             echo "AZURE_CREDENTIALS_SET=false" >> $GITHUB_ENV
           fi
 
+      - name: Prepare environment encryption key
+        id: env-enc-key
+        run: |
+          ENV_ENCRYPTION_SECRET="$(jq -r '.inputs.ENV_ENCRYPTION_SECRET' $GITHUB_EVENT_PATH | base64 --decode 2>/dev/null)"
+          echo "::add-mask::${ENV_ENCRYPTION_SECRET}"
+          echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
+
       - name: Generate .env file from Azure Key Vaults
         if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
         id: get-envs
@@ -48,6 +55,8 @@ jobs:
           environment: ${{ inputs.environment }}
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
+          enableCaching: true
+          envEncryptionSecret: ${{ steps.env-enc-key.outputs.envEncryptionSecret }}
       
       - name: Insert new line after build arguments
         id: insert-new-line
