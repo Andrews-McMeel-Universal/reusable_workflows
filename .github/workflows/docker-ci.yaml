@@ -25,7 +25,7 @@ jobs:
   build:
     name: Build app
     if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
