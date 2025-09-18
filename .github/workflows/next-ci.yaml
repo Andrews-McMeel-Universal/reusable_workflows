@@ -22,10 +22,6 @@ on:
         required: false
         type: string
         default: ${{ vars.APPLICATION_CI_LINT_JS || 'true' }}
-      CHECK_SIZE_LIMIT:
-        required: false
-        type: string
-        default: ${{ vars.APPLICATION_CI_CHECK_SIZE_LIMIT || 'true' }}
       RUN_JEST_TESTS:
         required: false
         type: string
@@ -46,10 +42,97 @@ on:
         required: true
 
 jobs:
-  build:
-    name: Build App
+  debug-changes:
+    name: Debug Changed Files
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ inputs.GITHUB_RUNNER }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        shell: bash
+        run: |
+          IFS=$'\n\t'
+
+          # Determine the range of commits to analyze
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE=${{ github.event.pull_request.base.sha }}
+            HEAD=${{ github.event.pull_request.head.sha }}
+          else
+            # For pushes, GitHub provides before/after
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+            # Fallback if 'before' is empty (e.g., first push)
+            if [[ -z "$BASE" ]]; then
+              BASE="$(git rev-list -n 2 "$HEAD" | tail -n 1 || true)"
+            fi
+          fi
+
+          # Initialize flags
+          RUN_LINTER=false
+          RUN_JEST=false
+          RUN_PLAYWRIGHT=false
+
+          echo "Files changed between $BASE and $HEAD:"
+          while IFS= read -r -d '' FILE; do
+            echo " - $FILE"
+
+            # Lintable Files
+            case "$FILE" in
+              src/*|public/*|playwright/*|.storybook/*|**/*.json|**/*.scss|**/*.css|**/*.config.*)
+                RUN_LINTER=true
+                ;;
+            esac
+
+            # Jest Files
+            case "$FILE" in
+              src/*|*.js|*.jsx|*.ts|*.tsx|jest.config.*|**/jest.*|**/*.test.*|**/package.json|**/yarn.lock)
+                RUN_JEST=true
+                ;;
+            esac
+
+            # Playwright Files
+            case "$FILE" in
+              src/*|playwright/*|**/*.spec.ts|**/*.spec.tsx|playwright.*|**/package.json|**/yarn.lock)
+                RUN_PLAYWRIGHT=true
+                ;;
+            esac
+
+            # Content-based detection
+            if [[ -f "$FILE" ]] && LC_ALL=C grep -Iq . -- "$FILE"; then
+              if LC_ALL=C grep -Eiq -- '(^|[^A-Za-z])jest([^A-Za-z]|$)|@jest/|describe\(|it\(|test\(' "$FILE"; then
+                RUN_JEST=true
+              fi
+              if LC_ALL=C grep -Eiq -- '(^|[^A-Za-z])playwright([^A-Za-z]|$)|@playwright/test' "$FILE"; then
+                RUN_PLAYWRIGHT=true
+              fi
+            fi
+          done < <(git diff --name-only -z "$BASE" "$HEAD")
+
+          echo "---"
+          echo "Determined actions to run:"
+          echo "run-linter=$RUN_LINTER" >> "$GITHUB_OUTPUT"
+          echo "run-linter=$RUN_LINTER"
+          echo "run-jest=$RUN_JEST" >> "$GITHUB_OUTPUT"
+          echo "run-jest=$RUN_JEST"
+          echo "run-playwright=$RUN_PLAYWRIGHT" >> "$GITHUB_OUTPUT"
+          echo "run-playwright=$RUN_PLAYWRIGHT"
+
+    outputs:
+      run-linter: ${{ steps.changed-files.outputs.run-linter }}
+      run-jest: ${{ steps.changed-files.outputs.run-jest }}
+      run-playwright: ${{ steps.changed-files.outputs.run-playwright }}
+
+  build:
+    name: Build App
+    if: ${{ needs.debug-changes.outputs.run-linter == 'true' || needs.debug-changes.outputs.run-jest == 'true' || needs.debug-changes.outputs.run-playwright == 'true' }}
+    runs-on: ${{ inputs.GITHUB_RUNNER }}
+    needs: [debug-changes]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -93,8 +176,8 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    if: ${{ inputs.RUN_JEST_TESTS == 'true' }}
-    needs: [build]
+    if: ${{ inputs.RUN_JEST_TESTS == 'true' && needs.debug-changes.outputs.run-jest == 'true' }}
+    needs: [debug-changes,build]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
@@ -120,13 +203,12 @@ jobs:
         uses: Andrews-McMeel-Universal/cache-next-build@v1
 
       - name: Run Jest tests
-        if: ${{ inputs.RUN_JEST_TESTS == 'true' }}
         run: yarn test:unit:ci
 
   playwright-tests:
     name: Playwright Tests
-    if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' }}
-    needs: [build]
+    if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' && needs.debug-changes.outputs.run-playwright == 'true' }}
+    needs: [debug-changes,build]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     timeout-minutes: 25
     steps:
