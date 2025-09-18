@@ -13,6 +13,11 @@ on:
         description: Path to health check endpoint
         type: string
         default: ${{ vars.APPLICATION_CI_HEALTHCHECK_PATH || '/' }}
+      envEncryptionSecret:
+        required: false
+        description: Secret used to encrypt environment variables at rest
+        type: string
+        default: ${{ vars.ENV_ENCRYPTION_SECRET }}
     secrets:
       azureCredentials:
         required: false
@@ -39,6 +44,13 @@ jobs:
             echo "AZURE_CREDENTIALS_SET=false" >> $GITHUB_ENV
           fi
 
+      - name: Prepare environment encryption key
+        id: env-enc-key
+        run: |
+          echo "::add-mask::${{ inputs.envEncryptionSecret }}"
+          ENV_ENCRYPTION_SECRET="$(echo ${{ inputs.envEncryptionSecret }} | base64 --decode 2>/dev/null)"
+          echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
+
       - name: Generate .env file from Azure Key Vaults
         if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
         id: get-envs
@@ -48,7 +60,7 @@ jobs:
           environment: ${{ inputs.environment }}
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
-          envEncryptionSecret: ${{ secrets.ENV_ENCRYPTION_SECRET }}
+          envEncryptionSecret: ${{ steps.env-enc-key.outputs.envEncryptionSecret }}
       
       - name: Insert new line after build arguments
         id: insert-new-line
