@@ -83,7 +83,7 @@ jobs:
           commit_message: "[Formatter] Apply prettier changes"
 
       - name: Use .env cache action
-        uses: Andrews-McMeel-Universal/get-envs@main
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
@@ -111,7 +111,7 @@ jobs:
           enable-corepack: ${{ inputs.COREPACK_INSTALL }}
 
       - name: Use .env cache action
-        uses: Andrews-McMeel-Universal/get-envs@main
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
@@ -147,7 +147,7 @@ jobs:
         run: yarn playwright install --with-deps
 
       - name: Use .env cache action
-        uses: Andrews-McMeel-Universal/get-envs@main
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}

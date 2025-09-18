@@ -112,8 +112,6 @@ on:
         required: false
       sentryAuthToken:
         required: false
-      envEncryptionSecret:
-        required: false
 
 jobs:
   build:
@@ -217,14 +215,13 @@ jobs:
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
-        uses: Andrews-McMeel-Universal/get-envs@main
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
-          envEncryptionSecret: ${{ secrets.ENV_ENCRYPTION_SECRET }}
 
       - name: Insert new line after build arguments
         id: insert-new-line
@@ -647,7 +644,7 @@ jobs:
             autoscaling.minReplicas:${{ needs.build.outputs.minReplicas }}
 
       - name: Generate .env file from Azure Key Vaults
-        uses: Andrews-McMeel-Universal/get-envs@main
+        uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
