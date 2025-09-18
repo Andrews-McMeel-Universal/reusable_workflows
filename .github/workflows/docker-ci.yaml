@@ -13,15 +13,6 @@ on:
         description: Path to health check endpoint
         type: string
         default: ${{ vars.APPLICATION_CI_HEALTHCHECK_PATH || '/' }}
-      ENV_ENCRYPTION_SECRET:
-        required: false
-        type: string
-        default: ${{ vars.ENV_ENCRYPTION_SECRET }}
-      GITHUB_RUNNER:
-        required: false
-        type: string
-        description: "The type of runner to use"
-        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'azure' }}
     secrets:
       azureCredentials:
         required: false
@@ -30,7 +21,7 @@ jobs:
   build:
     name: Build app
     if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ${{ inputs.GITHUB_RUNNER }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,13 +39,6 @@ jobs:
             echo "AZURE_CREDENTIALS_SET=false" >> $GITHUB_ENV
           fi
 
-      - name: Prepare environment encryption key
-        id: env-enc-key
-        run: |
-          ENV_ENCRYPTION_SECRET="$(jq -r '.inputs.ENV_ENCRYPTION_SECRET' $GITHUB_EVENT_PATH | base64 --decode 2>/dev/null)"
-          echo "::add-mask::${ENV_ENCRYPTION_SECRET}"
-          echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
-
       - name: Generate .env file from Azure Key Vaults
         if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
         id: get-envs
@@ -64,8 +48,6 @@ jobs:
           environment: ${{ inputs.environment }}
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
-          enableCaching: true
-          envEncryptionSecret: ${{ steps.env-enc-key.outputs.envEncryptionSecret }}
       
       - name: Insert new line after build arguments
         id: insert-new-line
