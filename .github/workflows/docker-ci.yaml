@@ -48,6 +48,7 @@ jobs:
           environment: ${{ inputs.environment }}
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
+          envEncryptionSecret: ${{ secrets.ENV_ENCRYPTION_SECRET }}
       
       - name: Insert new line after build arguments
         id: insert-new-line
