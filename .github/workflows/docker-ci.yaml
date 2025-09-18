@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: ${{ vars.ENV_ENCRYPTION_SECRET }}
+      GITHUB_RUNNER:
+        required: false
+        type: string
+        description: "The type of runner to use"
+        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'azure' }}
     secrets:
       azureCredentials:
         required: false
