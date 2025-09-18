@@ -137,7 +137,7 @@ jobs:
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
-        uses: Andrews-McMeel-Universal/get-envs@v1
+        uses: Andrews-McMeel-Universal/get-envs@main
         with:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
@@ -271,7 +271,7 @@ jobs:
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
-        uses: Andrews-McMeel-Universal/get-envs@v1
+        uses: Andrews-McMeel-Universal/get-envs@main
         with:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}
@@ -449,7 +449,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate .env file from Azure Key Vaults
-        uses: Andrews-McMeel-Universal/get-envs@v1
+        uses: Andrews-McMeel-Universal/get-envs@main
         with:
           environment: ${{ needs.prepare.outputs.environment }}
           azurecredentials: ${{ secrets.azureCredentials }}

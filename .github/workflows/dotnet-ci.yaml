@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Use .env cache action
-        uses: Andrews-McMeel-Universal/get-envs@v1
+        uses: Andrews-McMeel-Universal/get-envs@main
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}

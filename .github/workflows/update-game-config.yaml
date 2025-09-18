@@ -38,7 +38,7 @@ jobs:
           enable-AzPSSession: true
 
       - name: Generate .env file from Azure Key Vaults
-        uses: Andrews-McMeel-Universal/get-envs@v1
+        uses: Andrews-McMeel-Universal/get-envs@main
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
