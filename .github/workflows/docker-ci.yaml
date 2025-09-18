@@ -13,6 +13,10 @@ on:
         description: Path to health check endpoint
         type: string
         default: ${{ vars.APPLICATION_CI_HEALTHCHECK_PATH || '/' }}
+      ENV_ENCRYPTION_SECRET:
+        required: false
+        type: string
+        default: ${{ vars.ENV_ENCRYPTION_SECRET }}
     secrets:
       azureCredentials:
         required: false
