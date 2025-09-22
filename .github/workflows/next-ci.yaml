@@ -35,6 +35,10 @@ on:
         required: false
         type: string
         default: ${{ vars.APPLICATION_CI_COREPACK_INSTALL || 'true' }}
+      ENV_ENCRYPTION_SECRET:
+        required: false
+        type: string
+        default: ${{ vars.ENV_ENCRYPTION_SECRET }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -165,11 +169,20 @@ jobs:
           commit_user_email: amu_deploy@amuniversal.com
           commit_message: "[Formatter] Apply prettier changes"
 
+      - name: Prepare environment encryption key
+        id: env-enc-key
+        run: |
+          ENV_ENCRYPTION_SECRET="$(jq -r '.inputs.ENV_ENCRYPTION_SECRET' $GITHUB_EVENT_PATH | base64 --decode 2>/dev/null)"
+          echo "::add-mask::${ENV_ENCRYPTION_SECRET}"
+          echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
+
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
+          enableCaching: true
+          envEncryptionSecret: ${{ steps.env-enc-key.outputs.envEncryptionSecret }}
 
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1
@@ -193,11 +206,20 @@ jobs:
         with:
           enable-corepack: ${{ inputs.COREPACK_INSTALL }}
 
+      - name: Prepare environment encryption key
+        id: env-enc-key
+        run: |
+          ENV_ENCRYPTION_SECRET="$(jq -r '.inputs.ENV_ENCRYPTION_SECRET' $GITHUB_EVENT_PATH | base64 --decode 2>/dev/null)"
+          echo "::add-mask::${ENV_ENCRYPTION_SECRET}"
+          echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
+
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
+          enableCaching: true
+          envEncryptionSecret: ${{ steps.env-enc-key.outputs.envEncryptionSecret }}
 
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1
@@ -228,11 +250,20 @@ jobs:
       - name: Install Playwright Browsers
         run: yarn playwright install --with-deps
 
+      - name: Prepare environment encryption key
+        id: env-enc-key
+        run: |
+          ENV_ENCRYPTION_SECRET="$(jq -r '.inputs.ENV_ENCRYPTION_SECRET' $GITHUB_EVENT_PATH | base64 --decode 2>/dev/null)"
+          echo "::add-mask::${ENV_ENCRYPTION_SECRET}"
+          echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
+
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
+          enableCaching: true
+          envEncryptionSecret: ${{ steps.env-enc-key.outputs.envEncryptionSecret }}
 
       - name: Use cache-next-build action
         uses: Andrews-McMeel-Universal/cache-next-build@v1
