@@ -217,13 +217,6 @@ jobs:
           Write-Output "wwwIngress=$wwwIngress"
           Write-Output "wwwIngress=$wwwIngress" >> $env:GITHUB_ENV
 
-      - name: Prepare environment encryption key
-        id: env-enc-key
-        run: |
-          ENV_ENCRYPTION_SECRET="$(jq -r '.inputs.envEncryptionSecret' $GITHUB_EVENT_PATH | base64 --decode 2>/dev/null)"
-          echo "::add-mask::${ENV_ENCRYPTION_SECRET}"
-          echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
-
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -233,8 +226,6 @@ jobs:
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
-          enableCaching: true
-          envEncryptionSecret: ${{ steps.env-enc-key.outputs.envEncryptionSecret }}
 
       - name: Insert new line after build arguments
         id: insert-new-line
@@ -656,21 +647,12 @@ jobs:
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
             autoscaling.minReplicas:${{ needs.build.outputs.minReplicas }}
 
-      - name: Prepare environment encryption key
-        id: env-enc-key
-        run: |
-          ENV_ENCRYPTION_SECRET="$(jq -r '.inputs.envEncryptionSecret' $GITHUB_EVENT_PATH | base64 --decode 2>/dev/null)"
-          echo "::add-mask::${ENV_ENCRYPTION_SECRET}"
-          echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
-
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
-          enableCaching: true
-          envEncryptionSecret: ${{ steps.env-enc-key.outputs.envEncryptionSecret }}
 
       - name: Get AKS cluster resource group
         id: aks-resource-group
