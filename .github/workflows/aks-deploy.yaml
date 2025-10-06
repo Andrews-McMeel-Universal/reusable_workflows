@@ -718,7 +718,7 @@ jobs:
         id: get-previous-image
         shell: bash
         run: |
-          PREVIOUS_IMAGE=$(kubectl get deployment "${{ needs.build.outputs.appName }}" -n "${{ steps.namespace.outputs.namespace }}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}')
+          PREVIOUS_IMAGE=$(kubectl get deployment "${{ needs.build.outputs.appName }}" -n "${{ steps.namespace.outputs.namespace }}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}' || echo "")
           if [ -z "${PREVIOUS_IMAGE}" ]; then
             echo "No previous image found, proceeding with deployment"
           else
