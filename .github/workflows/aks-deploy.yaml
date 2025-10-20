@@ -349,7 +349,7 @@ jobs:
           $haIngress = "${{ inputs.haIngress }}" -replace '"', '' -replace "'", ""
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
-          $clusterIssuer = "letsencrypt-prod"
+          $clusterIssuer = "letsencrypt-$environment"
 
           $domains = @()
           if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -ge "2.0.0")) {
