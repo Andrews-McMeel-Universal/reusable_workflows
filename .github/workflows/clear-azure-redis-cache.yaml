@@ -104,7 +104,7 @@ jobs:
           "@
 
                   $deleted = & redis-cli `
-                  -h $RedisHostname -p $RedisPort -a $RedisKey `
+                  --no-auth-warning -h $RedisHostname -p $RedisPort -a $RedisKey `
                   EVAL $Lua 0 $Key $ScanCount $BatchSize ($(if ($UseUnlink) {"1"} else {"0"}))
 
                   if ($LASTEXITCODE -ne 0) {
