@@ -48,6 +48,9 @@ jobs:
           $CacheKeys = "${{ inputs.applicationCacheKey }}"
           $ResourceGroupName = "${{ inputs.resourceGroupName }}"
           $Environment = "${{ inputs.environment }}"
+          $ScanCount = 1000
+          $BatchSize = 500
+          $UseUnlink = $false
 
           # Get list of Redis instances using tags
           $Redis = Get-AzRedisCache -ResourceGroupName "$ResourceGroupName" | Where-Object { $_.Tag.Values -eq "$Environment" }
@@ -63,22 +66,59 @@ jobs:
 
               # Loop through cache keys
               foreach ($Key in $CacheKeys.Split(',')) {
-                  $RedisCommands = "AUTH $RedisKey
-                  SELECT 0
-                  EVAL 'return redis.call(\'del\', unpack(redis.call(\'keys\', ARGV[1])))' 0 $Key"
-                  Write-Host "Clearing cache key: $Key" -ForegroundColor DarkGray
-                  $RedisResult = $RedisCommands | redis-cli -h $RedisHostname -p $RedisPort
+                  $Lua = @"
+                      redis.replicate_commands()
 
-                  # Check if output from cache clearing command has correct status message
-                  if ($RedisResult -match '^\d+$') {
-                      Write-Host "Successfully flushed '$Key' cache key for $RedisHostname" -ForegroundColor Green
+                      local pattern   = ARGV[1]
+                      local count     = tonumber(ARGV[2]) or 1000
+                      local batchSize = tonumber(ARGV[3]) or 500
+                      local useUnlink = (ARGV[4] == "1")
+
+                      local cursor = "0"
+                      local total = 0
+
+                      repeat
+                      local res   = redis.call("SCAN", cursor, "MATCH", pattern, "COUNT", count)
+                      cursor      = res[1]
+                      local keys  = res[2]
+                      local n     = #keys
+
+                      if n > 0 then
+                          for i = 1, n, batchSize do
+                          local slice = {}
+                          local jmax = math.min(i + batchSize - 1, n)
+                          for j = i, jmax do
+                              slice[#slice + 1] = keys[j]
+                          end
+                          if useUnlink then
+                              redis.call("UNLINK", unpack(slice))
+                          else
+                              redis.call("DEL", unpack(slice))
+                          end
+                          total = total + #slice
+                          end
+                      end
+                      until cursor == "0"
+
+                      return total
+          "@
+
+                  $deleted = & redis-cli `
+                  -h $RedisHostname -p $RedisPort -a $RedisKey `
+                  EVAL $Lua 0 $Key $ScanCount $BatchSize ($(if ($UseUnlink) {"1"} else {"0"}))
+
+                  if ($LASTEXITCODE -ne 0) {
+                      Write-Error "Error executing Redis command."
+                      exit $LASTEXITCODE
                   }
-                  elseif ($RedisResult -match 'Wrong number of args calling Redis command From Lua script') {
-                      Write-Host "Cache key '$Key' missing in $RedisHostname" -ForegroundColor Yellow
+                  elseif ($deleted -eq 0) {
+                      Write-Host "No keys matched pattern '$Key'."
+                  }
+                  elseif (($deleted -is [int]) -or ($deleted -match '^\d+$')) {
+                      Write-Host "Deleted $deleted keys matching pattern '$Key'."
                   }
                   else {
-                      Write-Host "Cache key '$Key' status unknown in $RedisHostname" -ForegroundColor Red
-                      Write-Host "Full output: $RedisResult"
+                      Write-Host "Unexpected result: $deleted"
                   }
               }
           }
