@@ -22,9 +22,9 @@ jobs:
           if [[ "${PR_EVENT}" ]]; then
             PR="${{ github.event.pull_request.number }}"
             BRANCH="refs/pull/${PR}/merge"
-            cacheKeys=$(gh actions-cache list -R "$REPO" -B "$BRANCH" | cut -f 1 )
+            cacheKeys=$(gh actions-cache list -R "$REPO" -B "$BRANCH" -L 100 | cut -f 1 )
           else
-            cacheKeys=$(gh actions-cache list -R "$REPO" | cut -f 1 )
+            cacheKeys=$(gh actions-cache list -R "$REPO" -L 100 | cut -f 1 )
           fi
           ## Setting this to not fail the workflow while deleting cache keys. 
           set +e
