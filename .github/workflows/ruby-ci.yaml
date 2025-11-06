@@ -26,6 +26,11 @@ on:
         type: string
         description: "The type of runner to use"
         default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
+      HEALTHCHECK_URL:
+        required: false
+        type: string
+        description: "URL to use for healthcheck"
+        default: "http://localhost:3000/health"
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -66,6 +71,30 @@ jobs:
         run: |
           bundle exec rails s -b 0.0.0.0 -p 3000 &
           PID=$!
+          HEALTHCHECK_URL="${{ inputs.HEALTHCHECK_URL }}"
+          if [[ "${HEALTHCHECK_URL}" == *","* ]]; then
+            IFS=',' read -ra URLS <<< "${HEALTHCHECK_URL}"
+          else
+            URLS=("${HEALTHCHECK_URL}")
+          fi
+          for URL in "${URLS[@]}"; do
+            echo "Checking healthcheck URL: ${URL}"
+            for i in {1..5}; do
+              STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${URL}")
+              if [[ "$STATUS_CODE" -eq 200 ]]; then
+                echo "Healthcheck passed for ${URL}"
+                break
+              else
+                echo "Healthcheck not ready yet for ${URL} (status: $STATUS_CODE). Retrying in 2 seconds..."
+                sleep 2
+              fi
+              if [[ $i -eq 30 ]]; then
+                echo "Healthcheck failed for ${URL} after multiple attempts."
+                kill -2 $PID
+                exit 1
+              fi
+            done
+          done
           sleep 10
           if [[ $(ps -p $PID) ]] ; then 
             kill -2 $PID
