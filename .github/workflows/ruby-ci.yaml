@@ -31,6 +31,11 @@ on:
         type: string
         description: "URL to use for healthcheck"
         default: ${{ vars.HEALTHCHECK_URL || 'http://localhost:3000/health' }}
+      checkoutSubmodules:
+        required: false
+        type: string
+        description: "Check out submodules"
+        default: ${{ vars.GIT_CHECKOUT_SUBMODULES }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -46,6 +51,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.checkoutSubmodules }}
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
