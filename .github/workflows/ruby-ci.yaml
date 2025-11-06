@@ -30,7 +30,7 @@ on:
         required: false
         type: string
         description: "URL to use for healthcheck"
-        default: "http://localhost:3000/health"
+        default: ${{ vars.HEALTHCHECK_URL || 'http://localhost:3000/health' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
