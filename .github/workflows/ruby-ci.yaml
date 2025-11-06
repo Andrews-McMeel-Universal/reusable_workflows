@@ -26,9 +26,21 @@ on:
         type: string
         description: "The type of runner to use"
         default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
+      HEALTHCHECK_URL:
+        required: false
+        type: string
+        description: "URL to use for healthcheck"
+        default: ${{ vars.HEALTHCHECK_URL || 'http://localhost:3000/health' }}
+      GIT_CHECKOUT_SUBMODULES:
+        required: false
+        type: string
+        description: "Check out submodules"
+        default: ${{ vars.GIT_CHECKOUT_SUBMODULES }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
+      PAT_ACTION_CI:
+        required: false
 
 env:
   RAILS_ENV: ${{ inputs.environment }}
@@ -41,6 +53,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.GIT_CHECKOUT_SUBMODULES }}
+          token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
       - name: Use .env cache action
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -66,6 +81,31 @@ jobs:
         run: |
           bundle exec rails s -b 0.0.0.0 -p 3000 &
           PID=$!
+          sleep 10
+          HEALTHCHECK_URL="${{ inputs.HEALTHCHECK_URL }}"
+          if [[ "${HEALTHCHECK_URL}" == *","* ]]; then
+            IFS=',' read -ra URLS <<< "${HEALTHCHECK_URL}"
+          else
+            URLS=("${HEALTHCHECK_URL}")
+          fi
+          for URL in "${URLS[@]}"; do
+            echo "Checking healthcheck URL: ${URL}"
+            for i in {1..5}; do
+              STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${URL}")
+              if [[ "$STATUS_CODE" -eq 200 ]]; then
+                echo "✅ [PASSED] Healthcheck passed for ${URL}" | tee -a $GITHUB_STEP_SUMMARY
+                break
+              else
+                echo "❌ [FAILED] Healthcheck not ready yet for ${URL} (status: $STATUS_CODE). Retrying in 2 seconds..." | tee -a $GITHUB_STEP_SUMMARY
+                sleep 2
+              fi
+              if [[ $i -eq 5 ]]; then
+                echo "❌ [FAILED] Healthcheck failed for ${URL} after multiple attempts." | tee -a $GITHUB_STEP_SUMMARY
+                kill -2 $PID
+                exit 1
+              fi
+            done
+          done
           sleep 10
           if [[ $(ps -p $PID) ]] ; then 
             kill -2 $PID
