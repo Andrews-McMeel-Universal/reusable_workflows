@@ -71,6 +71,7 @@ jobs:
         run: |
           bundle exec rails s -b 0.0.0.0 -p 3000 &
           PID=$!
+          sleep 10
           HEALTHCHECK_URL="${{ inputs.HEALTHCHECK_URL }}"
           if [[ "${HEALTHCHECK_URL}" == *","* ]]; then
             IFS=',' read -ra URLS <<< "${HEALTHCHECK_URL}"
