@@ -93,14 +93,14 @@ jobs:
             for i in {1..5}; do
               STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${URL}")
               if [[ "$STATUS_CODE" -eq 200 ]]; then
-                echo "✅ [PASSED] Healthcheck passed for ${URL}"
+                echo "✅ [PASSED] Healthcheck passed for ${URL}" | tee -a $GITHUB_STEP_SUMMARY
                 break
               else
-                echo "❌ [FAILED] Healthcheck not ready yet for ${URL} (status: $STATUS_CODE). Retrying in 2 seconds..."
+                echo "❌ [FAILED] Healthcheck not ready yet for ${URL} (status: $STATUS_CODE). Retrying in 2 seconds..." | tee -a $GITHUB_STEP_SUMMARY
                 sleep 2
               fi
               if [[ $i -eq 5 ]]; then
-                echo "❌ [FAILED] Healthcheck failed for ${URL} after multiple attempts."
+                echo "❌ [FAILED] Healthcheck failed for ${URL} after multiple attempts." | tee -a $GITHUB_STEP_SUMMARY
                 kill -2 $PID
                 exit 1
               fi
