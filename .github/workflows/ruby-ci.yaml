@@ -31,7 +31,7 @@ on:
         type: string
         description: "URL to use for healthcheck"
         default: ${{ vars.HEALTHCHECK_URL || 'http://localhost:3000/health' }}
-      checkoutSubmodules:
+      GIT_CHECKOUT_SUBMODULES:
         required: false
         type: string
         description: "Check out submodules"
@@ -54,7 +54,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: ${{ inputs.checkoutSubmodules }}
+          submodules: ${{ inputs.GIT_CHECKOUT_SUBMODULES }}
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
       - name: Use .env cache action
