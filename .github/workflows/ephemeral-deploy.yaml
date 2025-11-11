@@ -38,6 +38,11 @@ on:
         type: string
         description: "IP address that will be allowed to access the ephemeral deployment"
         default: "207.67.20.252/32"
+      githubRunner:
+        required: false
+        type: string
+        description: "The type of runner to use"
+        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
     secrets:
       azureCredentials:
         required: true
@@ -127,7 +132,7 @@ jobs:
     name: Deploy Azure Container Instance
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && ((github.event.action == 'labeled' && startsWith(github.event.label.name, 'preview:')) || (contains(github.event.pull_request.labels.*.name, 'preview:development') || contains(github.event.pull_request.labels.*.name, 'preview:staging') || contains(github.event.pull_request.labels.*.name, 'preview:production')))
     needs: [prepare]
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.githubRunner }}
     environment:
       name: ${{ needs.prepare.outputs.jiraTicketId }}
       url: ${{ steps.hostname.outputs.hostname }}
