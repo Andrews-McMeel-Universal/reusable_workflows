@@ -640,7 +640,7 @@ jobs:
           renderEngine: "helm"
           helmChart: ${{ needs.build.outputs.chartsPath }}
           releaseName: ${{ needs.build.outputs.release }}
-          helm-version: "latest"
+          helm-version: "v3.19.2"
           overrideFiles: ./values-override.yaml
           overrides: |
             deployment.image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
