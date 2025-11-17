@@ -75,7 +75,7 @@ jobs:
 
     - name: Set run name
       id: run-name
-      run: echo "LOAD_TEST_RUN_NAME=github-actions-load-test-$(date +%s)" >> $GITHUB_OUTPUT
+      run: echo "LOAD_TEST_RUN_NAME=githubactionsloadtest_$(date +%s)" >> $GITHUB_OUTPUT
 
     - name: Azure Load Testing
       uses: azure/load-testing@v1.1.27
