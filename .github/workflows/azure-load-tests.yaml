@@ -50,7 +50,7 @@ jobs:
       with:
         creds: "${{ secrets.azureCredentials }}"
 
-    - name: Record deployment information in Azure Storage Table
+    - name: Retrieve load test config files from Azure Storage
       shell: pwsh
       run: |
         $storageAccountName = "amuloadtestconfigs"
@@ -75,7 +75,7 @@ jobs:
         Write-Output "AUTHORIZATION_HEADER=$authorizationHeader" >> $env:GITHUB_OUTPUT
 
     - name: Azure Load Testing
-      uses: azure/load-testing@v1
+      uses: azure/load-testing@v1.1.27
       with:
         loadtestConfigFile: 'config.yaml'
         loadtestResource: ${{ inputs.loadTestResource }}
