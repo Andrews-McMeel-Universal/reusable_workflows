@@ -21,7 +21,7 @@ on:
         required: false
         type: string
         description: "The name of the Azure Storage container where load test config files are stored."
-        default: ${{ github.repository }}
+        default: ${{ github.event.repository.name }}
     secrets:
       azureCredentials:
         required: true
