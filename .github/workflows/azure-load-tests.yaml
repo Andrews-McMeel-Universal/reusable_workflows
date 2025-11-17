@@ -69,8 +69,8 @@ jobs:
       shell: pwsh
       run: |
         $authHeaderValue = "${{ secrets.webAuthenticationUsername }}:${{ secrets.webAuthenticationPassword }}"
-        $encodedAuthHeader = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($authHeaderValue))
-        echo "::add-mask::${encodedAuthHeader}"
+        $encodedAuthHeader = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($authHeaderValue))
+        # echo "::add-mask::${encodedAuthHeader}"
         Write-Output "AUTHORIZATION_HEADER=$encodedAuthHeader" >> $env:GITHUB_OUTPUT
 
     - name: Set run name
