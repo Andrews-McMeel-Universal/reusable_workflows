@@ -17,6 +17,11 @@ on:
         type: string
         description: "The name of the Azure Load Testing resource group."
         default: ${{ vars.LOAD_TEST_RESOURCE_GROUP || 'AMU_DevOps_RG' }}
+      loadTestConfigContainer:
+        required: false
+        type: string
+        description: "The name of the Azure Storage container where load test config files are stored."
+        default: ${{ github.repository }}
     secrets:
       azureCredentials:
         required: true
@@ -49,8 +54,8 @@ jobs:
       shell: pwsh
       run: |
         $storageAccountName = "amuloadtestconfigs"
-        $storageAccountKey = ${{ secrets.storageAccountKey }}
-        $storageAccountContainerName = "${{ github.repository }}".Replace("_","-").ToLower()
+        $storageAccountKey = "${{ secrets.storageAccountKey }}"
+        $storageAccountContainerName = "${{ inputs.loadTestConfigContainer }}".Replace("_","-").ToLower()
         $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
         Write-Output "Downloading config files from storage account..."
         $blobs = Get-AzStorageBlob -Container $storageAccountContainerName -Context $storageContext
