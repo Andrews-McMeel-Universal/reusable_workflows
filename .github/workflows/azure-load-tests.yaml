@@ -74,12 +74,17 @@ jobs:
         $authorizationHeader = (Get-Content $configFilePath) -replace '<AUTHORIZATION_HEADER_PLACEHOLDER>', "Basic $encodedAuthHeader" 
         Write-Output "AUTHORIZATION_HEADER=$authorizationHeader" >> $env:GITHUB_OUTPUT
 
+    - name: Set run name
+      id: run-name
+      run: echo "LOAD_TEST_RUN_NAME=github-actions-load-test-$(date +%s)" >> $GITHUB_OUTPUT
+
     - name: Azure Load Testing
-      uses: azure/load-testing@v1.1.28
+      uses: azure/load-testing@v1.1.27
       with:
         loadtestConfigFile: 'config.yaml'
         loadtestResource: ${{ inputs.loadTestResource }}
         resourceGroup: ${{ inputs.loadTestResourceGroup }}
+        loadtestRunName: ${{ steps.run-name.outputs.LOAD_TEST_RUN_NAME }}
         env: |
           [
               {
