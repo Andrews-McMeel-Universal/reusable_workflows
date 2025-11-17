@@ -75,7 +75,7 @@ jobs:
         Write-Output "AUTHORIZATION_HEADER=$authorizationHeader" >> $env:GITHUB_OUTPUT
 
     - name: Azure Load Testing
-      uses: azure/load-testing@v1.1.27
+      uses: azure/load-testing@v1.1.28
       with:
         loadtestConfigFile: 'config.yaml'
         loadtestResource: ${{ inputs.loadTestResource }}
