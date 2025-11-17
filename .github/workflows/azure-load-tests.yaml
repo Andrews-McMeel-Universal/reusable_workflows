@@ -88,6 +88,6 @@ jobs:
           [
               {
               "name": "AUTHORIZATION_HEADER",
-              "value": "${{ steps.auth-header.outputs.AUTHORIZATION_HEADER }}",
+              "value": "Basic ${{ steps.auth-header.outputs.AUTHORIZATION_HEADER }}",
               }
           ]
