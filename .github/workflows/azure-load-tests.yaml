@@ -68,11 +68,9 @@ jobs:
       id: auth-header
       shell: pwsh
       run: |
-        $configFilePath = "./config.yaml"
         $authHeaderValue = "${{ secrets.webAuthenticationUsername }}:${{ secrets.webAuthenticationPassword }}"
         $encodedAuthHeader = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($authHeaderValue))
-        $authorizationHeader = (Get-Content $configFilePath) -replace '<AUTHORIZATION_HEADER_PLACEHOLDER>', "Basic $encodedAuthHeader" 
-        Write-Output "AUTHORIZATION_HEADER=$authorizationHeader" >> $env:GITHUB_OUTPUT
+        Write-Output "AUTHORIZATION_HEADER=$encodedAuthHeader" >> $env:GITHUB_OUTPUT
 
     - name: Set run name
       id: run-name
