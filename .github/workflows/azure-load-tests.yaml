@@ -1,0 +1,84 @@
+name: Run Azure Load Tests
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
+      loadTestResource:
+        required: false
+        type: string
+        description: "The name of the Azure Load Testing resource."
+        default: ${{ vars.LOAD_TEST_RESOURCE_NAME }}
+      loadTestResourceGroup:
+        required: false
+        type: string
+        description: "The name of the Azure Load Testing resource group."
+        default: ${{ vars.LOAD_TEST_RESOURCE_GROUP || 'AMU_DevOps_RG' }}
+    secrets:
+      azureCredentials:
+        required: true
+      storageAccountKey:
+        required: true
+      webAuthenticationPassword:
+        required: false
+      webAuthenticationUsername:
+        required: false
+
+jobs:
+  run-tests:
+    name: Run Azure Load Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install PowerShell modules
+      shell: pwsh
+      run: |
+        Install-Module -Name Az.Storage,Az.Resources -Force
+
+    - name: Login via Az module
+      uses: azure/login@v2
+      with:
+        creds: "${{ secrets.azureCredentials }}"
+
+    - name: Record deployment information in Azure Storage Table
+      shell: pwsh
+      run: |
+        $storageAccountName = "amuloadtestconfigs"
+        $storageAccountKey = ${{ secrets.storageAccountKey }}
+        $storageAccountContainerName = "${{ github.repository }}".Replace("_","-").ToLower()
+        $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+        Write-Output "Downloading config files from storage account..."
+        $blobs = Get-AzStorageBlob -Container $storageAccountContainerName -Context $storageContext
+        foreach ($blob in $blobs) {
+            Write-Output "Found blob: $($blob.Name). Downloading..."
+            Get-AzStorageBlobContent -Blob $blob.Name -Container $storageAccountContainerName -Context $storageContext -Force
+        }
+
+    - name: Set authentication header in config file
+      id: auth-header
+      shell: pwsh
+      run: |
+        $configFilePath = "./config.yaml"
+        $authHeaderValue = "${{ secrets.webAuthenticationUsername }}:${{ secrets.webAuthenticationPassword }}"
+        $encodedAuthHeader = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($authHeaderValue))
+        $authorizationHeader = (Get-Content $configFilePath) -replace '<AUTHORIZATION_HEADER_PLACEHOLDER>', "Basic $encodedAuthHeader" 
+        Write-Output "AUTHORIZATION_HEADER=$authorizationHeader" >> $env:GITHUB_OUTPUT
+
+    - name: Azure Load Testing
+      uses: azure/load-testing@v1
+      with:
+        loadtestConfigFile: 'config.yaml'
+        loadtestResource: ${{ inputs.loadTestResource }}
+        resourceGroup: ${{ inputs.loadTestResourceGroup }}
+        env: |
+          [
+              {
+              "name": "AUTHORIZATION_HEADER",
+              "value": "${{ steps.auth-header.outputs.AUTHORIZATION_HEADER }}",
+              }
+          ]
