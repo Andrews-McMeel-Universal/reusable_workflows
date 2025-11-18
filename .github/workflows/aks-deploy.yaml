@@ -427,7 +427,7 @@ jobs:
                   $item.annotations."cert-manager.io/cluster-issuer" = $clusterIssuer
 
                   # Add whitelist annotation
-                  $item.Value.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$adminIngressWhitelist"
+                  $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$adminIngressWhitelist"
 
                   if ($item.name -eq "ingress") {
                       # Add WWW to ingress
