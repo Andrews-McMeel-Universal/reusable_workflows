@@ -251,18 +251,41 @@ jobs:
 
             echo "Adding $key to app settings"
             if [[ "${{ inputs.environment }}" == "production" ]]; then
-              az webapp config appsettings set \
-                -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
-                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
-              echo "Successfully added $key to app settings"
+              if [[ '${{ runner.debug }}' == '1' ]]; then
+                az webapp config appsettings set \
+                  -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})"
+              else
+                az webapp config appsettings set \
+                  -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null
+              fi
+              if [[ $? -ne 0 ]]; then
+                echo "::error::Failed to add $key to app settings"
+              else
+                echo "Successfully added $key to app settings"
+              fi
             else
+              if [[ '${{ runner.debug }}' == '1' ]]; then
+                az webapp config appsettings set \
+                  -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+                  --slot "${{ inputs.environment }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})"
+              else
               az webapp config appsettings set \
-                -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
-                --slot "${{ inputs.environment }}" \
-                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
-              echo "Successfully added $key to app settings"
+                  -g "${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_WEBAPP_NAME }}" \
+                  --slot "${{ inputs.environment }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null
+              fi
+              if [[ $? -ne 0 ]]; then
+                echo "::error::Failed to add $key to app settings"
+              else
+                echo "Successfully added $key to app settings"
+              fi
             fi
           done
 

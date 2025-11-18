@@ -330,7 +330,7 @@ jobs:
                   -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
                   -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
                   --slot "${{ inputs.environment }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null
               fi
               if [[ $? -ne 0 ]]; then
                 echo "::error::Failed to add $key to app settings"
