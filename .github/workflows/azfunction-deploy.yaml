@@ -17,7 +17,7 @@ on:
         default: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
       AZURE_FUNCTIONAPP_RESOURCEGROUP:
         type: string
-        default: "AMU_Serverless_RG"
+        default: ${{ vars.AZURE_FUNCTIONAPP_RESOURCEGROUP || 'AMU_Serverless_RG' }}
       AZURE_FUNCTIONAPP_PACKAGE_PATH:
         description: "set this to the path to your web app project, defaults to the repository root"
         type: string
