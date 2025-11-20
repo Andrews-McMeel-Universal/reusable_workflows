@@ -65,11 +65,12 @@ jobs:
               $ProjectName = "${{ inputs.projectName }}"
           }
 
-          $LibraryName = "/${{ inputs.libraryName }}"
+          $LibraryName = "${{ inputs.libraryName }}"
 
           # Get project file contents
           if ($LibraryName) {
-              $ProjectFile = ("${ProjectName}${LibraryName}${LibraryName}.csproj")
+              $ProjectName = $ProjectName + "/"
+              $ProjectFile = ("${ProjectName}${LibraryName}/${LibraryName}.csproj")
           }
           else {
               $ProjectFile = ("$ProjectName/$ProjectName.csproj")
