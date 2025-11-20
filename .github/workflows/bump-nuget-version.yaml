@@ -46,7 +46,7 @@ jobs:
             if echo "${FILE}" | grep -Eq "${PROJECT_PATH}" ; then
               echo "models-changed=true" >> $GITHUB_OUTPUT
             fi
-          done < <(git diff --name-only ${{ github.base_ref }}...HEAD)
+          done < <(git diff --name-only ${{ github.base_ref }}...${{ github.head_ref }})
 
       - name: Run Increment-Version.ps1
         if: ${{ steps.files-changed.outputs.models-changed == 'true' && steps.check-version-bump.outputs.version-bump-exists == 'false' }}
