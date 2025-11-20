@@ -41,12 +41,15 @@ jobs:
         run: |
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          if [[ -n "${{ inputs.projectName }}" ]]; then
+            PROJECT_NAME="${{ inputs.projectName }}/"
+          fi
 
           git diff --name-only "$BASE_SHA...$HEAD_SHA" | while IFS= read -r FILE; do
             if [[ -n "${{ inputs.libraryName }}" ]]; then
-              PROJECT_PATH="${{ inputs.projectName }}/${{ inputs.libraryName }}/*"
+              PROJECT_PATH="${PROJECT_NAME}${{ inputs.libraryName }}/*"
             else
-              PROJECT_PATH="${{ inputs.projectName }}/*"
+              PROJECT_PATH="${PROJECT_NAME}*"
             fi
             if echo "${FILE}" | grep -Eq "${PROJECT_PATH}" ; then
               echo "models-changed=true" >> $GITHUB_OUTPUT
