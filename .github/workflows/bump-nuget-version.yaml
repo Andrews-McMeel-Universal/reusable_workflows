@@ -29,7 +29,7 @@ jobs:
       - name: Check for existing version bump commit
         id: check-version-bump
         run: |
-          if git log --oneline | grep -q "Bump ${{ inputs.libraryName }} Nuget Version"; then
+          if git log --oneline | grep -q "Bump ${{ inputs.libraryName }} Nuget version"; then
             echo "version-bump-exists=true" >> $GITHUB_OUTPUT
           else
             echo "version-bump-exists=false" >> $GITHUB_OUTPUT
