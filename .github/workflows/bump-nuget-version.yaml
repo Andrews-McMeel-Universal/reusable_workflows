@@ -60,12 +60,16 @@ jobs:
         if: ${{ steps.files-changed.outputs.models-changed == 'true' && steps.check-version-bump.outputs.version-bump-exists == 'false' }}
         shell: pwsh
         run: |
-          $ProjectName = "${{ inputs.projectName }}"
-          $LibraryName = "${{ inputs.libraryName }}"
+          # if project name is not empty, set project name variable
+          if (-not [string]::IsNullOrEmpty("${{ inputs.projectName }}")) {
+              $ProjectName = "${{ inputs.projectName }}"
+          }
+
+          $LibraryName = "/${{ inputs.libraryName }}"
 
           # Get project file contents
           if ($LibraryName) {
-              $ProjectFile = ("$ProjectName/$LibraryName/$LibraryName.csproj")
+              $ProjectFile = ("${ProjectName}${LibraryName}${LibraryName}.csproj")
           }
           else {
               $ProjectFile = ("$ProjectName/$ProjectName.csproj")
