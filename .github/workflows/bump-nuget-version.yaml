@@ -69,7 +69,9 @@ jobs:
 
           # Get project file contents
           if ($LibraryName) {
-              $ProjectName = $ProjectName + "/"
+              if (-not [string]::IsNullOrEmpty("$ProjectName")) {
+                  $ProjectName = $ProjectName + "/"
+              }
               $ProjectFile = ("${ProjectName}${LibraryName}/${LibraryName}.csproj")
           }
           else {
