@@ -83,7 +83,7 @@ jobs:
         if: ${{ inputs.libraries }}
         run: |
           if [[ "${{ contains(inputs.libraries, '[') }}" == "true" ]]; then
-            LIBRARIES=(${{ fromJson(inputs.libraries) }})
+            LIBRARIES=(${{ join(fromJson(inputs.libraries), ' ') }})
           else
             LIBRARIES=(${{ inputs.libraries }})
           fi
