@@ -12,12 +12,12 @@ on:
         required: false
         type: string
         description: ".NET SDK Version"
-        default: ${{ vars.DOTNET_VERSION }}
+        default: ${{ vars.DOTNET_VERSION || '8.0.x' }}
       libraries:
         required: false
         type: string
         description: Shared Library Name
-        default: ${{ vars.NUGET_LIBRARY_NAMES }}
+        default: ${{ vars.NUGET_LIBRARY_NAMES || vars.DOTNET_LIBRARIES }}
       checkoutRef:
         required: false
         type: string
@@ -41,7 +41,15 @@ jobs:
         id: project-name
         shell: pwsh
         run: |
-          $ProjectName = ("${{ inputs.projectName }}" || (Split-Path -Path (Get-ChildItem ./ -Recurse | Where-Object { $_.PSIsContainer -and $_.Name.EndsWith(".Models")}) -Leaf))
+          if (-not [string]::IsNullOrEmpty("${{ inputs.projectName }}")) {
+              $ProjectName = "${{ inputs.projectName }}"
+          }
+          elseif (Get-ChildItem ./ -Recurse | Where-Object { $_.PSIsContainer -and $_.Name.EndsWith(".Models")}) {
+              $ProjectName = (Split-Path -Path (Get-ChildItem ./ -Recurse | Where-Object { $_.PSIsContainer -and $_.Name.EndsWith(".Models")}) -Leaf)
+          }
+          else {
+              $ProjectName = ""
+          }
           Write-Output "projectName=$ProjectName" >> $env:GITHUB_OUTPUT
 
       - name: Setup .NET
