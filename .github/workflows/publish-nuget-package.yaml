@@ -89,5 +89,5 @@ jobs:
           fi
           for LIBRARY in "${LIBRARIES[@]}"; do
             cd "${{ github.workspace }}/${{ steps.project-name.outputs.projectName }}/${LIBRARY}/bin/Release/"
-            dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
+            dotnet nuget push "*.nupkg" --api-key "${{ secrets.PAT_ACTION_CI }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
           done
