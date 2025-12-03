@@ -302,13 +302,21 @@ jobs:
           echo "repo-name=${SANITIZED_REPO_NAME}" >> $GITHUB_OUTPUT
 
       - name: Upload Playwright Trace Files to Azure Storage Account
-        uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        uses: azure/cli@v2
         with:
-          source_dir: playwright-report
-          container_name: playwright-reports
-          connection_string: DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net
-          extra_args: '--destination-path ${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/'
-          overwrite: 'true'
+          inlineScript: |
+            $connectionString = "DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net"
+            $containerName = "playwright-reports"
+            $sourceDir = "playwright-report"
+            $destinationPath = "${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/"
+
+            # Upload files
+            az storage blob upload-batch `
+                --connection-string $connectionString `
+                --destination $containerName `
+                --source $sourceDir `
+                --destination-path $destinationPath `
+                --overwrite
 
       - name: Check if Playwright Jira Comment Exists
         id: check-jira-comments
