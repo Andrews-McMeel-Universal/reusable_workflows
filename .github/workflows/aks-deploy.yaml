@@ -843,8 +843,8 @@ jobs:
           email: ${{ inputs.jiraAutomationsEmail }}
           api_token:  ${{ secrets.jiraAutomationsToken }}
           subdomain: ${{ inputs.jiraAutomationsDomain }}
-          gh_user: ${{ github.actor }}
-          gh_token:  ${{ github.token }}
+          gh_user: amu_deploy@amuniversal.com
+          gh_token: ${{ secrets.PAT_ACTION_CI }}
           gh_repository: ${{ github.event.repository.name }}
           jira_project: ${{ inputs.jiraAutomationsProject }}
           release_name: ${{ github.event.release.tag_name }}
