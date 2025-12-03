@@ -301,21 +301,21 @@ jobs:
           SANITIZED_REPO_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | sed 's/^-*//;s/-*$//;s/--*/-/g')
           echo "repo-name=${SANITIZED_REPO_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Upload Playwright Trace Files to Azure Storage Account
+      - name: Upload Playwright Report to Azure Storage Account
         uses: azure/cli@v2
         with:
           inlineScript: |
-            $connectionString = "DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net"
-            $containerName = "playwright-reports"
-            $sourceDir = "playwright-report"
-            $destinationPath = "${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/"
+            CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net"
+            CONTAINER_NAME="playwright-reports"
+            SOURCE_DIR="playwright-report"
+            DEST_PATH="${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/"
 
             # Upload files
             az storage blob upload-batch `
-                --connection-string $connectionString `
-                --destination $containerName `
-                --source $sourceDir `
-                --destination-path $destinationPath `
+                --connection-string $CONNECTION_STRING `
+                --destination $CONTAINER_NAME `
+                --source $SOURCE_DIR `
+                --destination-path $DEST_PATH `
                 --overwrite
 
       - name: Check if Playwright Jira Comment Exists
