@@ -51,11 +51,13 @@ jobs:
         creds: "${{ secrets.azureCredentials }}"
 
     - name: Retrieve load test config files from Azure Storage
+      id: config
       shell: pwsh
       run: |
-        $storageAccountName = "amuloadtestconfigs"
+        $storageAccountName = "amutestassets"
         $storageAccountKey = "${{ secrets.storageAccountKey }}"
-        $storageAccountContainerName = "${{ inputs.loadTestConfigContainer }}".Replace("_","-").ToLower()
+        $storageAccountContainerName = "load-test-configs"
+        $storageAccountVirtualDirectory = "${{ inputs.loadTestConfigContainer }}".Replace("_","-").ToLower()
         $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
         Write-Output "Downloading config files from storage account..."
         $blobs = Get-AzStorageBlob -Container $storageAccountContainerName -Context $storageContext
@@ -63,6 +65,7 @@ jobs:
             Write-Output "Found blob: $($blob.Name). Downloading..."
             Get-AzStorageBlobContent -Blob $blob.Name -Container $storageAccountContainerName -Context $storageContext -Force
         }
+        Write-Output "STORAGE_ACCOUNT_VIRTUAL_DIRECTORY=$storageAccountVirtualDirectory" >> $env:GITHUB_OUTPUT
 
     - name: Set authentication header in config file
       id: auth-header
@@ -75,12 +78,12 @@ jobs:
 
     - name: Set run name
       id: run-name
-      run: echo "LOAD_TEST_RUN_NAME=githubactionsloadtest$(date +%s)" >> $GITHUB_OUTPUT
+      run: echo "LOAD_TEST_RUN_NAME=${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}-loadtest-$(date +%s)" >> $GITHUB_OUTPUT
 
     - name: Azure Load Testing
       uses: azure/load-testing@v1.1.27
       with:
-        loadtestConfigFile: 'config.yaml'
+        loadtestConfigFile: '${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}/config.yaml'
         loadtestResource: ${{ inputs.loadTestResource }}
         resourceGroup: ${{ inputs.loadTestResourceGroup }}
         loadtestRunName: ${{ steps.run-name.outputs.LOAD_TEST_RUN_NAME }}
