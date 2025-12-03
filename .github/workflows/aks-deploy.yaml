@@ -845,7 +845,7 @@ jobs:
           subdomain: ${{ inputs.jiraAutomationsDomain }}
           gh_user: ${{ github.actor }}
           gh_token:  ${{ github.token }}
-          gh_repository: ${{ github.repository }}
+          gh_repository: ${{ github.event.repository.name }}
           jira_project: ${{ inputs.jiraAutomationsProject }}
           release_name: ${{ github.event.release.tag_name }}
           release_prefix: "v"
