@@ -95,6 +95,18 @@ on:
         required: false
         type: string
         default: ${{ vars.ENV_ENCRYPTION_SECRET }}
+      jiraAutomationsEmail:
+        required: false
+        type: string
+        default: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
+      jiraAutomationsDomain:
+        required: false
+        type: string
+        default: ${{ vars.JIRA_AUTOMATIONS_DOMAIN }}
+      jiraAutomationsProject:
+        required: false
+        type: string
+        default: ${{ vars.JIRA_AUTOMATIONS_PROJECT }}
     secrets:
       azureClusterName:
         required: true
@@ -115,6 +127,8 @@ on:
       PAT_ACTION_CI:
         required: false
       sentryAuthToken:
+        required: false
+      jiraAutomationsToken:
         required: false
 
 jobs:
@@ -820,6 +834,21 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
           release: ${{ github.event.release.tag_name || github.sha }}
+
+      - name: Create Jira Release
+        if: github.event.release.tag_name != '' && inputs.jiraAutomationsProject != ''
+        uses: Ariza50/release-jira-ticket-actions@1.1.6
+        with:
+          dry_run: false
+          email: ${{ inputs.jiraAutomationsEmail }}
+          api_token:  ${{ secrets.jiraAutomationsToken }}
+          subdomain: ${{ inputs.jiraAutomationsDomain }}
+          gh_user: ${{ github.actor }}
+          gh_token:  ${{ github.token }}
+          gh_repository: ${{ github.repository }}
+          jira_project: ${{ inputs.jiraAutomationsProject }}
+          release_name: ${{ github.event.release.tag_name }}
+          release_prefix: ""
 
       - name: Get Current Date
         id: date
