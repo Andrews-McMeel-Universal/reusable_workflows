@@ -292,7 +292,7 @@ jobs:
 
       - name: Retrieve Jira Ticket Key
         id: retrieve-jira-ticket
-        uses: Andrews-McMeel-Universal/retrieve-jira-ticket@v1
+        uses: Andrews-McMeel-Universal/retrieve-jira-ticket@main
 
       - name: Sanitize repository name
         id: repo-name
