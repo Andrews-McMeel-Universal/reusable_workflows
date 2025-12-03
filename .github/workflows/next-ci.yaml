@@ -299,7 +299,7 @@ jobs:
         run: |
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
           SANITIZED_REPO_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | sed 's/^-*//;s/-*$//;s/--*/-/g')
-          echo "repo-name=REPO_NAME" >> $GITHUB_OUTPUT
+          echo "repo-name=${SANITIZED_REPO_NAME}" >> $GITHUB_OUTPUT
 
       - name: Upload Playwright Trace Files to Azure Storage Account
         uses: bacongobbler/azure-blob-storage-upload@v3.0.0
