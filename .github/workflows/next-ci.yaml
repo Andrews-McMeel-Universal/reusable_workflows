@@ -307,14 +307,14 @@ jobs:
           source_dir: playwright-report
           container_name: playwright-reports
           connection_string: DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net
-          extra_args: '--destination-path ${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket }}/'
+          extra_args: '--destination-path ${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/'
           overwrite: 'true'
 
       - name: Check if Playwright Jira Comment Exists
         id: check-jira-comments
         shell: pwsh
         run: |
-          $uri = "https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net/rest/api/2/issue/${{ steps.retrieve-jira-ticket.outputs.jira-ticket }}"
+          $uri = "https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net/rest/api/2/issue/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}"
           $username = "${{ inputs.JIRA_AUTOMATIONS_EMAIL }}"
           $token = "${{ secrets.JIRA_TOKEN }}"
           $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$token)))
@@ -353,7 +353,7 @@ jobs:
         if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
         uses: atlassian/gajira-comment@v3
         with:
-          issue: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket }}
+          issue: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}
           comment: |
             This ticket's Playwright Report:
-            [Playwright Report|https://amutestassets.blob.core.windows.net/playwright-reports/${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket }}/playwright-report/index.html]
+            [Playwright Report|https://amutestassets.blob.core.windows.net/playwright-reports/${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/playwright-report/index.html]
