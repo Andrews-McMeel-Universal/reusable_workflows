@@ -848,7 +848,7 @@ jobs:
           gh_repository: ${{ github.repository }}
           jira_project: ${{ inputs.jiraAutomationsProject }}
           release_name: ${{ github.event.release.tag_name }}
-          release_prefix: ""
+          release_prefix: "v"
 
       - name: Get Current Date
         id: date
