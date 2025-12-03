@@ -52,7 +52,7 @@ on:
         required: true
       PAT_ACTION_CI:
         required: true
-      TESTASSETS_STORAGE_ACCOUNT_KEY:
+      AMUTESTASSETS_STORAGEACCOUNTKEY:
         required: false
       JIRA_TOKEN:
         required: false
@@ -306,7 +306,7 @@ jobs:
         with:
           source_dir: playwright-report
           container_name: playwright-reports
-          connection_string: DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.TESTASSETS_STORAGE_ACCOUNT_KEY }};EndpointSuffix=core.windows.net
+          connection_string: DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net
           extra_args: '--destination-path ${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket }}/'
           overwrite: 'true'
 
