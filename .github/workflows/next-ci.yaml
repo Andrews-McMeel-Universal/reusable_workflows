@@ -305,17 +305,17 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
-            CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net"
+            AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net"
             CONTAINER_NAME="playwright-reports"
             SOURCE_DIR="playwright-report"
             DEST_PATH="${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/"
 
             # Upload files
-            az storage blob upload-batch `
-                --connection-string $CONNECTION_STRING `
-                --destination $CONTAINER_NAME `
-                --source $SOURCE_DIR `
-                --destination-path $DEST_PATH `
+            az storage blob upload-batch \
+                --connection-string "${AZURE_STORAGE_CONNECTION_STRING}" \
+                --destination "${CONTAINER_NAME}" \
+                --source "${SOURCE_DIR}" \
+                --destination-path "${DEST_PATH}" \
                 --overwrite
 
       - name: Check if Playwright Jira Comment Exists
