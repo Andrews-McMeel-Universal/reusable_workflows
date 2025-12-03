@@ -322,7 +322,8 @@ jobs:
         id: check-jira-comments
         shell: pwsh
         run: |
-          $uri = "https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net/rest/api/2/issue/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}"
+          $ticket = "${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}"
+          $uri = "https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net/rest/api/2/issue/$ticket"
           $username = "${{ inputs.JIRA_AUTOMATIONS_EMAIL }}"
           $token = "${{ secrets.JIRA_TOKEN }}"
           $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$token)))
