@@ -292,7 +292,7 @@ jobs:
 
       - name: Retrieve Jira Ticket Key
         id: retrieve-jira-ticket
-        uses: Andrews-McMeel-Universal/retrieve-jira-ticket@main
+        uses: Andrews-McMeel-Universal/retrieve-jira-ticket@v1
 
       - name: Sanitize repository name
         id: repo-name
@@ -355,5 +355,4 @@ jobs:
         with:
           issue: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}
           comment: |
-            This ticket's Playwright Report:
-            [Playwright Report|https://amutestassets.blob.core.windows.net/playwright-reports/${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/playwright-report/index.html]
+            This ticket's Playwright Report: [Playwright Report|https://amutestassets.blob.core.windows.net/playwright-reports/${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/index.html]
