@@ -253,6 +253,7 @@ jobs:
         run: yarn test:unit:ci
 
       - name: Upload Playwright Report to Azure Storage Account
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
         uses: azure/cli@v2
         with:
           inlineScript: |
@@ -270,6 +271,7 @@ jobs:
                 --overwrite
 
       - name: Check if Playwright Jira Comment Exists
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
         id: check-jira-comments
         shell: pwsh
         run: |
@@ -369,6 +371,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Playwright Report to Azure Storage Account
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
         uses: azure/cli@v2
         with:
           inlineScript: |
@@ -386,6 +389,7 @@ jobs:
                 --overwrite
 
       - name: Check if Playwright Jira Comment Exists
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
         id: check-jira-comments
         shell: pwsh
         run: |
