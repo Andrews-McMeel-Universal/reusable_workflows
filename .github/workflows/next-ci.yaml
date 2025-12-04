@@ -58,8 +58,8 @@ on:
         required: false
 
 jobs:
-  debug-changes:
-    name: Debug Changed Files
+  set-variables:
+    name: Set Workflow Variables
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
@@ -139,10 +139,23 @@ jobs:
           echo "run-playwright=$RUN_PLAYWRIGHT" >> "$GITHUB_OUTPUT"
           echo "run-playwright=$RUN_PLAYWRIGHT"
 
+      - name: Retrieve Jira Ticket Key
+        id: retrieve-jira-ticket
+        uses: Andrews-McMeel-Universal/retrieve-jira-ticket@v1
+
+      - name: Sanitize repository name
+        id: repo-name
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          SANITIZED_REPO_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | sed 's/^-*//;s/-*$//;s/--*/-/g')
+          echo "repo-name=${SANITIZED_REPO_NAME}" >> $GITHUB_OUTPUT
+
     outputs:
       run-linter: ${{ steps.changed-files.outputs.run-linter }}
       run-jest: ${{ steps.changed-files.outputs.run-jest }}
       run-playwright: ${{ steps.changed-files.outputs.run-playwright }}
+      repo-name: ${{ needs.debug-changes.outputs.repo-name }}
+      jira-ticket-id: ${{ needs.debug-changes.outputs.jira-ticket-id }}
 
   build:
     name: Build App
@@ -290,17 +303,6 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-      - name: Retrieve Jira Ticket Key
-        id: retrieve-jira-ticket
-        uses: Andrews-McMeel-Universal/retrieve-jira-ticket@v1
-
-      - name: Sanitize repository name
-        id: repo-name
-        run: |
-          REPO_NAME="${GITHUB_REPOSITORY##*/}"
-          SANITIZED_REPO_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | sed 's/^-*//;s/-*$//;s/--*/-/g')
-          echo "repo-name=${SANITIZED_REPO_NAME}" >> $GITHUB_OUTPUT
-
       - name: Upload Playwright Report to Azure Storage Account
         uses: azure/cli@v2
         with:
@@ -308,7 +310,7 @@ jobs:
             AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net"
             CONTAINER_NAME="playwright-reports"
             SOURCE_DIR="playwright-report"
-            DEST_PATH="${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/"
+            DEST_PATH="${{ needs.debug-changes.outputs.repo-name }}/${{ needs.debug-changes.outputs.jira-ticket-id }}/"
 
             # Upload files
             az storage blob upload-batch \
@@ -322,7 +324,7 @@ jobs:
         id: check-jira-comments
         shell: pwsh
         run: |
-          $ticket = "${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}"
+          $ticket = "${{ needs.debug-changes.outputs.jira-ticket-id }}"
           $uri = "https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net/rest/api/2/issue/$ticket"
           $username = "${{ inputs.JIRA_AUTOMATIONS_EMAIL }}"
           $token = "${{ secrets.JIRA_TOKEN }}"
@@ -362,6 +364,6 @@ jobs:
         if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
         uses: atlassian/gajira-comment@v3
         with:
-          issue: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}
+          issue: ${{ needs.debug-changes.outputs.jira-ticket-id }}
           comment: |
-            This ticket's Playwright Report: [Playwright Report|https://amutestassets.blob.core.windows.net/playwright-reports/${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}/index.html]
+            This ticket's Playwright Report: [Playwright Report|https://amutestassets.blob.core.windows.net/playwright-reports/${{ needs.debug-changes.outputs.repo-name }}/${{ needs.debug-changes.outputs.jira-ticket-id }}/index.html]
