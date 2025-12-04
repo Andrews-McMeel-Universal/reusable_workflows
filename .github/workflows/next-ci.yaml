@@ -58,8 +58,8 @@ on:
         required: false
 
 jobs:
-  debug-changes:
-    name: Debug Changed Files
+  set-variables:
+    name: Set Workflow Variables
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
