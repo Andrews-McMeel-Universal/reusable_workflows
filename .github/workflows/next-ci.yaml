@@ -58,7 +58,7 @@ on:
         required: false
 
 jobs:
-  set-variables:
+  vars:
     name: Set Workflow Variables
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ inputs.GITHUB_RUNNER }}
@@ -154,14 +154,14 @@ jobs:
       run-linter: ${{ steps.changed-files.outputs.run-linter }}
       run-jest: ${{ steps.changed-files.outputs.run-jest }}
       run-playwright: ${{ steps.changed-files.outputs.run-playwright }}
-      repo-name: ${{ needs.debug-changes.outputs.repo-name }}
-      jira-ticket-id: ${{ needs.debug-changes.outputs.jira-ticket-id }}
+      repo-name: ${{ steps.repo-name.outputs.repo-name }}
+      jira-ticket-id: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}
 
   build:
     name: Build App
-    if: ${{ needs.debug-changes.outputs.run-linter == 'true' || needs.debug-changes.outputs.run-jest == 'true' || needs.debug-changes.outputs.run-playwright == 'true' }}
+    if: ${{ needs.vars.outputs.run-linter == 'true' || needs.vars.outputs.run-jest == 'true' || needs.vars.outputs.run-playwright == 'true' }}
     runs-on: ${{ inputs.GITHUB_RUNNER }}
-    needs: [debug-changes]
+    needs: [vars]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -214,8 +214,8 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    if: ${{ inputs.RUN_JEST_TESTS == 'true' && needs.debug-changes.outputs.run-jest == 'true' }}
-    needs: [debug-changes,build]
+    if: ${{ inputs.RUN_JEST_TESTS == 'true' && needs.vars.outputs.run-jest == 'true' }}
+    needs: [vars,build]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
@@ -254,8 +254,8 @@ jobs:
 
   playwright-tests:
     name: Playwright Tests
-    if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' && needs.debug-changes.outputs.run-playwright == 'true' }}
-    needs: [debug-changes,build]
+    if: ${{ inputs.RUN_PLAYWRIGHT_TESTS == 'true' && needs.vars.outputs.run-playwright == 'true' }}
+    needs: [vars,build]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     timeout-minutes: 25
     steps:
@@ -310,7 +310,7 @@ jobs:
             AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net"
             CONTAINER_NAME="playwright-reports"
             SOURCE_DIR="playwright-report"
-            DEST_PATH="${{ needs.debug-changes.outputs.repo-name }}/${{ needs.debug-changes.outputs.jira-ticket-id }}/"
+            DEST_PATH="${{ needs.vars.outputs.repo-name }}/${{ needs.vars.outputs.jira-ticket-id }}/"
 
             # Upload files
             az storage blob upload-batch \
@@ -324,7 +324,7 @@ jobs:
         id: check-jira-comments
         shell: pwsh
         run: |
-          $ticket = "${{ needs.debug-changes.outputs.jira-ticket-id }}"
+          $ticket = "${{ needs.vars.outputs.jira-ticket-id }}"
           $uri = "https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net/rest/api/2/issue/$ticket"
           $username = "${{ inputs.JIRA_AUTOMATIONS_EMAIL }}"
           $token = "${{ secrets.JIRA_TOKEN }}"
@@ -364,6 +364,6 @@ jobs:
         if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
         uses: atlassian/gajira-comment@v3
         with:
-          issue: ${{ needs.debug-changes.outputs.jira-ticket-id }}
+          issue: ${{ needs.vars.outputs.jira-ticket-id }}
           comment: |
-            This ticket's Playwright Report: [Playwright Report|https://amutestassets.blob.core.windows.net/playwright-reports/${{ needs.debug-changes.outputs.repo-name }}/${{ needs.debug-changes.outputs.jira-ticket-id }}/index.html]
+            This ticket's Playwright Report: [Playwright Report|https://amutestassets.blob.core.windows.net/playwright-reports/${{ needs.vars.outputs.repo-name }}/${{ needs.vars.outputs.jira-ticket-id }}/index.html]
