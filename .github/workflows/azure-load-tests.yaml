@@ -88,3 +88,10 @@ jobs:
         loadtestConfigFile: '${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}/config.yaml'
         loadtestResource: ${{ inputs.loadTestResource }}
         resourceGroup: ${{ inputs.loadTestResourceGroup }}
+        env: |
+          [
+              {
+              "name": "auth-header",
+              "value": "Basic ${{ steps.auth-header.outputs.AUTHORIZATION_HEADER }}",
+              }
+          ]
