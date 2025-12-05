@@ -47,6 +47,7 @@ jobs:
       uses: azure/login@v2
       with:
         creds: "${{ secrets.azureCredentials }}"
+        enable-AzPSSession: true
 
     - name: Retrieve load test config files from Azure Storage
       id: config
