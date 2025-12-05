@@ -25,8 +25,6 @@ on:
     secrets:
       azureCredentials:
         required: true
-      storageAccountKey:
-        required: true
       webAuthenticationPassword:
         required: false
       webAuthenticationUsername:
@@ -55,10 +53,13 @@ jobs:
       shell: pwsh
       run: |
         $storageAccountName = "amutestassets"
-        $storageAccountKey = "${{ secrets.storageAccountKey }}"
+        $resourceGroupName = "${{ inputs.loadTestResourceGroup }}"
         $storageAccountContainerName = "load-test-configs"
         $storageAccountVirtualDirectory = "${{ inputs.loadTestConfigContainer }}".Replace("_","-").ToLower()
+
+        $storageAccountKey = (Get-AzStorageAccountKey -ResourceGroupName $resourceGroupName -Name $storageAccountName)[0].Value
         $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+
         Write-Output "Downloading config files from storage account..."
         $blobs = Get-AzStorageBlob -Container $storageAccountContainerName -Context $storageContext
         foreach ($blob in $blobs) {
