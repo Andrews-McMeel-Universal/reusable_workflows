@@ -17,7 +17,7 @@ on:
         default: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
       AZURE_FUNCTIONAPP_RESOURCEGROUP:
         type: string
-        default: "AMU_Serverless_RG"
+        default: ${{ vars.AZURE_FUNCTIONAPP_RESOURCEGROUP || 'AMU_Serverless_RG' }}
       AZURE_FUNCTIONAPP_PACKAGE_PATH:
         description: "set this to the path to your web app project, defaults to the repository root"
         type: string
@@ -302,18 +302,51 @@ jobs:
 
             echo "Adding $key to app settings"
             if [[ "${{ inputs.environment }}" == "production" ]]; then
-              az functionapp config appsettings set \
-                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
-              echo "Successfully added $key to app settings"
+              if [[ '${{ runner.debug }}' == '1' ]]; then
+                if ! az functionapp config appsettings set \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})"
+                then
+                  echo "::error::Failed to add $key to app settings"
+                else
+                  echo "Successfully added $key to app settings"
+                fi
+              else
+                if ! az functionapp config appsettings set \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null
+                then
+                  echo "::error::Failed to add $key to app settings"
+                else
+                  echo "Successfully added $key to app settings"
+                fi
+              fi
             else
-              az functionapp config appsettings set \
-                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                --slot "${{ inputs.environment }}" \
-                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null && \
-              echo "Successfully added $key to app settings"
+              if [[ '${{ runner.debug }}' == '1' ]]; then
+                if ! az functionapp config appsettings set \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --slot "${{ inputs.environment }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})"
+                then
+                  echo "::error::Failed to add $key to app settings"
+                else
+                  echo "Successfully added $key to app settings"
+                fi
+              else
+                if ! az functionapp config appsettings set \
+                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
+                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
+                  --slot "${{ inputs.environment }}" \
+                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null
+                then
+                  echo "::error::Failed to add $key to app settings"
+                else
+                  echo "Successfully added $key to app settings"
+                fi
+              fi
             fi
           done
 
