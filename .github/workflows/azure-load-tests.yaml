@@ -1,0 +1,110 @@
+name: Run Azure Load Tests
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
+      loadTestResource:
+        required: false
+        type: string
+        description: "The name of the Azure Load Testing resource."
+        default: ${{ vars.LOAD_TEST_RESOURCE_NAME }}
+      loadTestResourceGroup:
+        required: false
+        type: string
+        description: "The name of the Azure Load Testing resource group."
+        default: ${{ vars.LOAD_TEST_RESOURCE_GROUP || 'AMU_DevOps_RG' }}
+      loadTestConfigContainer:
+        required: false
+        type: string
+        description: "The name of the Azure Storage container where load test config files are stored."
+        default: ${{ github.event.repository.name }}
+    secrets:
+      azureCredentials:
+        required: true
+      webAuthenticationPassword:
+        required: false
+      webAuthenticationUsername:
+        required: false
+
+jobs:
+  run-tests:
+    name: Run Azure Load Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install PowerShell modules
+      shell: pwsh
+      run: |
+        Install-Module -Name Az.Storage,Az.Resources -Force
+
+    - name: Login via Az module
+      uses: azure/login@v2
+      with:
+        creds: "${{ secrets.azureCredentials }}"
+        enable-AzPSSession: true
+
+    - name: Retrieve load test config files from Azure Storage
+      id: config
+      shell: pwsh
+      run: |
+        $storageAccountName = "amutestassets"
+        $resourceGroupName = "${{ inputs.loadTestResourceGroup }}"
+        $storageAccountContainerName = "load-test-configs"
+        $storageAccountVirtualDirectory = "${{ inputs.loadTestConfigContainer }}".Replace("_","-").ToLower()
+
+        $storageAccountKey = (Get-AzStorageAccountKey -ResourceGroupName $resourceGroupName -Name $storageAccountName)[0].Value
+        $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+
+        Write-Output "Downloading config files from storage account..."
+        $blobs = Get-AzStorageBlob -Container $storageAccountContainerName -Context $storageContext
+        foreach ($blob in $blobs) {
+            Write-Output "Found blob: $($blob.Name). Downloading..."
+            Get-AzStorageBlobContent -Blob $blob.Name -Container $storageAccountContainerName -Context $storageContext -Force
+        }
+        Write-Output "STORAGE_ACCOUNT_VIRTUAL_DIRECTORY=$storageAccountVirtualDirectory" >> $env:GITHUB_OUTPUT
+
+    - name: Set authentication header in config file
+      id: auth-header
+      shell: pwsh
+      run: |
+        if (-not ${{ secrets.webAuthenticationUsername }} -or -not ${{ secrets.webAuthenticationPassword }}) {
+            Write-Output "No web authentication credentials provided. Skipping auth header setup."
+            exit 0
+        }
+        $authHeaderValue = "${{ secrets.webAuthenticationUsername }}:${{ secrets.webAuthenticationPassword }}"
+        $encodedAuthHeader = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($authHeaderValue))
+        # echo "::add-mask::${encodedAuthHeader}"
+        Write-Output "AUTHORIZATION_HEADER=$encodedAuthHeader" >> $env:GITHUB_OUTPUT
+
+    - name: Set run name
+      id: run-name
+      run: echo "LOAD_TEST_RUN_NAME=${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}-loadtest-$(date +%s)" >> $GITHUB_OUTPUT
+
+    - name: Azure Load Testing (with auth header)
+      if: ${{ steps.auth-header.outputs.AUTHORIZATION_HEADER != '' }}
+      uses: azure/load-testing@v1.2.1
+      with:
+        loadtestConfigFile: '${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}/config.yaml'
+        loadtestResource: ${{ inputs.loadTestResource }}
+        resourceGroup: ${{ inputs.loadTestResourceGroup }}
+        env: |
+          [
+              {
+              "name": "auth-header",
+              "value": "Basic ${{ steps.auth-header.outputs.AUTHORIZATION_HEADER }}"
+              }
+          ]
+
+    - name: Azure Load Testing (no auth header)
+      if: ${{ steps.auth-header.outputs.AUTHORIZATION_HEADER == '' }}
+      uses: azure/load-testing@v1.2.1
+      with:
+        loadtestConfigFile: '${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}/config.yaml'
+        loadtestResource: ${{ inputs.loadTestResource }}
+        resourceGroup: ${{ inputs.loadTestResourceGroup }}
