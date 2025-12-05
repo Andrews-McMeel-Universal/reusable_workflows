@@ -81,7 +81,7 @@ jobs:
       run: echo "LOAD_TEST_RUN_NAME=${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}-loadtest-$(date +%s)" >> $GITHUB_OUTPUT
 
     - name: Azure Load Testing
-      uses: azure/load-testing@v1.1.27
+      uses: azure/load-testing@v1.2.1
       with:
         loadtestConfigFile: '${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}/config.yaml'
         loadtestResource: ${{ inputs.loadTestResource }}
