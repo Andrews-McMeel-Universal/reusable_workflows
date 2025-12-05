@@ -73,6 +73,10 @@ jobs:
       id: auth-header
       shell: pwsh
       run: |
+        if (-not ${{ secrets.webAuthenticationUsername }} -or -not ${{ secrets.webAuthenticationPassword }}) {
+            Write-Output "No web authentication credentials provided. Skipping auth header setup."
+            exit 0
+        }
         $authHeaderValue = "${{ secrets.webAuthenticationUsername }}:${{ secrets.webAuthenticationPassword }}"
         $encodedAuthHeader = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($authHeaderValue))
         # echo "::add-mask::${encodedAuthHeader}"
@@ -82,7 +86,8 @@ jobs:
       id: run-name
       run: echo "LOAD_TEST_RUN_NAME=${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}-loadtest-$(date +%s)" >> $GITHUB_OUTPUT
 
-    - name: Azure Load Testing
+    - name: Azure Load Testing (with auth header)
+      if: ${{ steps.auth-header.outputs.AUTHORIZATION_HEADER != '' }}
       uses: azure/load-testing@v1.2.1
       with:
         loadtestConfigFile: '${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}/config.yaml'
@@ -95,3 +100,11 @@ jobs:
               "value": "Basic ${{ steps.auth-header.outputs.AUTHORIZATION_HEADER }}"
               }
           ]
+
+    - name: Azure Load Testing (no auth header)
+      if: ${{ steps.auth-header.outputs.AUTHORIZATION_HEADER == '' }}
+      uses: azure/load-testing@v1.2.1
+      with:
+        loadtestConfigFile: '${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}/config.yaml'
+        loadtestResource: ${{ inputs.loadTestResource }}
+        resourceGroup: ${{ inputs.loadTestResourceGroup }}
