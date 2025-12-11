@@ -103,10 +103,6 @@ on:
         required: false
         type: string
         default: ${{ vars.JIRA_AUTOMATIONS_DOMAIN }}
-      jiraAutomationsProject:
-        required: false
-        type: string
-        default: ${{ vars.JIRA_AUTOMATIONS_PROJECT }}
     secrets:
       azureClusterName:
         required: true
@@ -128,7 +124,7 @@ on:
         required: false
       sentryAuthToken:
         required: false
-      jiraAutomationsToken:
+      jiraToken:
         required: false
 
 jobs:
@@ -823,6 +819,46 @@ jobs:
               --ttl 3600
           done
 
+      - name: Check if Jira token is set
+        id: check-jira-token
+        if: ${{ github.event.release.tag_name != '' }}
+        run: |
+          if [ -z "${{ secrets.jiraToken }}" ]; then
+            echo "jiraToken is not set. Skipping Jira ticket updates."
+            echo "jiraTokenSet=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update Fix versions in Jira tickets
+        if: ${{ github.event.release.tag_name != '' && steps.check-jira-token.outputs.jiraTokenSet != 'false' }}
+        run: |
+          TICKETS=$(curl --user "amu_deploy@amuniversal.com:${{ secrets.PAT_ACTION_CI }}" "https://api.github.com/repos/${{ github.repository }}/commits?sha=${{ github.sha }}" | grep -Eo '\b[A-Z][A-Z0-9_]+-[1-9][0-9]*' | sort -u)
+          for ticket in $TICKETS; do
+            echo "Updating ticket $i with fix version ${{ github.event.release.tag_name }}"
+            $uri = "https://${{ inputs.jiraAutomationsDomain }}.atlassian.net/rest/api/2/issue/$ticket/editmeta"
+            $username = "${{ inputs.jiraAutomationsEmail }}"
+            $token = "${{ secrets.jiraToken }}"
+            $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$token)))
+            $headers = @{
+                Authorization = ("Basic {0}" -f $base64AuthInfo)
+                "Content-Type" = "application/json"
+            }
+            $body = @"
+            {
+                "fields": {
+                    "fix-versions":{"value":"${{ github.event.release.tag_name }}"}
+                }
+            }
+
+            try {
+                $response = Invoke-RestMethod -Headers $headers -Uri $uri -Method PUT -Body $body -ErrorAction Stop
+                Write-Output "Ticket $ticket updated."
+            }
+            catch {
+                Write-Error "Exception occurred while fetching ticket: $_"
+                exit 1
+            }
+          done
+
       - name: Create Sentry release
         if: env.NEXT_PUBLIC_SENTRY_DSN && inputs.publishSentryRelease == 'true'
         uses: getsentry/action-release@v3
@@ -834,21 +870,6 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
           release: ${{ github.event.release.tag_name || github.sha }}
-
-      - name: Create Jira Release
-        if: github.event.release.tag_name != '' && inputs.jiraAutomationsProject != ''
-        uses: Ariza50/release-jira-ticket-actions@1.1.6
-        with:
-          dry_run: false
-          email: ${{ inputs.jiraAutomationsEmail }}
-          api_token:  ${{ secrets.jiraAutomationsToken }}
-          subdomain: ${{ inputs.jiraAutomationsDomain }}
-          gh_user: amu_deploy@amuniversal.com
-          gh_token: ${{ secrets.PAT_ACTION_CI }}
-          gh_repository: ${{ github.event.repository.name }}
-          jira_project: ${{ inputs.jiraAutomationsProject }}
-          release_name: ${{ github.event.release.tag_name }}
-          release_prefix: "v"
 
       - name: Get Current Date
         id: date
