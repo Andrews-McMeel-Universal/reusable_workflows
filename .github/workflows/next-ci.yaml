@@ -250,6 +250,11 @@ jobs:
       - name: Run Jest tests
         run: yarn test:unit:ci
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
+
       - name: Upload Jest Report to Azure Storage Account
         if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
         uses: azure/cli@v2
@@ -370,6 +375,11 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Upload Playwright Report to Azure Storage Account
         if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
