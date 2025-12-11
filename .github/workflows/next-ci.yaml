@@ -250,12 +250,15 @@ jobs:
       - name: Run Jest tests
         run: yarn test:unit:ci
 
-      - name: Upload Playwright Report to Azure Storage Account
+      - name: Upload Jest Report to Azure Storage Account
         if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
         uses: azure/cli@v2
         with:
           inlineScript: |
-            AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=amutestassets;AccountKey=${{ secrets.AMUTESTASSETS_STORAGEACCOUNTKEY }};EndpointSuffix=core.windows.net"
+            STORAGE_ACCOUNT_RG="AMU_DevOps_RG"
+            STORAGE_ACCOUNT_NAME="amutestassets"
+            STORAGE_ACCOUNT_KEY=$(az storage account keys list -g "${STORAGE_ACCOUNT_RG}" -n "${STORAGE_ACCOUNT_NAME}" --query '[0].value' -o tsv)
+            AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=${STORAGE_ACCOUNT_NAME};AccountKey="${STORAGE_ACCOUNT_KEY}";EndpointSuffix=core.windows.net"
             CONTAINER_NAME="jest-coverage"
             SOURCE_DIR="coverage/unit/lcov-report"
             DEST_PATH="${{ needs.vars.outputs.repo-name }}/${{ needs.vars.outputs.jira-ticket-id }}/"
