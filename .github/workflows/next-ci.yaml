@@ -251,9 +251,11 @@ jobs:
         run: yarn test:unit:ci
 
       - name: Azure Login
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
         uses: azure/login@v2
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
+          enable-AzPSSession: true
 
       - name: Upload Jest Report to Azure Storage Account
         if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
@@ -377,9 +379,11 @@ jobs:
           retention-days: 30
 
       - name: Azure Login
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
         uses: azure/login@v2
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
+          enable-AzPSSession: true
 
       - name: Upload Playwright Report to Azure Storage Account
         if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
