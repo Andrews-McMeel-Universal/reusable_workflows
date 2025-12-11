@@ -317,7 +317,7 @@ jobs:
           JIRA_USER_EMAIL: ${{ inputs.JIRA_AUTOMATIONS_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_TOKEN }}
 
-      - name: Link Playwright Report in Jira ticket
+      - name: Link Jest Report in Jira ticket
         if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
         uses: atlassian/gajira-comment@v3
         with:
