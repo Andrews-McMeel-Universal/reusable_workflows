@@ -25,6 +25,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.PAT_ACTION_CI || github.token }}
+
 
       - name: Check for existing version bump commit
         id: check-version-bump
