@@ -33,7 +33,7 @@ jobs:
         run: |
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          if git log --oneline "$BASE_SHA...$HEAD_SHA" | grep -q "Bump ${{ inputs.libraryName }} Nuget version"; then
+          if git log --oneline "$BASE_SHA...$HEAD_SHA" | grep -q "Bump ${{ inputs.libraryName != '' && format('{0} ', inputs.libraryName) || ' ' }}Nuget version" || ; then
             echo "version-bump-exists=true" >> $GITHUB_OUTPUT
           else
             echo "version-bump-exists=false" >> $GITHUB_OUTPUT
