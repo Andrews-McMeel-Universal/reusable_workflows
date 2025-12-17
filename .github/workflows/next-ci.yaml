@@ -263,7 +263,7 @@ jobs:
           STORAGE_ACCOUNT_RG="AMU_DevOps_RG"
           STORAGE_ACCOUNT_NAME="amutestassets"
           STORAGE_ACCOUNT_KEY=$(az storage account keys list -g "${STORAGE_ACCOUNT_RG}" -n "${STORAGE_ACCOUNT_NAME}" --query '[0].value' -o tsv)
-          AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=${STORAGE_ACCOUNT_NAME};AccountKey="${STORAGE_ACCOUNT_KEY}";EndpointSuffix=core.windows.net"
+          AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=${STORAGE_ACCOUNT_NAME};AccountKey=${STORAGE_ACCOUNT_KEY};EndpointSuffix=core.windows.net"
           CONTAINER_NAME="jest-coverage"
           SOURCE_DIR="coverage/unit/lcov-report"
           DEST_PATH="${{ needs.vars.outputs.repo-name }}/${{ needs.vars.outputs.jira-ticket-id }}/"
@@ -310,7 +310,7 @@ jobs:
           }
 
       - name: Login to Jira
-        if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' }}
         uses: atlassian/gajira-login@v3
         env:
           JIRA_BASE_URL: https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net
@@ -318,7 +318,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_TOKEN }}
 
       - name: Link Jest Report in Jira ticket
-        if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' }}
         uses: atlassian/gajira-comment@v3
         with:
           issue: ${{ needs.vars.outputs.jira-ticket-id }}
@@ -389,7 +389,7 @@ jobs:
           STORAGE_ACCOUNT_RG="AMU_DevOps_RG"
           STORAGE_ACCOUNT_NAME="amutestassets"
           STORAGE_ACCOUNT_KEY=$(az storage account keys list -g "${STORAGE_ACCOUNT_RG}" -n "${STORAGE_ACCOUNT_NAME}" --query '[0].value' -o tsv)
-          AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=${STORAGE_ACCOUNT_NAME};AccountKey="${STORAGE_ACCOUNT_KEY}";EndpointSuffix=core.windows.net"
+          AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=${STORAGE_ACCOUNT_NAME};AccountKey=${STORAGE_ACCOUNT_KEY};EndpointSuffix=core.windows.net"
           CONTAINER_NAME="playwright-reports"
           SOURCE_DIR="playwright-report"
           DEST_PATH="${{ needs.vars.outputs.repo-name }}/${{ needs.vars.outputs.jira-ticket-id }}/"
@@ -436,7 +436,7 @@ jobs:
           }
 
       - name: Login to Jira
-        if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' }}
         uses: atlassian/gajira-login@v3
         env:
           JIRA_BASE_URL: https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net
@@ -444,7 +444,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_TOKEN }}
 
       - name: Link Playwright Report in Jira ticket
-        if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' }}
         uses: atlassian/gajira-comment@v3
         with:
           issue: ${{ needs.vars.outputs.jira-ticket-id }}
