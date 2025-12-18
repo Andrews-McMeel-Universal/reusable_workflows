@@ -1,4 +1,4 @@
-name: Azure Function Deploy
+name: Azure Function App Deploy
 
 on:
   workflow_call:
@@ -10,15 +10,15 @@ on:
       DOTNET_VERSION:
         default: ${{ vars.DOTNET_VERSION }}
         type: string
-      AZURE_FUNCTIONAPP_NAME:
+      AZURE_APP_NAME:
         type: string
         required: false
         description: "set this to your application's name"
         default: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
-      AZURE_FUNCTIONAPP_RESOURCEGROUP:
+      AZURE_APP_RESOURCEGROUP:
         type: string
         default: ${{ vars.AZURE_FUNCTIONAPP_RESOURCEGROUP || 'AMU_Serverless_RG' }}
-      AZURE_FUNCTIONAPP_PACKAGE_PATH:
+      AZURE_APP_PACKAGE_PATH:
         description: "set this to the path to your web app project, defaults to the repository root"
         type: string
         default: ${{ vars.AZURE_FUNCTIONAPP_PACKAGE_PATH || '.' }}
@@ -48,15 +48,15 @@ jobs:
       - name: Get environment hostname
         run: |
           if [[ "${{ inputs.environment }}" == "production" ]] ; then
-              echo "hostname=${{ inputs.AZURE_FUNCTIONAPP_NAME }}" >> $GITHUB_ENV
+              echo "hostname=${{ inputs.AZURE_APP_NAME }}" >> $GITHUB_ENV
           else
-              echo "hostname=${{ inputs.AZURE_FUNCTIONAPP_NAME }}-${{ inputs.environment }}" >> $GITHUB_ENV
+              echo "hostname=${{ inputs.AZURE_APP_NAME }}-${{ inputs.environment }}" >> $GITHUB_ENV
           fi
     outputs:
       hostname: ${{ env.hostname }}
 
   build-and-deploy:
-    name: Deploy to ${{ inputs.environment }}
+    name: Deploy Function App to ${{ inputs.environment }}
     environment:
       name: ${{ inputs.environment }}
       url: https://${{ needs.vars.outputs.hostname }}.azurewebsites.net
@@ -91,7 +91,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pushd './${{ inputs.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          pushd './${{ inputs.AZURE_APP_PACKAGE_PATH }}'
           dotnet build --configuration Release --output ./output
           popd
 
@@ -102,27 +102,26 @@ jobs:
 
       - name: Whitelist Boley IPs
         uses: azure/cli@v2
+        env:
+          AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
+          AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
+          ENVIRONMENT: ${{ inputs.environment }}
         with:
           inlineScript: |
             set -eu
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-                RESULT=$(az functionapp config access-restriction add \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --rule-name "BoleyIPs" \
-                  --action "Allow" \
-                  --ip-address 207.67.20.0/24 \
-                  --priority 100 | tee )
-            else
-                RESULT=$(az functionapp config access-restriction add \
-                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                --rule-name "BoleyIPs" \
-                --action "Allow" \
-                --ip-address 207.67.20.0/24 \
-                --priority 100 \
-                --slot "${{ inputs.environment }}" | tee )
+            AZ_ARGS=(
+              functionapp config access-restriction add
+              -g "${AZURE_APP_RESOURCEGROUP}"
+              -n "${AZURE_APP_NAME}"
+              --rule-name "BoleyIPs"
+              --action "Allow"
+              --ip-address "207.67.20.0/24"
+              --priority 100
+            )
+            if [[ "${ENVIRONMENT}" != "production" ]]; then
+              AZ_ARGS+=(--slot "${ENVIRONMENT}")
             fi
+            RESULT=$(az "${AZ_ARGS[@]}" | tee)
             if [[ "$RESULT" =~ "already exists" ]] || [[ ! "$RESULT" =~ "ERROR" ]]; then 
                 exit 0
             else
@@ -136,27 +135,27 @@ jobs:
 
       - name: Whitelist GitHub Runner IP
         uses: azure/cli@v2
+        env:
+          AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
+          AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          GITHUB_ACTIONS_RUNNER_IP: ${{ steps.ip.outputs.ipv4 }}
         with:
           inlineScript: |
             set -eu
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-                RESULT=$(az functionapp config access-restriction add \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --rule-name "GitHubActionRunner" \
-                  --action "Allow" \
-                  --ip-address ${{ steps.ip.outputs.ipv4 }} \
-                  --priority 1001 | tee )
-            else
-                RESULT=$(az functionapp config access-restriction add \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --rule-name "GitHubActionRunner" \
-                  --action "Allow" \
-                  --ip-address ${{ steps.ip.outputs.ipv4 }} \
-                  --priority 1001 \
-                  --slot "${{ inputs.environment }}" | tee )
+            AZ_ARGS=(
+              functionapp config access-restriction add
+              -g "${AZURE_APP_RESOURCEGROUP}"
+              -n "${AZURE_APP_NAME}"
+              --rule-name "GitHubActionRunner"
+              --action "Allow"
+              --ip-address "${GITHUB_ACTIONS_RUNNER_IP}"
+              --priority 1001
+            )
+            if [[ "${ENVIRONMENT}" != "production" ]]; then
+              AZ_ARGS+=(--slot "${ENVIRONMENT}")
             fi
+            RESULT=$(az "${AZ_ARGS[@]}" | tee)
             if [[ "$RESULT" =~ "already exists" ]] || [[ ! "$RESULT" =~ "ERROR" ]]; then 
                 exit 0
             else
@@ -167,67 +166,60 @@ jobs:
       - name: Deploy Azure Functions
         uses: azure/functions-action@v1
         with:
-          app-name: ${{ inputs.AZURE_FUNCTIONAPP_NAME }}
+          app-name: ${{ inputs.AZURE_APP_NAME }}
           slot-name: ${{ inputs.environment }}
-          package: "${{ inputs.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output"
+          package: "${{ inputs.AZURE_APP_PACKAGE_PATH }}/output"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
 
-      - name: Restart Azure Function App
+      - name: Enable identity for Azure Function App
         uses: azure/cli@v2
+        env:
+          AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
+          AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
+          ENVIRONMENT: ${{ inputs.environment }}
         with:
           inlineScript: |
             set -eu
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-                az functionapp restart \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" | tee
-            else
-                az functionapp restart \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --slot "${{ inputs.environment }}" | tee
+            AZ_ARGS=(
+              functionapp identity assign
+              -g "${AZURE_APP_RESOURCEGROUP}"
+              -n "${AZURE_APP_NAME}"
+            )
+            if [[ "${ENVIRONMENT}" != "production" ]]; then
+              AZ_ARGS+=(--slot "${ENVIRONMENT}")
             fi
+            az "${AZ_ARGS[@]}"
 
-      - name: Enable identity for Azure Function
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            set -eu
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-              az functionapp identity assign \
-                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" | tee
-            else
-              az functionapp identity assign \
-                -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                --slot "${{ inputs.environment }}" | tee
-            fi
-
-      - name: Get Azure Function Managed Identity
+      - name: Get Azure Function App Managed Identity
         id: identity
-        run: |
-          set -eu
-          if [[ "${{ inputs.environment }}" == "production" ]]; then
-            IDENTITY=$(az functionapp identity show \
-              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" | tee)
-          else
-            IDENTITY=$(az functionapp identity show \
-              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-              --slot "${{ inputs.environment }}" | tee)
-          fi
-          echo "functionAppIdentity=$(echo $IDENTITY | jq -r '.principalId')" >> $GITHUB_ENV
+        uses: azure/cli@v2
+        env:
+          AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
+          AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        with:
+          inlineScript: |
+            set -eu
+            AZ_ARGS=(
+              functionapp identity show
+              -g "${AZURE_APP_RESOURCEGROUP}"
+              -n "${AZURE_APP_NAME}"
+            )
+            if [[ "${ENVIRONMENT}" != "production" ]]; then
+              AZ_ARGS+=(--slot "${ENVIRONMENT}")
+            fi
+            IDENTITY=$(az "${AZ_ARGS[@]}" | jq -r '.principalId')
+
+            echo "appIdentity=${IDENTITY}" >> $GITHUB_ENV
 
       - name: Retrieve key vault name
         uses: azure/cli@v2
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
         with:
           inlineScript: |
             set -eu
-            ENVIRONMENT="${{ inputs.environment }}"
-            REPOSITORY_NAME="${{ github.event.repository.name }}"
-
             echo -e "Searching for key vault with tags: \"repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}\""
             KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
 
@@ -241,16 +233,19 @@ jobs:
             KEYVAULT_NAME=${KEYVAULT_NAME// /}
             echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_ENV
 
-      - name: Assign Azure Function System Managed Identity to Key Vault
+      - name: Assign Azure Function App System Managed Identity to Key Vault
         uses: azure/cli@v2
+        env:
+          AZURE_KEYVAULT_NAME: ${{ env.keyVaultName }}
+          AZURE_IDENTITY: ${{ env.appIdentity }}
         with:
           inlineScript: |
             set -eu
             # Retrieve the Key Vault ID
-            keyVaultId=$(az keyvault show --name ${{ env.keyVaultName }} --query id --output tsv)
+            keyVaultId=$(az keyvault show --name "${AZURE_KEYVAULT_NAME}" --query id --output tsv)
             
             # Assign the Key Vault Secrets User role to the managed identity using object ID and principal type
-            az role assignment create --role "Key Vault Secrets User" --assignee-object-id ${{ env.functionAppIdentity }} --assignee-principal-type ServicePrincipal  --scope $keyVaultId
+            az role assignment create --role "Key Vault Secrets User" --assignee-object-id "${AZURE_IDENTITY}" --assignee-principal-type ServicePrincipal  --scope $keyVaultId
       
       - name: Retrieve environment variables
         if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
@@ -264,24 +259,25 @@ jobs:
 
       - name: Add environment variables to function app
         env:
-          AZURE_FUNCTIONAPP_RESOURCEGROUP: ${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}
-          AZURE_FUNCTIONAPP_NAME: ${{ inputs.AZURE_FUNCTIONAPP_NAME }}
+          AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
+          AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
           ENV_VARS_OUTPUT: ${{ steps.get-envs.outputs.environmentVariables }}
           ENVIRONMENT: ${{ inputs.environment }}
           AZURE_KEYVAULT_NAME: ${{ env.keyVaultName }}
         uses: azure/cli@v2
         with:
           inlineScript: |
+            set -eu
 
             # Get current app settings
             if [[ "${ENVIRONMENT}" == "production" ]]; then
               APPSETTINGS=$(az functionapp config appsettings list \
-                -g "${AZURE_FUNCTIONAPP_RESOURCEGROUP}" \
-                -n "${AZURE_FUNCTIONAPP_NAME}")
+                -g "${AZURE_APP_RESOURCEGROUP}" \
+                -n "${AZURE_APP_NAME}")
             else
               APPSETTINGS=$(az functionapp config appsettings list \
-                -g "${AZURE_FUNCTIONAPP_RESOURCEGROUP}" \
-                -n "${AZURE_FUNCTIONAPP_NAME}" \
+                -g "${AZURE_APP_RESOURCEGROUP}" \
+                -n "${AZURE_APP_NAME}" \
                 --slot "${ENVIRONMENT}")
             fi
 
@@ -309,8 +305,8 @@ jobs:
               # Build common args once
               AZ_ARGS=(
                 functionapp config appsettings set
-                -g "${AZURE_FUNCTIONAPP_RESOURCEGROUP}"
-                -n "${AZURE_FUNCTIONAPP_NAME}"
+                -g "${AZURE_APP_RESOURCEGROUP}"
+                -n "${AZURE_APP_NAME}"
                 --slot-settings "$key=@Microsoft.KeyVault(VaultName=${AZURE_KEYVAULT_NAME};SecretName=${VARIABLE_LC})"
               )
 
@@ -340,26 +336,47 @@ jobs:
       - name: Remove GitHub Runner IP from Whitelist
         if: always()
         uses: azure/cli@v2
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
+          AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
         with:
           inlineScript: |
             set -eu
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-                RESULT=$(az functionapp config access-restriction remove  \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --rule-name "GitHubActionRunner" | tee )
-            else
-                RESULT=$(az functionapp config access-restriction remove  \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --rule-name "GitHubActionRunner" \
-                  --slot "${{ inputs.environment }}" | tee )
+            AZ_ARGS=(
+              functionapp config access-restriction remove
+              -g "${AZURE_APP_RESOURCEGROUP}"
+              -n "${AZURE_APP_NAME}"
+              --rule-name "GitHubActionRunner"
+            )
+            if [[ "${ENVIRONMENT}" != "production" ]]; then
+              AZ_ARGS+=(--slot "${ENVIRONMENT}")
             fi
+            RESULT-$(az "${AZ_ARGS[@]}" | tee)
             if [[ "$RESULT" =~ "already exists" ]] || [[ ! "$RESULT" =~ "ERROR" ]]; then 
                 exit 0
             else
                 exit 1
             fi
+
+      - name: Restart Azure Function App
+        uses: azure/cli@v2
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
+          AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
+        with:
+          inlineScript: |
+            set -eu
+            AZ_ARGS=(
+              functionapp restart
+              -g "${AZURE_APP_RESOURCEGROUP}"
+              -n "${AZURE_APP_NAME}"
+            )
+            if [[ "${ENVIRONMENT}" != "production" ]]; then
+              AZ_ARGS+=(--slot "${ENVIRONMENT}")
+            fi
+            az "${AZ_ARGS[@]}"
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
