@@ -321,15 +321,17 @@ jobs:
 
               # Run command once, optionally silencing output when not debugging
               if [[ '${{ runner.debug }}' == '1' ]]; then
-                az "${AZ_ARGS[@]}"
+                AZ_OUTPUT="$(az "${AZ_ARGS[@]}")"
               else
-                az "${AZ_ARGS[@]}" >/dev/null
+                AZ_OUTPUT="$(az "${AZ_ARGS[@]}" 2>&1)"
               fi
 
               AZ_EXIT_CODE=$?
 
               if [[ $AZ_EXIT_CODE -ne 0 ]]; then
                 echo "::error::Failed to add $key to app settings (exit code: $AZ_EXIT_CODE)"
+              elif ! echo "$AZ_OUTPUT" | grep "$key" >/dev/null; then
+                echo "::error::az command succeeded but $key was not present in the result output"
               else
                 echo "Successfully added $key to app settings"
               fi
