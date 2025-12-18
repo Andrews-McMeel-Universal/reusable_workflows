@@ -211,77 +211,78 @@ jobs:
           environmentVariableSeparator: "\n"
 
       - name: Add environment variables to web app
-        shell: bash
         env:
           AZURE_WEBAPP_RESOURCEGROUP: ${{ inputs.AZURE_WEBAPP_RESOURCEGROUP }}
           AZURE_WEBAPP_NAME: ${{ inputs.AZURE_WEBAPP_NAME }}
           ENV_VARS_OUTPUT: ${{ steps.get-envs.outputs.environmentVariables }}
           ENVIRONMENT: ${{ inputs.environment }}
           AZURE_KEYVAULT_NAME: ${{ env.keyVaultName }}
-        run: |
-          set -eu
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -eu
 
-          # Get current app settings
-          if [[ "${ENVIRONMENT}" == "production" ]]; then
-            APPSETTINGS=$(az webapp config appsettings list \
-              -g "${AZURE_WEBAPP_RESOURCEGROUP}" \
-              -n "${AZURE_WEBAPP_NAME}")
-          else
-            APPSETTINGS=$(az webapp config appsettings list \
-              -g "${AZURE_WEBAPP_RESOURCEGROUP}" \
-              -n "${AZURE_WEBAPP_NAME}" \
-              --slot "${ENVIRONMENT}")
-          fi
-
-          echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
-            echo "Processing variable: $key=$value"
-            VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
-
-            # Search for the key in app settings
-            APPSETTING_VALUE=$(echo "${APPSETTINGS}" | jq -r ".[] | select(.name == \"$key\") | .value")
-
-            # Check if the value is set to a keyvault reference
-            if [[ "${APPSETTING_VALUE}" == "@Microsoft.KeyVault"* ]]; then
-              echo "Skipping $key as it is already a keyvault reference"
-              continue
-            fi
-
-            # Skip reserved keys
-            if [[ "$key" == "FUNCTIONS_WORKER_RUNTIME" || "$key" == "AzureWebJobsStorage" || "$key" == "AZUREWEBJOBSSTORAGE" ]]; then
-              echo "Skipping $key as it is a reserved key"
-              continue
-            fi
-
-            echo "Adding $key to app settings"
-
-            # Build common args once
-            AZ_ARGS=(
-              webapp config appsettings set
-              -g "${AZURE_WEBAPP_RESOURCEGROUP}"
-              -n "${AZURE_WEBAPP_NAME}"
-              --slot-settings "$key=@Microsoft.KeyVault(VaultName=${AZURE_KEYVAULT_NAME};SecretName=${VARIABLE_LC})"
-            )
-
-            # Add slot args only when not production
-            if [[ "${ENVIRONMENT}" != "production" ]]; then
-              AZ_ARGS+=(--slot "${ENVIRONMENT}")
-            fi
-
-            # Run command once, optionally silencing output when not debugging
-            if [[ '${{ runner.debug }}' == '1' ]]; then
-              az "${AZ_ARGS[@]}"
+            # Get current app settings
+            if [[ "${ENVIRONMENT}" == "production" ]]; then
+              APPSETTINGS=$(az webapp config appsettings list \
+                -g "${AZURE_WEBAPP_RESOURCEGROUP}" \
+                -n "${AZURE_WEBAPP_NAME}")
             else
-              az "${AZ_ARGS[@]}" >/dev/null
+              APPSETTINGS=$(az webapp config appsettings list \
+                -g "${AZURE_WEBAPP_RESOURCEGROUP}" \
+                -n "${AZURE_WEBAPP_NAME}" \
+                --slot "${ENVIRONMENT}")
             fi
 
-            AZ_EXIT_CODE=$?
+            echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
+              echo "Processing variable: $key=$value"
+              VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
 
-            if [[ $AZ_EXIT_CODE -ne 0 ]]; then
-              echo "::error::Failed to add $key to app settings (exit code: $AZ_EXIT_CODE)"
-            else
-              echo "Successfully added $key to app settings"
-            fi
-          done
+              # Search for the key in app settings
+              APPSETTING_VALUE=$(echo "${APPSETTINGS}" | jq -r ".[] | select(.name == \"$key\") | .value")
+
+              # Check if the value is set to a keyvault reference
+              if [[ "${APPSETTING_VALUE}" == "@Microsoft.KeyVault"* ]]; then
+                echo "Skipping $key as it is already a keyvault reference"
+                continue
+              fi
+
+              # Skip reserved keys
+              if [[ "$key" == "FUNCTIONS_WORKER_RUNTIME" || "$key" == "AzureWebJobsStorage" || "$key" == "AZUREWEBJOBSSTORAGE" ]]; then
+                echo "Skipping $key as it is a reserved key"
+                continue
+              fi
+
+              echo "Adding $key to app settings"
+
+              # Build common args once
+              AZ_ARGS=(
+                webapp config appsettings set
+                -g "${AZURE_WEBAPP_RESOURCEGROUP}"
+                -n "${AZURE_WEBAPP_NAME}"
+                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${AZURE_KEYVAULT_NAME};SecretName=${VARIABLE_LC})"
+              )
+
+              # Add slot args only when not production
+              if [[ "${ENVIRONMENT}" != "production" ]]; then
+                AZ_ARGS+=(--slot "${ENVIRONMENT}")
+              fi
+
+              # Run command once, optionally silencing output when not debugging
+              if [[ '${{ runner.debug }}' == '1' ]]; then
+                az "${AZ_ARGS[@]}"
+              else
+                az "${AZ_ARGS[@]}" >/dev/null
+              fi
+
+              AZ_EXIT_CODE=$?
+
+              if [[ $AZ_EXIT_CODE -ne 0 ]]; then
+                echo "::error::Failed to add $key to app settings (exit code: $AZ_EXIT_CODE)"
+              else
+                echo "Successfully added $key to app settings"
+              fi
+            done
 
       - name: Restart Azure Web App
         shell: pwsh
