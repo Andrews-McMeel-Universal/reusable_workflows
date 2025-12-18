@@ -280,7 +280,6 @@ jobs:
               --slot "${{ inputs.environment }}")
           fi
 
-          # Use a while loop to read and process each environment variable and trim output
           echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
             echo "Processing variable: $key=$value"
             VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
@@ -293,60 +292,41 @@ jobs:
               echo "Skipping $key as it is already a keyvault reference"
               continue
             fi
-            
-            # Skip FUNCTIONS_WORKER_RUNTIME and AzureWebJobsStoraged
+
+            # Skip reserved keys
             if [[ "$key" == "FUNCTIONS_WORKER_RUNTIME" || "$key" == "AzureWebJobsStorage" || "$key" == "AZUREWEBJOBSSTORAGE" ]]; then
               echo "Skipping $key as it is a reserved key"
               continue
             fi
 
             echo "Adding $key to app settings"
-            if [[ "${{ inputs.environment }}" == "production" ]]; then
-              if [[ '${{ runner.debug }}' == '1' ]]; then
-                if ! az functionapp config appsettings set \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})"
-                then
-                  echo "::error::Failed to add $key to app settings"
-                else
-                  echo "Successfully added $key to app settings"
-                fi
-              else
-                if ! az functionapp config appsettings set \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null
-                then
-                  echo "::error::Failed to add $key to app settings"
-                else
-                  echo "Successfully added $key to app settings"
-                fi
-              fi
+
+            # Build common args once
+            AZ_ARGS=(
+              functionapp config appsettings set
+              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}"
+              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}"
+              --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})"
+            )
+
+            # Add slot args only when not production
+            if [[ "${{ inputs.environment }}" != "production" ]]; then
+              AZ_ARGS+=(--slot "${{ inputs.environment }}")
+            fi
+
+            # Run command once, optionally silencing output when not debugging
+            if [[ '${{ runner.debug }}' == '1' ]]; then
+              az "${AZ_ARGS[@]}"
             else
-              if [[ '${{ runner.debug }}' == '1' ]]; then
-                if ! az functionapp config appsettings set \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --slot "${{ inputs.environment }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})"
-                then
-                  echo "::error::Failed to add $key to app settings"
-                else
-                  echo "Successfully added $key to app settings"
-                fi
-              else
-                if ! az functionapp config appsettings set \
-                  -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-                  -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-                  --slot "${{ inputs.environment }}" \
-                  --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})" >/dev/null
-                then
-                  echo "::error::Failed to add $key to app settings"
-                else
-                  echo "Successfully added $key to app settings"
-                fi
-              fi
+              az "${AZ_ARGS[@]}" >/dev/null
+            fi
+
+            AZ_EXIT_CODE=$?
+
+            if [[ $AZ_EXIT_CODE -ne 0 ]]; then
+              echo "::error::Failed to add $key to app settings (exit code: $AZ_EXIT_CODE)"
+            else
+              echo "Successfully added $key to app settings"
             fi
           done
 
