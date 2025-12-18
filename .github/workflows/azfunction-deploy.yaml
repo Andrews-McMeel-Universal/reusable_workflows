@@ -263,21 +263,26 @@ jobs:
           environmentVariableSeparator: "\n"
 
       - name: Add environment variables to function app
+        shell: bash
+        env:
+          AZURE_FUNCTIONAPP_RESOURCEGROUP: ${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}
+          AZURE_FUNCTIONAPP_NAME: ${{ inputs.AZURE_FUNCTIONAPP_NAME }}
+          ENV_VARS_OUTPUT: ${{ steps.get-envs.outputs.environmentVariables }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          AZURE_KEYVAULT_NAME: ${{ env.keyVaultName }}
         run: |
           set -eu
-          # Store the environment variables output into a separate variable
-          ENV_VARS_OUTPUT='${{ steps.get-envs.outputs.environmentVariables }}'
 
           # Get current app settings
-          if [[ "${{ inputs.environment }}" == "production" ]]; then
+          if [[ "${ENVIRONMENT}" == "production" ]]; then
             APPSETTINGS=$(az functionapp config appsettings list \
-              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}")
+              -g "${AZURE_FUNCTIONAPP_RESOURCEGROUP}" \
+              -n "${AZURE_FUNCTIONAPP_NAME}")
           else
             APPSETTINGS=$(az functionapp config appsettings list \
-              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}" \
-              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}" \
-              --slot "${{ inputs.environment }}")
+              -g "${AZURE_FUNCTIONAPP_RESOURCEGROUP}" \
+              -n "${AZURE_FUNCTIONAPP_NAME}" \
+              --slot "${ENVIRONMENT}")
           fi
 
           echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
@@ -304,14 +309,14 @@ jobs:
             # Build common args once
             AZ_ARGS=(
               functionapp config appsettings set
-              -g "${{ inputs.AZURE_FUNCTIONAPP_RESOURCEGROUP }}"
-              -n "${{ inputs.AZURE_FUNCTIONAPP_NAME }}"
-              --slot-settings "$key=@Microsoft.KeyVault(VaultName=${{ env.keyVaultName }};SecretName=${VARIABLE_LC})"
+              -g "${AZURE_FUNCTIONAPP_RESOURCEGROUP}"
+              -n "${AZURE_FUNCTIONAPP_NAME}"
+              --slot-settings "$key=@Microsoft.KeyVault(VaultName=${AZURE_KEYVAULT_NAME};SecretName=${VARIABLE_LC})"
             )
 
             # Add slot args only when not production
-            if [[ "${{ inputs.environment }}" != "production" ]]; then
-              AZ_ARGS+=(--slot "${{ inputs.environment }}")
+            if [[ "${ENVIRONMENT}" != "production" ]]; then
+              AZ_ARGS+=(--slot "${ENVIRONMENT}")
             fi
 
             # Run command once, optionally silencing output when not debugging
