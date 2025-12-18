@@ -45,7 +45,7 @@ jobs:
     name: Deploy to ${{ inputs.environment }}
     environment:
       name: ${{ inputs.environment }}
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     env:
       PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
     steps:
