@@ -294,8 +294,8 @@ jobs:
               continue
             fi
             
-            # Skip FUNCTIONS_WORKER_RUNTIME and AzureWebJobsStorage
-            if [[ "$key" == "FUNCTIONS_WORKER_RUNTIME" || "$key" == "AzureWebJobsStorage" ]]; then
+            # Skip FUNCTIONS_WORKER_RUNTIME and AzureWebJobsStoraged
+            if [[ "$key" == "FUNCTIONS_WORKER_RUNTIME" || "$key" == "AzureWebJobsStorage" || "$key" == "AZUREWEBJOBSSTORAGE" ]]; then
               echo "Skipping $key as it is a reserved key"
               continue
             fi
