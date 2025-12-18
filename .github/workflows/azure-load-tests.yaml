@@ -73,7 +73,7 @@ jobs:
       id: auth-header
       shell: pwsh
       run: |
-        if (-not ${{ secrets.webAuthenticationUsername }} -or -not ${{ secrets.webAuthenticationPassword }}) {
+        if (-not "${{ secrets.webAuthenticationUsername }}" -or -not "${{ secrets.webAuthenticationPassword }}") {
             Write-Output "No web authentication credentials provided. Skipping auth header setup."
             exit 0
         }
