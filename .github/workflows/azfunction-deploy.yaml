@@ -352,7 +352,7 @@ jobs:
             if [[ "${ENVIRONMENT}" != "production" ]]; then
               AZ_ARGS+=(--slot "${ENVIRONMENT}")
             fi
-            RESULT-$(az "${AZ_ARGS[@]}" | tee)
+            RESULT=$(az "${AZ_ARGS[@]}" | tee)
             if [[ "$RESULT" =~ "already exists" ]] || [[ ! "$RESULT" =~ "ERROR" ]]; then 
                 exit 0
             else
