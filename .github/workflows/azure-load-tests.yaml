@@ -88,7 +88,7 @@ jobs:
 
     - name: Azure Load Testing (with auth header)
       if: ${{ steps.auth-header.outputs.AUTHORIZATION_HEADER != '' }}
-      uses: azure/load-testing@v1.2.1
+      uses: azure/load-testing@v1.2.2
       with:
         loadtestConfigFile: '${{ steps.config.outputs.STORAGE_ACCOUNT_VIRTUAL_DIRECTORY }}/config.yaml'
         loadtestResource: ${{ inputs.loadTestResource }}
