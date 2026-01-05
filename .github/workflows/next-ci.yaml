@@ -250,14 +250,26 @@ jobs:
       - name: Run Jest tests
         run: yarn test:unit:ci
 
-      - name: Azure Login
+      - name: Check for Jest report file
         if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
+        id: jest-report
+        shell: sh
+        run: |
+          if [ -f "coverage/unit/lcov-report/index.html" ]; then
+            echo "jest-report-exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "jest-report-exists=false" >> $GITHUB_OUTPUT
+          fi
+
+
+      - name: Azure Login
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.jest-report.outputs.jest-report-exists == 'true' }}
         uses: azure/login@v2
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Upload Jest Report to Azure Storage Account
-        if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.jest-report.outputs.jest-report-exists == 'true' }}
         shell: sh
         run: |
           STORAGE_ACCOUNT_RG="AMU_DevOps_RG"
