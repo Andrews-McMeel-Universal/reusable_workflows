@@ -289,7 +289,7 @@ jobs:
               --overwrite
 
       - name: Check if Playwright Jira Comment Exists
-        if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
+        if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.jest-report.outputs.jest-report-exists == 'true' }}
         id: check-jira-comments
         shell: pwsh
         run: |
