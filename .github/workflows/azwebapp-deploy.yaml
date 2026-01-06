@@ -77,7 +77,7 @@ jobs:
         shell: bash
         run: |
           pushd './${{ inputs.AZURE_APP_PACKAGE_PATH }}'
-          dotnet publish -c Release -o ./publish
+          dotnet publish -c Release
           popd
 
       - name: Publish Web Jobs
