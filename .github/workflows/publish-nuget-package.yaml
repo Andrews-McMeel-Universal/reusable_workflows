@@ -85,7 +85,7 @@ jobs:
           if [[ "${{ contains(inputs.libraries, '[') }}" == "true" ]]; then
             LIBRARIES=(${{ join(fromJson(inputs.libraries), ' ') }})
           else
-            LIBRARIES=(${{ inputs.libraries }})
+            read -ra LIBRARIES <<< "${{ inputs.libraries }}"
           fi
           for LIBRARY in "${LIBRARIES[@]}"; do
             cd "${{ github.workspace }}/${{ steps.project-name.outputs.projectName }}/${LIBRARY}/bin/Release/"
