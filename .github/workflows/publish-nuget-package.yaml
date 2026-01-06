@@ -80,7 +80,7 @@ jobs:
         run: dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
 
       - name: Push ${{ steps.project-name.outputs.projectName }} Packages
-        if: ${{ inputs.libraries }}
+        if: ${{ inputs.libraries != '' }}
         run: |
           if [[ "${{ contains(inputs.libraries, '[') }}" == "true" ]]; then
             LIBRARIES=(${{ join(fromJson(inputs.libraries), ' ') }})
