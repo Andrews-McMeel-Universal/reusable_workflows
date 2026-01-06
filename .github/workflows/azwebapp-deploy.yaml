@@ -55,10 +55,12 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Install jq apt package
+        if: runner.os == 'Linux'
         shell: bash
         run: sudo apt-get update -y && sudo apt-get install jq -y
 
       - name: Retrieve .NET version
+        if: runner.os == 'Linux' && inputs.DOTNET_VERSION == ''
         id: dotnet-version
         shell: bash
         run: |
