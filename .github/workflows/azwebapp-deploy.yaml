@@ -54,23 +54,10 @@ jobs:
         with:
           ref: ${{ inputs.checkoutRef }}
 
-      - name: Install jq apt package
-        if: runner.os == 'Linux'
-        shell: bash
-        run: sudo apt-get update -y && sudo apt-get install jq -y
-
-      - name: Retrieve .NET version
-        if: runner.os == 'Linux' && inputs.DOTNET_VERSION == ''
-        id: dotnet-version
-        shell: bash
-        run: |
-          DOTNET_VERSION=$(find . -name '*.csproj' -exec grep -h '<TargetFramework>net' {} + | sed -E 's/.*<TargetFramework>net([0-9]+\.[0-9]+)<\/TargetFramework>.*/\1/' | sort -V | tail -n1)
-          echo "DOTNET_VERSION=${DOTNET_VERSION}" >> $GITHUB_OUTPUT
-
       - name: Setup application platform
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ inputs.DOTNET_VERSION || steps.dotnet-version.outputs.DOTNET_VERSION }}
+          dotnet-version: ${{ inputs.DOTNET_VERSION }}
 
       - name: Add AMU GitHub Packages nuget source
         if: ${{ env.PAT_ACTION_CI }}
@@ -109,6 +96,7 @@ jobs:
         uses: azure/login@v2
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
+          enable-AzPSSession: true
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
@@ -119,83 +107,78 @@ jobs:
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
 
       - name: Enable identity for Azure Web App
-        uses: azure/cli@v2
+        shell: bash
         env:
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
           ENVIRONMENT: ${{ inputs.environment }}
-        with:
-          inlineScript: |
-            set -eu
-            AZ_ARGS=(
-              webapp identity assign
-              -g "${AZURE_APP_RESOURCEGROUP}"
-              -n "${AZURE_APP_NAME}"
-            )
-            if [[ "${ENVIRONMENT}" != "production" ]]; then
-              AZ_ARGS+=(--slot "${ENVIRONMENT}")
-            fi
-            az "${AZ_ARGS[@]}"
+        run: |
+          set -eu
+          AZ_ARGS=(
+            webapp identity assign
+            -g "${AZURE_APP_RESOURCEGROUP}"
+            -n "${AZURE_APP_NAME}"
+          )
+          if [[ "${ENVIRONMENT}" != "production" ]]; then
+            AZ_ARGS+=(--slot "${ENVIRONMENT}")
+          fi
+          az "${AZ_ARGS[@]}"
 
       - name: Get Azure Web App Managed Identity
         id: identity
-        uses: azure/cli@v2
+        shell: bash
         env:
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
           ENVIRONMENT: ${{ inputs.environment }}
-        with:
-          inlineScript: |
-            set -eu
-            AZ_ARGS=(
-              webapp identity show
-              -g "${AZURE_APP_RESOURCEGROUP}"
-              -n "${AZURE_APP_NAME}"
-            )
-            if [[ "${ENVIRONMENT}" != "production" ]]; then
-              AZ_ARGS+=(--slot "${ENVIRONMENT}")
-            fi
-            IDENTITY=$(az "${AZ_ARGS[@]}" | jq -r '.principalId')
+        run: |
+          set -eu
+          AZ_ARGS=(
+            webapp identity show
+            -g "${AZURE_APP_RESOURCEGROUP}"
+            -n "${AZURE_APP_NAME}"
+          )
+          if [[ "${ENVIRONMENT}" != "production" ]]; then
+            AZ_ARGS+=(--slot "${ENVIRONMENT}")
+          fi
+          IDENTITY=$(az "${AZ_ARGS[@]}" | jq -r '.principalId')
 
-            echo "appIdentity=${IDENTITY}" >> $GITHUB_ENV
+          echo "appIdentity=${IDENTITY}" >> $GITHUB_ENV
 
       - name: Retrieve key vault name
-        uses: azure/cli@v2
+        shell: bash
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           REPOSITORY_NAME: ${{ github.event.repository.name }}
-        with:
-          inlineScript: |
-            set -eu
-            echo -e "Searching for key vault with tags: \"repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}\""
-            KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
+        run: |
+          set -eu
+          echo -e "Searching for key vault with tags: \"repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}\""
+          KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
 
-            # Check if key vault was found
-            if [[ -z "$KEYVAULT_NAME" ]]; then
-              echo "Key Vault not found with tags: repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}"
-              exit 1
-            fi
+          # Check if key vault was found
+          if [[ -z "$KEYVAULT_NAME" ]]; then
+            echo "Key Vault not found with tags: repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}"
+            exit 1
+          fi
 
-            # Get key vault object
-            KEYVAULT_NAME=${KEYVAULT_NAME// /}
-            echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_ENV
+          # Get key vault object
+          KEYVAULT_NAME=${KEYVAULT_NAME// /}
+          echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_ENV
 
       - name: Assign Azure Web App System Managed Identity to Key Vault
-        uses: azure/cli@v2
+        shell: bash
         env:
           AZURE_KEYVAULT_NAME: ${{ env.keyVaultName }}
           AZURE_IDENTITY: ${{ env.appIdentity }}
-        with:
-          inlineScript: |
-            set -eu
-            # Retrieve the Key Vault ID
-            keyVaultId=$(az keyvault show --name "${AZURE_KEYVAULT_NAME}" --query id --output tsv)
-            
-            # Assign the Key Vault Secrets User role to the managed identity using object ID and principal type
-            az role assignment create --role "Key Vault Secrets User" --assignee-object-id "${AZURE_IDENTITY}" --assignee-principal-type ServicePrincipal  --scope $keyVaultId
+        run: |
+          set -eu
+          # Retrieve the Key Vault ID
+          keyVaultId=$(az keyvault show --name "${AZURE_KEYVAULT_NAME}" --query id --output tsv)
+          
+          # Assign the Key Vault Secrets User role to the managed identity using object ID and principal type
+          az role assignment create --role "Key Vault Secrets User" --assignee-object-id "${AZURE_IDENTITY}" --assignee-principal-type ServicePrincipal  --scope $keyVaultId
       
       - name: Retrieve environment variables
-        if: ${{ env.AZURE_CREDENTIALS_SET != 'false' }}
         id: get-envs
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
@@ -205,99 +188,97 @@ jobs:
           environmentVariableSeparator: "\n"
 
       - name: Add environment variables to web app
+        shell: bash
         env:
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
           ENV_VARS_OUTPUT: ${{ steps.get-envs.outputs.environmentVariables }}
           ENVIRONMENT: ${{ inputs.environment }}
           AZURE_KEYVAULT_NAME: ${{ env.keyVaultName }}
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            set -eu
+        run: |
+          set -eu
 
-            # Get current app settings
-            if [[ "${ENVIRONMENT}" == "production" ]]; then
-              APPSETTINGS=$(az webapp config appsettings list \
-                -g "${AZURE_APP_RESOURCEGROUP}" \
-                -n "${AZURE_APP_NAME}")
-            else
-              APPSETTINGS=$(az webapp config appsettings list \
-                -g "${AZURE_APP_RESOURCEGROUP}" \
-                -n "${AZURE_APP_NAME}" \
-                --slot "${ENVIRONMENT}")
+          # Get current app settings
+          if [[ "${ENVIRONMENT}" == "production" ]]; then
+            APPSETTINGS=$(az webapp config appsettings list \
+              -g "${AZURE_APP_RESOURCEGROUP}" \
+              -n "${AZURE_APP_NAME}")
+          else
+            APPSETTINGS=$(az webapp config appsettings list \
+              -g "${AZURE_APP_RESOURCEGROUP}" \
+              -n "${AZURE_APP_NAME}" \
+              --slot "${ENVIRONMENT}")
+          fi
+
+          echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
+            echo "Processing variable: $key=$value"
+            VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
+
+            # Search for the key in app settings
+            APPSETTING_VALUE=$(echo "${APPSETTINGS}" | jq -r ".[] | select(.name == \"$key\") | .value")
+
+            # Check if the value is set to a keyvault reference
+            if [[ "${APPSETTING_VALUE}" == "@Microsoft.KeyVault"* ]]; then
+              echo "Skipping $key as it is already a keyvault reference"
+              continue
             fi
 
-            echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
-              echo "Processing variable: $key=$value"
-              VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
+            # Skip reserved keys
+            if [[ "$key" == "FUNCTIONS_WORKER_RUNTIME" || "$key" == "AzureWebJobsStorage" || "$key" == "AZUREWEBJOBSSTORAGE" ]]; then
+              echo "Skipping $key as it is a reserved key"
+              continue
+            fi
 
-              # Search for the key in app settings
-              APPSETTING_VALUE=$(echo "${APPSETTINGS}" | jq -r ".[] | select(.name == \"$key\") | .value")
+            echo "Adding $key to app settings"
 
-              # Check if the value is set to a keyvault reference
-              if [[ "${APPSETTING_VALUE}" == "@Microsoft.KeyVault"* ]]; then
-                echo "Skipping $key as it is already a keyvault reference"
-                continue
-              fi
+            # Build common args once
+            AZ_ARGS=(
+              webapp config appsettings set
+              -g "${AZURE_APP_RESOURCEGROUP}"
+              -n "${AZURE_APP_NAME}"
+              --slot-settings "$key=@Microsoft.KeyVault(VaultName=${AZURE_KEYVAULT_NAME};SecretName=${VARIABLE_LC})"
+            )
 
-              # Skip reserved keys
-              if [[ "$key" == "FUNCTIONS_WORKER_RUNTIME" || "$key" == "AzureWebJobsStorage" || "$key" == "AZUREWEBJOBSSTORAGE" ]]; then
-                echo "Skipping $key as it is a reserved key"
-                continue
-              fi
+            # Add slot args only when not production
+            if [[ "${ENVIRONMENT}" != "production" ]]; then
+              AZ_ARGS+=(--slot "${ENVIRONMENT}")
+            fi
 
-              echo "Adding $key to app settings"
+            # Run command once, optionally silencing output when not debugging
+            if [[ '${{ runner.debug }}' == '1' ]]; then
+              AZ_OUTPUT="$(az "${AZ_ARGS[@]}")"
+            else
+              AZ_OUTPUT="$(az "${AZ_ARGS[@]}" 2>&1)"
+            fi
 
-              # Build common args once
-              AZ_ARGS=(
-                webapp config appsettings set
-                -g "${AZURE_APP_RESOURCEGROUP}"
-                -n "${AZURE_APP_NAME}"
-                --slot-settings "$key=@Microsoft.KeyVault(VaultName=${AZURE_KEYVAULT_NAME};SecretName=${VARIABLE_LC})"
-              )
+            AZ_EXIT_CODE=$?
 
-              # Add slot args only when not production
-              if [[ "${ENVIRONMENT}" != "production" ]]; then
-                AZ_ARGS+=(--slot "${ENVIRONMENT}")
-              fi
-
-              # Run command once, optionally silencing output when not debugging
-              if [[ '${{ runner.debug }}' == '1' ]]; then
-                AZ_OUTPUT="$(az "${AZ_ARGS[@]}")"
-              else
-                AZ_OUTPUT="$(az "${AZ_ARGS[@]}" 2>&1)"
-              fi
-
-              AZ_EXIT_CODE=$?
-
-              if [[ $AZ_EXIT_CODE -ne 0 ]]; then
-                echo "::error::Failed to add $key to app settings (exit code: $AZ_EXIT_CODE)"
-              elif ! echo "$AZ_OUTPUT" | grep "$key" >/dev/null; then
-                echo "::error::az command succeeded but $key was not present in the result output"
-              else
-                echo "Successfully added $key to app settings"
-              fi
-            done
+            if [[ $AZ_EXIT_CODE -ne 0 ]]; then
+              echo "::error::Failed to add $key to app settings (exit code: $AZ_EXIT_CODE)"
+            elif ! echo "$AZ_OUTPUT" | grep "$key" >/dev/null; then
+              echo "::error::az command succeeded but $key was not present in the result output"
+            else
+              echo "Successfully added $key to app settings"
+            fi
+          done
 
       - name: Restart Azure Web App
-        uses: azure/cli@v2
+        shell: bash
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
-        with:
-          inlineScript: |
-            set -eu
-            AZ_ARGS=(
-              webapp restart
-              -g "${AZURE_APP_RESOURCEGROUP}"
-              -n "${AZURE_APP_NAME}"
-            )
-            if [[ "${ENVIRONMENT}" != "production" ]]; then
-              AZ_ARGS+=(--slot "${ENVIRONMENT}")
-            fi
-            az "${AZ_ARGS[@]}"
+        run: |
+          set -eu
+          AZ_ARGS=(
+            webapp restart
+            -g "${AZURE_APP_RESOURCEGROUP}"
+            -n "${AZURE_APP_NAME}"
+          )
+          if [[ "${ENVIRONMENT}" != "production" ]]; then
+            AZ_ARGS+=(--slot "${ENVIRONMENT}")
+          fi
+          az "${AZ_ARGS[@]}"
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
