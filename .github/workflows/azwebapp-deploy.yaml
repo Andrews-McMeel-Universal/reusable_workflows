@@ -171,25 +171,41 @@ jobs:
           AZURE_KEYVAULT_NAME: ${{ env.keyVaultName }}
           AZURE_IDENTITY: ${{ env.appIdentity }}
         run: |
-          # Retrieve the Key Vault ID
-          keyVaultId="$(az keyvault show --name "${AZURE_KEYVAULT_NAME}" --query id --output tsv)"
+          set -euo pipefail
 
-          # Try role assignment with the Key Vault ID as-is
-          if ! az role assignment create \
-            --role "Key Vault Secrets User" \
+          ROLE_NAME="Key Vault Secrets User"
+
+          # Retrieve the Key Vault ID (always include quotes)
+          keyVaultId="$(az keyvault show \
+            --name "${AZURE_KEYVAULT_NAME}" \
+            --query id \
+            --output tsv)"
+
+          # Remove leading slash if present
+          keyVaultId="${keyVaultId#/}"
+
+          # Check if the role assignment already exists (force a clean numeric result)
+          existingAssignmentCount="$(az role assignment list \
             --assignee-object-id "${AZURE_IDENTITY}" \
-            --assignee-principal-type ServicePrincipal \
-            --scope "${keyVaultId}"
-          then
-            # If it fails, retry after stripping a leading slash
-            keyVaultId="${keyVaultId#/}"
+            --scope "${keyVaultId}" \
+            --role "${ROLE_NAME}" \
+            --query "length(@)" \
+            --output tsv)"
 
+          if [[ "${existingAssignmentCount}" -gt 0 ]]; then
+            echo "Role assignment already exists: ${ROLE_NAME} on ${AZURE_KEYVAULT_NAME}"
+          else
             az role assignment create \
-              --role "Key Vault Secrets User" \
+              --role "${ROLE_NAME}" \
               --assignee-object-id "${AZURE_IDENTITY}" \
               --assignee-principal-type ServicePrincipal \
-              --scope "${keyVaultId}"
+              --scope "${keyVaultId}" \
+              --only-show-errors \
+              --output none
+
+            echo "Created role assignment: ${ROLE_NAME} on ${AZURE_KEYVAULT_NAME}"
           fi
+
       
       - name: Retrieve environment variables
         id: get-envs
