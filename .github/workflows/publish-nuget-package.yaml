@@ -82,8 +82,9 @@ jobs:
       - name: Push ${{ steps.project-name.outputs.projectName }} Packages
         if: ${{ inputs.libraries != '' }}
         run: |
-          if [[ "${{ contains(inputs.libraries, '[') }}" == "true" ]]; then
-            LIBRARIES=(${{ join(fromJson(inputs.libraries), ' ') }})
+          LIBRARIES_RAW="${{ inputs.libraries }}"
+          if [[ "${LIBRARIES_RAW}" == *"["* ]]; then
+            LIBRARIES=($(echo "${LIBRARIES_RAW}" | jq -r '.[]'))
           else
             read -ra LIBRARIES <<< "${{ inputs.libraries }}"
           fi
