@@ -84,7 +84,7 @@ jobs:
         run: |
           LIBRARIES_RAW="${{ inputs.libraries }}"
           if [[ "${LIBRARIES_RAW}" == *"["* ]]; then
-            LIBRARIES=($(echo "${LIBRARIES_RAW}" | jq -r '.[]'))
+            mapfile -t LIBRARIES < <(jq -r '.[]' <<<"$LIBRARIES_RAW")
           else
             read -ra LIBRARIES <<< "${{ inputs.libraries }}"
           fi
