@@ -59,7 +59,7 @@ on:
       environmentNamespace:
         required: false
         type: boolean
-        description: "Enable/Disable adding environment in AKS cluster ingress DNS record"
+        description: "Use environment as Kubernetes namespace"
         default: true
       checkoutRef:
         required: false
@@ -95,6 +95,12 @@ on:
         required: false
         type: string
         default: ${{ vars.ENV_ENCRYPTION_SECRET }}
+      
+      blueGreenDeployment:
+        required: false
+        type: string
+        description: "Enable blue/green deployment strategy"
+        default: ${{ vars.BLUE_GREEN_DEPLOYMENT || 'false' }}
     secrets:
       azureClusterName:
         required: true
@@ -321,10 +327,46 @@ jobs:
           Install-Module -Name powershell-yaml -Force
 
       - name: Login via Az module
-        if: inputs.haIngress == 'true'
+        if: inputs.haIngress == 'true' && inputs.environment == 'production'
         uses: azure/login@v2
         with:
           creds: "${{ secrets.azureCredentials }}"
+
+      - name: Install PowerShell modules
+        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
+        shell: pwsh
+        run: |
+          Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
+
+      - name: Get Blue/Green Deployment Info
+        id: bg-deployment
+        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
+        shell: pwsh
+        run: |
+          $storageAccountName = "amucloudapps"
+          $storageAccountKey = ${{ secrets.storageAccountKey }}
+          $appInfoTableName = "DeployedApplications"
+          $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+
+          #Get Storage table
+          try {
+              $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
+              }
+          catch {
+              Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+              return
+          }
+
+          $ingressFqdn = (Get-AzTableRow -Table $appInfoTable -partitionKey "${{ github.event.repository.name }}" -RowKey "${{ inputs.environment }}" -SelectColumn "IngressFqdn").IngressFqdn
+
+          if ($ingressFqdn -match "-blue") {
+              $activeDeployment = "blue"
+              $inactiveDeployment = "green"
+          }
+          else {
+              $activeDeployment = "green"
+              $inactiveDeployment = "blue"
+          }
 
       - name: Create values override file
         id: values-override
@@ -781,10 +823,16 @@ jobs:
         shell: bash
         run: |
           # Set AKS cluster ingress
+          INGRESS="${{ secrets.azureClusterName }}"
+
+          # Add environment and blue/green deployment suffixes if applicable
           if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
-            INGRESS="${{ secrets.azureClusterName }}-${{ inputs.environment }}"
-          else
-            INGRESS="${{ secrets.azureClusterName }}"
+            INGRESS="${INGRESS}-${{ inputs.environment }}"
+          fi
+          if [ "${{ inputs.blueGreenDeployment }}" == "true" ]; then
+            INGRESS="${INGRESS}-blue"
+          fi
+            
           fi
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
@@ -828,6 +876,7 @@ jobs:
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
       - name: Install PowerShell modules
+        if: inputs.blueGreenDeployment != 'true'
         shell: pwsh
         run: |
           Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
