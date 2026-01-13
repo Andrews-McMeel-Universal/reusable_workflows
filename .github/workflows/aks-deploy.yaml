@@ -367,6 +367,10 @@ jobs:
               $activeDeployment = "green"
               $inactiveDeployment = "blue"
           }
+          Write-Output "activeDeployment=$activeDeployment"
+          Write-Output "activeDeployment=$activeDeployment" >> $env:GITHUB_OUTPUT
+          Write-Output "inactiveDeployment=$inactiveDeployment"
+          Write-Output "inactiveDeployment=$inactiveDeployment" >> $env:GITHUB_OUTPUT
 
       - name: Create values override file
         id: values-override
@@ -452,9 +456,15 @@ jobs:
                   }
 
                   # Add environment to ingress
-                  if ($environmentIngress -ne "false") { 
-                      $item.host = "$environment.$($item.host)"
-                      Write-Output "Adding environment to $($item.name): $($item.host)"
+                  if ($environmentIngress -ne "false") {
+                      if ("${{ steps.bg-deployment.outputs.inactiveDeployment }}") {
+                          $item.host = "$environment-${{ steps.bg-deployment.outputs.inactiveDeployment }}.$($item.host)"
+                          Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
+                      }
+                      else {
+                          $item.host = "$environment.$($item.host)"
+                          Write-Output "Adding environment to $($item.name): $($item.host)"
+                      }
                   }
 
                   # Add ingressClassName to ingress
