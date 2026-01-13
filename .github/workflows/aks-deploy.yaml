@@ -326,6 +326,14 @@ jobs:
         with:
           creds: "${{ secrets.azureCredentials }}"
 
+      - name: Get AKS cluster info
+        if: inputs.haIngress == 'true'
+        id: aks
+        shell: bash
+        run: |
+          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u || echo "centralus")
+          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
+
       - name: Create values override file
         id: values-override
         shell: pwsh
@@ -401,12 +409,31 @@ jobs:
 
                   # Add datacenter location to ingress if HA hostname is enabled
                   if ($haIngress -eq "true") {
-                      $datacenterLocation = (az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv || "centralus").ToLower()
-
+                      $datacenterLocation = "${{ steps.aks.outputs.datacenterLocation }}"
                       $subDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
                       $domainName = "${{ needs.build.outputs.domainName }}"
-                      $item.host = "$subDomain.$datacenterLocation.$domainName"
+
+                      if ($subDomain -match $datacenterLocation) {
+                          Write-Output "Datacenter location already present in $($item.name): $($item.host)"
+                          continue
+                      }
+
+                      if ($subDomain -match "\.service") {
+                        if ($subDomain -match "services") {
+                            $domainName = "services.$domainName"
+                        }
+                        else {
+                            $domainName = "service.$domainName"
+                        }
+                      }
+
                       Write-Output "Adding datacenter location to $($item.name): $($item.host)"
+                      elseif ($subDomain -ne "") {
+                          $item.host = "$subDomain.$datacenterLocation.$domainName"
+                      }
+                      else {
+                          $item.host = "$datacenterLocation.$domainName"
+                      }
                   }
 
                   # Add environment to ingress
@@ -786,7 +813,8 @@ jobs:
           else
             INGRESS="${{ secrets.azureClusterName }}"
           fi
-          AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
+          DATACENTER_LOCATION="${{ steps.aks.outputs.datacenterLocation }}"
+          AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
 
           # Populate INGRESSES array safely
