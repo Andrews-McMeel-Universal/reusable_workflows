@@ -59,7 +59,7 @@ on:
       environmentNamespace:
         required: false
         type: boolean
-        description: "Use environment as Kubernetes namespace"
+        description: "Enable/Disable adding environment in AKS cluster ingress DNS record"
         default: true
       checkoutRef:
         required: false
@@ -95,11 +95,6 @@ on:
         required: false
         type: string
         default: ${{ vars.ENV_ENCRYPTION_SECRET }}
-      blueGreenDeployment:
-        required: false
-        type: string
-        description: "Enable blue/green deployment strategy"
-        default: ${{ vars.BLUE_GREEN_DEPLOYMENT || 'false' }}
     secrets:
       azureClusterName:
         required: true
