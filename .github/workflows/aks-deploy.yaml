@@ -331,7 +331,7 @@ jobs:
         id: aks
         shell: bash
         run: |
-          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u || echo "centralus")
+          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
           echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
 
       - name: Create values override file
@@ -813,7 +813,7 @@ jobs:
           else
             INGRESS="${{ secrets.azureClusterName }}"
           fi
-          DATACENTER_LOCATION="${{ steps.aks.outputs.datacenterLocation }}"
+          DATACENTER_LOCATION="${{ steps.aks.outputs.datacenterLocation || 'centralus' }}"
           AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
 
