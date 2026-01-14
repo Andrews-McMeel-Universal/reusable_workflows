@@ -860,8 +860,7 @@ jobs:
           if [ "${{ inputs.blueGreenDeployment }}" == "true" ] && [ "${{ inputs.environment }}" == "production" ] && [ "${{ steps.bg-deployment.outputs.inactiveDeployment }}" == "green" ]; then
             INGRESS="${INGRESS}-green"
           fi
-            
-          fi
+
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
 
