@@ -742,17 +742,17 @@ jobs:
         shell: bash
         run: |
           # Switch Kubernetes Namespace
-          $environmentNamespace="${{ inputs.environmentNamespace }}"
-          $environment="${{ inputs.environment }}"
-          $blueGreenDeployment="${{ inputs.blueGreenDeployment }}"
-          $inactiveDeployment="${{ steps.bg-deployment.outputs.inactiveDeployment }}"
+          ENVIRONMENT_NAMESPACE="${{ inputs.environmentNamespace }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+          BLUE_GREEN_DEPLOYMENT="${{ inputs.blueGreenDeployment }}"
+          INACTIVE_DEPLOYMENT="${{ steps.bg-deployment.outputs.inactiveDeployment }}"
 
-          if [ $environmentNamespace == "true" ]; then
-            if [ $blueGreenDeployment == "true" ] && [ $environment == "production" ] && [ $inactiveDeployment == "green" ]; then
-              environment="${environment}-${inactiveDeployment}"
+          if [ $ENVIRONMENT_NAMESPACE == "true" ]; then
+            if [ $BLUE_GREEN_DEPLOYMENT == "true" ] && [ $ENVIRONMENT == "production" ] && [ $INACTIVE_DEPLOYMENT == "green" ]; then
+              ENVIRONMENT="${ENVIRONMENT}-${INACTIVE_DEPLOYMENT}"
             fi
-            kubectl config set-context --current --namespace="$environment"
-            echo "namespace=$environment" >> $GITHUB_OUTPUT
+            kubectl config set-context --current --namespace="${ENVIRONMENT}"
+            echo "namespace=${ENVIRONMENT}" >> $GITHUB_OUTPUT
           else
             echo "namespace=default" >> $GITHUB_OUTPUT
           fi
