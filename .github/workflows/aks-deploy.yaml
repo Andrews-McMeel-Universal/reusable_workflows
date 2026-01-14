@@ -359,13 +359,13 @@ jobs:
 
           $ingressFqdn = (Get-AzTableRow -Table $appInfoTable -partitionKey "${{ github.event.repository.name }}" -RowKey "${{ inputs.environment }}" -SelectColumn "IngressFqdn").IngressFqdn
 
-          if ($ingressFqdn -match "-blue") {
-              $activeDeployment = "blue"
-              $inactiveDeployment = "green"
-          }
-          else {
+          if ($ingressFqdn -match "-green") {
               $activeDeployment = "green"
               $inactiveDeployment = "blue"
+          }
+          else {
+              $activeDeployment = "blue"
+              $inactiveDeployment = "green"
           }
           Write-Output "activeDeployment=$activeDeployment"
           Write-Output "activeDeployment=$activeDeployment" >> $env:GITHUB_OUTPUT
@@ -395,7 +395,9 @@ jobs:
           $haIngress = "${{ inputs.haIngress }}" -replace '"', '' -replace "'", ""
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
+          $blueGreenDeployment = "${{ inputs.blueGreenDeployment }}" -replace '"', '' -replace "'", ""
           $clusterIssuer = "letsencrypt-$environment"
+          $inactiveDeployment = "${{ steps.bg-deployment.outputs.inactiveDeployment }}" -replace '"', '' -replace "'", ""
 
           $domains = @()
           if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -ge "2.0.0")) {
@@ -457,8 +459,10 @@ jobs:
 
                   # Add environment to ingress
                   if ($environmentIngress -ne "false") {
-                      if ("${{ steps.bg-deployment.outputs.inactiveDeployment }}") {
-                          $item.host = "$environment-${{ steps.bg-deployment.outputs.inactiveDeployment }}.$($item.host)"
+                      if ($blueGreenDeployment -eq "true" -and $environment -eq "production" -and $inactiveDeployment -eq "green") {
+                          if ($inactiveDeployment -eq "green") {
+                              $item.host = "$environment-green.$($item.host)"
+                          }
                           Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
                       }
                       else {
@@ -468,7 +472,12 @@ jobs:
                   }
 
                   # Add ingressClassName to ingress
-                  $item.ingressClassName = "nginx-$environment"
+                  if ($blueGreenDeployment -eq "true" -and $environment -eq "production" -and $inactiveDeployment -eq "green") {
+                      $item.ingressClassName = "nginx-$environment-$inactiveDeployment"
+                  }
+                  else {
+                      $item.ingressClassName = "nginx-$environment"
+                  }
 
                   # Reset annotations
                   if ($null -eq $item.annotations) {
@@ -732,9 +741,18 @@ jobs:
         id: namespace
         shell: bash
         run: |
-          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
-            kubectl config set-context --current --namespace="${{ inputs.environment }}"
-            echo "namespace=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          # Switch Kubernetes Namespace
+          $environmentNamespace="${{ inputs.environmentNamespace }}"
+          $environment="${{ inputs.environment }}"
+          $blueGreenDeployment="${{ inputs.blueGreenDeployment }}"
+          $inactiveDeployment="${{ steps.bg-deployment.outputs.inactiveDeployment }}"
+
+          if [ $environmentNamespace == "true" ]; then
+            if [ $blueGreenDeployment == "true" ] && [ $environment == "production" ] && [ $inactiveDeployment == "green" ]; then
+              environment="${environment}-${inactiveDeployment}"
+            fi
+            kubectl config set-context --current --namespace="$environment"
+            echo "namespace=$environment" >> $GITHUB_OUTPUT
           else
             echo "namespace=default" >> $GITHUB_OUTPUT
           fi
@@ -839,8 +857,8 @@ jobs:
           if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
             INGRESS="${INGRESS}-${{ inputs.environment }}"
           fi
-          if [ "${{ inputs.blueGreenDeployment }}" == "true" ]; then
-            INGRESS="${INGRESS}-blue"
+          if [ "${{ inputs.blueGreenDeployment }}" == "true" ] && [ "${{ inputs.environment }}" == "production" ] && [ "${{ steps.bg-deployment.outputs.inactiveDeployment }}" == "green" ]; then
+            INGRESS="${INGRESS}-green"
           fi
             
           fi
