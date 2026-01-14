@@ -357,9 +357,9 @@ jobs:
               return
           }
 
-          $ingressFqdn = (Get-AzTableRow -Table $appInfoTable -partitionKey "${{ github.event.repository.name }}" -RowKey "${{ inputs.environment }}" -SelectColumn "IngressFqdn").IngressFqdn
+          $aksIngress = (Get-AzTableRow -Table $appInfoTable -partitionKey "${{ github.event.repository.name }}" -RowKey "${{ inputs.environment }}" -SelectColumn "AksIngress").AksIngress
 
-          if ($ingressFqdn -match "-green") {
+          if ($aksIngress -match "-green") {
               $activeDeployment = "green"
               $inactiveDeployment = "blue"
           }
