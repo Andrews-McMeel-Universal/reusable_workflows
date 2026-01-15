@@ -342,10 +342,13 @@ jobs:
         id: bg-deployment
         if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
         shell: pwsh
+        env:
+          storageAccountName: amucloudapps
+          appInfoTableName: DeployedApplications
+          repositoryName: ${{ github.event.repository.name }}
+          environment: ${{ inputs.environment }}
         run: |
-          $storageAccountName = "amucloudapps"
           $storageAccountKey = ${{ secrets.storageAccountKey }}
-          $appInfoTableName = "DeployedApplications"
           $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
 
           #Get Storage table
@@ -357,7 +360,7 @@ jobs:
               return
           }
 
-          $aksIngress = (Get-AzTableRow -Table $appInfoTable -partitionKey "${{ github.event.repository.name }}" -RowKey "${{ inputs.environment }}" -SelectColumn "AksIngress").AksIngress
+          $aksIngress = (Get-AzTableRow -Table $appInfoTable -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "AksIngress").AksIngress
 
           if ($aksIngress -match "-green") {
               $activeDeployment = "green"
@@ -740,13 +743,13 @@ jobs:
       - name: Switch Kubernetes Namespace
         id: namespace
         shell: bash
+        env:
+          ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          BLUE_GREEN_DEPLOYMENT: ${{ inputs.blueGreenDeployment }}
+          INACTIVE_DEPLOYMENT: ${{ steps.bg-deployment.outputs.inactiveDeployment }}
         run: |
           # Switch Kubernetes Namespace
-          ENVIRONMENT_NAMESPACE="${{ inputs.environmentNamespace }}"
-          ENVIRONMENT="${{ inputs.environment }}"
-          BLUE_GREEN_DEPLOYMENT="${{ inputs.blueGreenDeployment }}"
-          INACTIVE_DEPLOYMENT="${{ steps.bg-deployment.outputs.inactiveDeployment }}"
-
           if [ $ENVIRONMENT_NAMESPACE == "true" ]; then
             if [ $BLUE_GREEN_DEPLOYMENT == "true" ] && [ $ENVIRONMENT == "production" ] && [ $INACTIVE_DEPLOYMENT == "green" ]; then
               ENVIRONMENT="${ENVIRONMENT}-${INACTIVE_DEPLOYMENT}"
@@ -849,23 +852,35 @@ jobs:
       - name: Create or Update Public DNS Record
         id: dns
         shell: bash
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
+          BLUE_GREEN_DEPLOYMENT: ${{ inputs.blueGreenDeployment }}
+          BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ steps.bg-deployment.outputs.inactiveDeployment }}
+          INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
+          INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
         run: |
           # Set AKS cluster ingress
-          INGRESS="${{ secrets.azureClusterName }}"
+          AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
 
           # Add environment and blue/green deployment suffixes if applicable
-          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
-            INGRESS="${INGRESS}-${{ inputs.environment }}"
+          if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
+            INGRESS="${AKS_CLUSTER_NAME}-${ENVIRONMENT}"
+          else
+            INGRESS="${AKS_CLUSTER_NAME}"
           fi
-          if [ "${{ inputs.blueGreenDeployment }}" == "true" ] && [ "${{ inputs.environment }}" == "production" ] && [ "${{ steps.bg-deployment.outputs.inactiveDeployment }}" == "green" ]; then
+
+          # Add blue/green deployment suffix if applicable
+          if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ] && [ "${BLUE_GREEN_INACTIVE_DEPLOYMENT}" == "green" ]; then
             INGRESS="${INGRESS}-green"
           fi
 
           AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
+          echo "aksIngress=${AKS_INGRESS}"
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
 
           # Populate INGRESSES array safely
-          mapfile -t INGRESSES < <(echo "${{ steps.values-override.outputs.domains }}" | sed "s/ $//g" | tr ' ' '\n' | sort -u)
+          mapfile -t INGRESSES < <(echo "${INGRESS_DOMAINS}" | sed "s/ $//g" | tr ' ' '\n' | sort -u)
 
           # Check if INGRESSES is empty
           if [ "${#INGRESSES[@]}" -eq 0 ]; then
@@ -878,7 +893,7 @@ jobs:
             echo "Updating DNS record for ${INGRESS} to $AKS_INGRESS"
             az network dns record-set cname set-record \
               --resource-group "AMU_DNS_RG" \
-              --zone-name "${{ needs.build.outputs.domainName }}" \
+              --zone-name "${INGRESS_DOMAIN_NAME}" \
               --record-set-name "${INGRESS}" \
               --cname "${AKS_INGRESS}" \
               --ttl 3600
