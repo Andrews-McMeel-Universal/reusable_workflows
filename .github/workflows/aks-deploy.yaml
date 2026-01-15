@@ -327,7 +327,7 @@ jobs:
           Install-Module -Name powershell-yaml -Force
 
       - name: Login via Az module
-        if: inputs.haIngress == 'true' && inputs.environment == 'production'
+        if: inputs.haIngress == 'true'
         uses: azure/login@v2
         with:
           creds: "${{ secrets.azureCredentials }}"
