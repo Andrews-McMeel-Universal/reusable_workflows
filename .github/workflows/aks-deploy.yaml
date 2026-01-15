@@ -140,6 +140,12 @@ jobs:
         run: |
           Install-Module -Name powershell-yaml -Force
 
+      - name: Login via Az module
+        if: inputs.haIngress == 'true'
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+
       - name: Get AKS cluster info
         if: inputs.haIngress == 'true'
         id: aks-info
@@ -362,12 +368,6 @@ jobs:
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Force
-
-      - name: Login via Az module
-        if: inputs.haIngress == 'true'
-        uses: azure/login@v2
-        with:
-          creds: "${{ secrets.azureCredentials }}"
 
       - name: Install PowerShell modules for Accessing Azure Table Storage
         if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
