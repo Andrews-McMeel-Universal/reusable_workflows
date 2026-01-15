@@ -814,6 +814,7 @@ jobs:
           BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ steps.bg-deployment.outputs.inactiveDeployment }}
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
           INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
+          DATACENTER_LOCATION: ${{ steps.aks.outputs.datacenterLocation }}
         run: |
           # Set AKS cluster ingress
           AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
