@@ -49,7 +49,7 @@ on:
       environmentIngress:
         required: false
         type: string
-        description: "Add the environment name to the front of the hostname (for DNS)"
+        description: "Use environment in Kubernetes ingress"
         default: "true"
       serviceIngressWhitelist:
         required: false
@@ -135,7 +135,7 @@ jobs:
           submodules: ${{ inputs.checkoutSubmodules }}
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
-      - name: Install PowerShell modules
+      - name: Install PowerShell modules for YAML processing
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Force
