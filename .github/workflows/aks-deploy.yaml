@@ -49,7 +49,7 @@ on:
       environmentIngress:
         required: false
         type: string
-        description: "Add the environment name to the front of the hostname (for DNS)"
+        description: "Use environment in Kubernetes ingress"
         default: "true"
       serviceIngressWhitelist:
         required: false
@@ -59,7 +59,7 @@ on:
       environmentNamespace:
         required: false
         type: boolean
-        description: "Enable/Disable adding environment in AKS cluster ingress DNS record"
+        description: "Use environment as Kubernetes namespace"
         default: true
       checkoutRef:
         required: false
@@ -129,10 +129,24 @@ jobs:
           submodules: ${{ inputs.checkoutSubmodules }}
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
-      - name: Install PowerShell modules
+      - name: Install PowerShell modules for YAML processing
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Force
+
+      - name: Login via Az module
+        if: inputs.haIngress == 'true'
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+
+      - name: Get AKS cluster info
+        if: inputs.haIngress == 'true'
+        id: aks
+        shell: bash
+        run: |
+          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
+          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
 
       - name: Extract Helm values
         id: setenvs
@@ -208,6 +222,35 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -ne "false") {
               $ingress = "$appEnvironment.$ingress"
+          }
+
+          # Add datacenter location to ingress if HA hostname is enabled
+          $haIngress = "${{ inputs.haIngress }}" -replace '"', '' -replace "'", ""
+          if ($haIngress -eq "true") {
+              $datacenterLocation = "${{ steps.aks-info.outputs.datacenterLocation }}"
+              $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
+
+              if ($subDomain -match $datacenterLocation) {
+                  Write-Output "Datacenter location already present in ingress: $($ingress)"
+                  continue
+              }
+
+              if ($subDomain -match "\.service") {
+                  if ($subDomain -match "services") {
+                      $domainName = "services.$domainName"
+                  }
+                  else {
+                      $domainName = "service.$domainName"
+                  }
+              }
+
+              Write-Output "Adding datacenter location to ingress: $($ingress)"
+              if ($subDomain -ne "") {
+                  $ingress = "$subDomain.$datacenterLocation.$domainName"
+              }
+              else {
+                  $ingress = "$datacenterLocation.$domainName"
+              }
           }
 
           Write-Output "domainName=$domainName"
@@ -301,6 +344,7 @@ jobs:
       minReplicas: ${{ env.minReplicas }}
       chartsPath: ${{ env.chartsPath }}
       wwwIngress: ${{ env.wwwIngress }}
+      datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation || 'centralus' }}
 
   deploy:
     name: AKS Deploy
@@ -315,24 +359,10 @@ jobs:
         with:
           ref: ${{ inputs.checkoutRef }}
 
-      - name: Install PowerShell modules
+      - name: Install PowerShell modules for YAML processing
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Force
-
-      - name: Login via Az module
-        if: inputs.haIngress == 'true'
-        uses: azure/login@v2
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-
-      - name: Get AKS cluster info
-        if: inputs.haIngress == 'true'
-        id: aks
-        shell: bash
-        run: |
-          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
-          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
 
       - name: Create values override file
         id: values-override
@@ -408,7 +438,7 @@ jobs:
 
               # Add datacenter location to ingress if HA hostname is enabled
               if ($haIngress -eq "true") {
-                  $datacenterLocation = "${{ steps.aks.outputs.datacenterLocation }}"
+                  $datacenterLocation = "${{ needs.build.outputs.datacenterLocation }}"
                   $subDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
                   $domainName = "${{ needs.build.outputs.domainName }}"
 
@@ -624,10 +654,13 @@ jobs:
       - name: Switch Kubernetes Namespace
         id: namespace
         shell: bash
+        env:
+          ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
-            kubectl config set-context --current --namespace="${{ inputs.environment }}"
-            echo "namespace=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
+            kubectl config set-context --current --namespace="${ENVIRONMENT}"
+            echo "namespace=${ENVIRONMENT}" >> $GITHUB_OUTPUT
           else
             echo "namespace=default" >> $GITHUB_OUTPUT
           fi
@@ -783,7 +816,7 @@ jobs:
         run: |
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
-      - name: Install PowerShell modules
+      - name: Install PowerShell modules for Accessing Azure Table Storage
         shell: pwsh
         run: |
           Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
