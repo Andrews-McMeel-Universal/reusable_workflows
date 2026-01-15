@@ -375,6 +375,7 @@ jobs:
           Write-Output "activeDeployment=$activeDeployment" >> $env:GITHUB_OUTPUT
           Write-Output "inactiveDeployment=$inactiveDeployment"
           Write-Output "inactiveDeployment=$inactiveDeployment" >> $env:GITHUB_OUTPUT
+
       - name: Get AKS cluster info
         if: inputs.haIngress == 'true'
         id: aks
@@ -467,6 +468,7 @@ jobs:
                       Write-Output "Datacenter location already present in $($item.name): $($item.host)"
                       continue
                   }
+
                   if ($subDomain -match "\.service") {
                       if ($subDomain -match "services") {
                           $domainName = "services.$domainName"
