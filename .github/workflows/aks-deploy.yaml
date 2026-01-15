@@ -348,19 +348,20 @@ jobs:
           repositoryName: ${{ github.event.repository.name }}
           environment: ${{ inputs.environment }}
         run: |
+          # Get Blue/Green Deployment Info
           $storageAccountKey = ${{ secrets.storageAccountKey }}
-          $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+          $storageContext = New-AzStorageContext -StorageAccountName ${env:storageAccountName} -StorageAccountKey $storageAccountKey
 
           #Get Storage table
           try {
-              $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
+              $appInfoTable = (Get-AzStorageTable -Name ${env:appInfoTableName} -Context $storageContext -ErrorAction Stop).CloudTable
               }
           catch {
-              Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+              Write-Error -Message "Error accessing cloud ${env:appInfoTableName} table.  Error message was: $_.Exception.Message"
               return
           }
 
-          $aksIngress = (Get-AzTableRow -Table $appInfoTable -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "AksIngress").AksIngress
+          $aksIngress = (Get-AzTableRow -Table ${env:appInfoTable} -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "AksIngress").AksIngress
 
           if ($aksIngress -match "-green") {
               $activeDeployment = "green"
