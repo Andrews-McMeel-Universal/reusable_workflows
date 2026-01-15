@@ -361,7 +361,7 @@ jobs:
               return
           }
 
-          $aksIngress = (Get-AzTableRow -Table ${env:appInfoTable} -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "AksIngress").AksIngress
+          $aksIngress = (Get-AzTableRow -Table $appInfoTable -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "AksIngress").AksIngress
 
           if ($aksIngress -match "-green") {
               $activeDeployment = "green"
