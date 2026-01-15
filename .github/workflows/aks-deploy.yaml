@@ -467,73 +467,9 @@ jobs:
                       Write-Output "Datacenter location already present in $($item.name): $($item.host)"
                       continue
                   }
-
-                  # Add environment to ingress
-                  if ($environmentIngress -ne "false") {
-                      if ($blueGreenDeployment -eq "true" -and $environment -eq "production" -and $inactiveDeployment -eq "green") {
-                          if ($inactiveDeployment -eq "green") {
-                              $item.host = "$environment-green.$($item.host)"
-                          }
-                          Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
-                      }
-                      else {
-                          $item.host = "$environment.$($item.host)"
-                          Write-Output "Adding environment to $($item.name): $($item.host)"
-                      }
-                  }
-
-                  # Add ingressClassName to ingress
-                  if ($blueGreenDeployment -eq "true" -and $environment -eq "production" -and $inactiveDeployment -eq "green") {
-                      $item.ingressClassName = "nginx-$environment-$inactiveDeployment"
-                  }
-                  else {
-                      $item.ingressClassName = "nginx-$environment"
-                  }
-
-                  # Reset annotations
-                  if ($null -eq $item.annotations) {
-                      $item.annotations = @{}
-                  }
-
-                  # Add cluster issuer annotation
-                  $item.annotations."cert-manager.io/cluster-issuer" = $clusterIssuer
-
-                  # Add whitelist annotation
-                  $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$adminIngressWhitelist"
-
-                  if ($item.name -eq "ingress") {
-                      # Add WWW to ingress
-                      if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -ne "true")) {
-                          # Add www redirect ingress
-                          $updatedIngress += [PSCustomObject]@{
-                              name = "wwwredirect"
-                              host = $item.host
-                              path = "/(.*)"
-                              ingressClassName = $item.ingressClassName
-                              annotations = @{
-                                  "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
-                                  "cert-manager.io/cluster-issuer" = $clusterIssuer
-                              }
-                          }
-
-                          Write-Output "Adding www to $($item.name) host"
-                          $item.host = "www.$($item.host)"
-                      }
-
-                      # Set ingress host to primary domain variable
-                      $dnsPrimaryDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
-
-                      # Add webAuthentication to main ingress
-                      if ($webAuthentication -eq "true") {
-                          Write-Output "Adding basic auth to $($item.name)"
-                          $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
-                          $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
-                          $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
-                      }
-                  }
-                  elseif ($item.name -eq "admin-ingress") {
-                      if (($adminIngressWhitelist -ne "207.67.20.252") -or ($adminIngressWhitelist -ne "")) {
-                          $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
+                  if ($subDomain -match "\.service") {
+                      if ($subDomain -match "services") {
+                          $domainName = "services.$domainName"
                       }
                       else {
                           $domainName = "service.$domainName"
@@ -547,6 +483,28 @@ jobs:
                   else {
                       $item.host = "$datacenterLocation.$domainName"
                   }
+              }
+
+              # Add environment to ingress
+              if ($environmentIngress -ne "false") {
+                  if ($blueGreenDeployment -eq "true" -and $environment -eq "production" -and $inactiveDeployment -eq "green") {
+                      if ($inactiveDeployment -eq "green") {
+                          $item.host = "$environment-green.$($item.host)"
+                      }
+                      Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
+                  }
+                  else {
+                      $item.host = "$environment.$($item.host)"
+                      Write-Output "Adding environment to $($item.name): $($item.host)"
+                  }
+              }
+
+              # Add ingressClassName to ingress
+              if ($blueGreenDeployment -eq "true" -and $environment -eq "production" -and $inactiveDeployment -eq "green") {
+                  $item.ingressClassName = "nginx-$environment-$inactiveDeployment"
+              }
+              else {
+                  $item.ingressClassName = "nginx-$environment"
               }
 
               # Add environment to ingress
