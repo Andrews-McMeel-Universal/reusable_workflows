@@ -321,7 +321,7 @@ jobs:
         with:
           ref: ${{ inputs.checkoutRef }}
 
-      - name: Install PowerShell modules
+      - name: Install PowerShell modules for YAML processing
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Force
@@ -332,7 +332,7 @@ jobs:
         with:
           creds: "${{ secrets.azureCredentials }}"
 
-      - name: Install PowerShell modules
+      - name: Install PowerShell modules for Accessing Azure Table Storage
         if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
         shell: pwsh
         run: |
@@ -917,7 +917,7 @@ jobs:
         run: |
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
-      - name: Install PowerShell modules
+      - name: Install PowerShell modules for Accessing Azure Table Storage
         if: inputs.blueGreenDeployment != 'true'
         shell: pwsh
         run: |
