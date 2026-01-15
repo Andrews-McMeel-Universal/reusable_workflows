@@ -806,19 +806,29 @@ jobs:
       - name: Create or Update Public DNS Record
         id: dns
         shell: bash
+        env:
+          ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          DATACENTER_LOCATION: ${{ steps.aks.outputs.datacenterLocation || 'centralus' }}
+          INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
+          INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
         run: |
           # Set AKS cluster ingress
-          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
-            INGRESS="${{ secrets.azureClusterName }}-${{ inputs.environment }}"
+          AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
+
+          # Add environment and blue/green deployment suffixes if applicable
+          if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
+            INGRESS="${AKS_CLUSTER_NAME}-${ENVIRONMENT}"
           else
-            INGRESS="${{ secrets.azureClusterName }}"
+            INGRESS="${AKS_CLUSTER_NAME}"
           fi
-          DATACENTER_LOCATION="${{ steps.aks.outputs.datacenterLocation || 'centralus' }}"
+
           AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
+          echo "aksIngress=${AKS_INGRESS}"
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
 
           # Populate INGRESSES array safely
-          mapfile -t INGRESSES < <(echo "${{ steps.values-override.outputs.domains }}" | sed "s/ $//g" | tr ' ' '\n' | sort -u)
+          mapfile -t INGRESSES < <(echo "${INGRESS_DOMAINS}" | sed "s/ $//g" | tr ' ' '\n' | sort -u)
 
           # Check if INGRESSES is empty
           if [ "${#INGRESSES[@]}" -eq 0 ]; then
@@ -831,7 +841,7 @@ jobs:
             echo "Updating DNS record for ${INGRESS} to $AKS_INGRESS"
             az network dns record-set cname set-record \
               --resource-group "AMU_DNS_RG" \
-              --zone-name "${{ needs.build.outputs.domainName }}" \
+              --zone-name "${INGRESS_DOMAIN_NAME}" \
               --record-set-name "${INGRESS}" \
               --cname "${AKS_INGRESS}" \
               --ttl 3600
