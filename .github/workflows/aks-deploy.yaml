@@ -142,7 +142,7 @@ jobs:
 
       - name: Get AKS cluster info
         if: inputs.haIngress == 'true'
-        id: aks
+        id: aks-info
         shell: bash
         run: |
           AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
@@ -760,7 +760,7 @@ jobs:
         env:
           ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           ENVIRONMENT: ${{ inputs.environment }}
-          DATACENTER_LOCATION: ${{ steps.aks.outputs.datacenterLocation || 'centralus' }}
+          DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation || 'centralus' }}
           INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
         run: |
