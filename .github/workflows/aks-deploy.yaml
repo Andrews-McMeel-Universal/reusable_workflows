@@ -140,6 +140,14 @@ jobs:
         run: |
           Install-Module -Name powershell-yaml -Force
 
+      - name: Get AKS cluster info
+        if: inputs.haIngress == 'true'
+        id: aks-info
+        shell: bash
+        run: |
+          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
+          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
+
       - name: Extract Helm values
         id: setenvs
         shell: pwsh
@@ -214,6 +222,34 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -ne "false") {
               $ingress = "$appEnvironment.$ingress"
+          }
+
+          # Add datacenter location to ingress if HA hostname is enabled
+          if ($haIngress -eq "true") {
+              $datacenterLocation = "${{ steps.aks-info.outputs.datacenterLocation }}"
+              $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
+
+              if ($subDomain -match $datacenterLocation) {
+                  Write-Output "Datacenter location already present in ingress: $($ingress)"
+                  continue
+              }
+
+              if ($subDomain -match "\.service") {
+                  if ($subDomain -match "services") {
+                      $domainName = "services.$domainName"
+                  }
+                  else {
+                      $domainName = "service.$domainName"
+                  }
+              }
+
+              Write-Output "Adding datacenter location to ingress: $($ingress)"
+              if ($subDomain -ne "") {
+                  $ingress = "$subDomain.$datacenterLocation.$domainName"
+              }
+              else {
+                  $ingress = "$datacenterLocation.$domainName"
+              }
           }
 
           Write-Output "domainName=$domainName"
@@ -307,6 +343,7 @@ jobs:
       minReplicas: ${{ env.minReplicas }}
       chartsPath: ${{ env.chartsPath }}
       wwwIngress: ${{ env.wwwIngress }}
+      datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation || 'centralus' }}
 
   deploy:
     name: AKS Deploy
@@ -375,14 +412,6 @@ jobs:
           Write-Output "activeDeployment=$activeDeployment" >> $env:GITHUB_OUTPUT
           Write-Output "inactiveDeployment=$inactiveDeployment"
           Write-Output "inactiveDeployment=$inactiveDeployment" >> $env:GITHUB_OUTPUT
-
-      - name: Get AKS cluster info
-        if: inputs.haIngress == 'true'
-        id: aks
-        shell: bash
-        run: |
-          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
-          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
 
       - name: Create values override file
         id: values-override
@@ -460,7 +489,7 @@ jobs:
 
               # Add datacenter location to ingress if HA hostname is enabled
               if ($haIngress -eq "true") {
-                  $datacenterLocation = "${{ steps.aks.outputs.datacenterLocation }}"
+                  $datacenterLocation = "${{ needs.build.outputs.datacenterLocation }}"
                   $subDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
                   $domainName = "${{ needs.build.outputs.domainName }}"
 
@@ -814,7 +843,7 @@ jobs:
           BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ steps.bg-deployment.outputs.inactiveDeployment }}
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
           INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
-          DATACENTER_LOCATION: ${{ steps.aks.outputs.datacenterLocation || 'centralus' }}
+          DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation || 'centralus' }}
         run: |
           # Set AKS cluster ingress
           AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
