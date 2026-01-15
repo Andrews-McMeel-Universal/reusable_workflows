@@ -396,34 +396,6 @@ jobs:
                   Write-Output "Private ingress is enabled, setting ingress whitelist to service whitelist for $($item.name)"
                   if (($adminIngressWhitelist -ne "207.67.20.252") -or ($adminIngressWhitelist -ne "")) {
                       $ingressWhitelist = $adminIngressWhitelist
-
-                  # Add datacenter location to ingress if HA hostname is enabled
-                  if ($haIngress -eq "true") {
-                      $datacenterLocation = "${{ steps.aks.outputs.datacenterLocation }}"
-                      $subDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
-                      $domainName = "${{ needs.build.outputs.domainName }}"
-
-                      if ($subDomain -match $datacenterLocation) {
-                          Write-Output "Datacenter location already present in $($item.name): $($item.host)"
-                          continue
-                      }
-
-                      if ($subDomain -match "\.service") {
-                        if ($subDomain -match "services") {
-                            $domainName = "services.$domainName"
-                        }
-                        else {
-                            $domainName = "service.$domainName"
-                        }
-                      }
-
-                      Write-Output "Adding datacenter location to $($item.name): $($item.host)"
-                      if ($subDomain -ne "") {
-                          $item.host = "$subDomain.$datacenterLocation.$domainName"
-                      }
-                      else {
-                          $item.host = "$datacenterLocation.$domainName"
-                      }
                   }
                   else {
                       $ingressWhitelist = $serviceIngressWhitelist
@@ -436,12 +408,31 @@ jobs:
 
               # Add datacenter location to ingress if HA hostname is enabled
               if ($haIngress -eq "true") {
-                  $datacenterLocation = (az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv || "centralus").ToLower()
-
+                  $datacenterLocation = "${{ steps.aks.outputs.datacenterLocation }}"
                   $subDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
                   $domainName = "${{ needs.build.outputs.domainName }}"
-                  $item.host = "$subDomain.$datacenterLocation.$domainName"
+
+                  if ($subDomain -match $datacenterLocation) {
+                      Write-Output "Datacenter location already present in $($item.name): $($item.host)"
+                      continue
+                  }
+
+                  if ($subDomain -match "\.service") {
+                      if ($subDomain -match "services") {
+                          $domainName = "services.$domainName"
+                      }
+                      else {
+                          $domainName = "service.$domainName"
+                      }
+                  }
+
                   Write-Output "Adding datacenter location to $($item.name): $($item.host)"
+                  if ($subDomain -ne "") {
+                      $item.host = "$subDomain.$datacenterLocation.$domainName"
+                  }
+                  else {
+                      $item.host = "$datacenterLocation.$domainName"
+                  }
               }
 
               # Add environment to ingress
