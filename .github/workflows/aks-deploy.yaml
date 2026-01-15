@@ -231,6 +231,7 @@ jobs:
           }
 
           # Add datacenter location to ingress if HA hostname is enabled
+          $haIngress = "${{ inputs.haIngress }}" -replace '"', '' -replace "'", ""
           if ($haIngress -eq "true") {
               $datacenterLocation = "${{ steps.aks-info.outputs.datacenterLocation }}"
               $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
