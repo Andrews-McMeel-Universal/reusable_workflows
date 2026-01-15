@@ -326,6 +326,14 @@ jobs:
         with:
           creds: "${{ secrets.azureCredentials }}"
 
+      - name: Get AKS cluster info
+        if: inputs.haIngress == 'true'
+        id: aks
+        shell: bash
+        run: |
+          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
+          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
+
       - name: Create values override file
         id: values-override
         shell: pwsh
@@ -401,12 +409,31 @@ jobs:
 
                   # Add datacenter location to ingress if HA hostname is enabled
                   if ($haIngress -eq "true") {
-                      $datacenterLocation = (az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv || "centralus").ToLower()
-
+                      $datacenterLocation = "${{ steps.aks.outputs.datacenterLocation }}"
                       $subDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
                       $domainName = "${{ needs.build.outputs.domainName }}"
-                      $item.host = "$subDomain.$datacenterLocation.$domainName"
+
+                      if ($subDomain -match $datacenterLocation) {
+                          Write-Output "Datacenter location already present in $($item.name): $($item.host)"
+                          continue
+                      }
+
+                      if ($subDomain -match "\.service") {
+                        if ($subDomain -match "services") {
+                            $domainName = "services.$domainName"
+                        }
+                        else {
+                            $domainName = "service.$domainName"
+                        }
+                      }
+
                       Write-Output "Adding datacenter location to $($item.name): $($item.host)"
+                      if ($subDomain -ne "") {
+                          $item.host = "$subDomain.$datacenterLocation.$domainName"
+                      }
+                      else {
+                          $item.host = "$datacenterLocation.$domainName"
+                      }
                   }
 
                   # Add environment to ingress
@@ -779,18 +806,29 @@ jobs:
       - name: Create or Update Public DNS Record
         id: dns
         shell: bash
+        env:
+          ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          DATACENTER_LOCATION: ${{ steps.aks.outputs.datacenterLocation || 'centralus' }}
+          INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
+          INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
         run: |
           # Set AKS cluster ingress
-          if [ "${{ inputs.environmentNamespace }}" == "true" ]; then
-            INGRESS="${{ secrets.azureClusterName }}-${{ inputs.environment }}"
+          AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
+
+          # Add environment and blue/green deployment suffixes if applicable
+          if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
+            INGRESS="${AKS_CLUSTER_NAME}-${ENVIRONMENT}"
           else
-            INGRESS="${{ secrets.azureClusterName }}"
+            INGRESS="${AKS_CLUSTER_NAME}"
           fi
-          AKS_INGRESS="${INGRESS}-ingress.centralus.cloudapp.azure.com."
+
+          AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
+          echo "aksIngress=${AKS_INGRESS}"
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
 
           # Populate INGRESSES array safely
-          mapfile -t INGRESSES < <(echo "${{ steps.values-override.outputs.domains }}" | sed "s/ $//g" | tr ' ' '\n' | sort -u)
+          mapfile -t INGRESSES < <(echo "${INGRESS_DOMAINS}" | sed "s/ $//g" | tr ' ' '\n' | sort -u)
 
           # Check if INGRESSES is empty
           if [ "${#INGRESSES[@]}" -eq 0 ]; then
@@ -803,7 +841,7 @@ jobs:
             echo "Updating DNS record for ${INGRESS} to $AKS_INGRESS"
             az network dns record-set cname set-record \
               --resource-group "AMU_DNS_RG" \
-              --zone-name "${{ needs.build.outputs.domainName }}" \
+              --zone-name "${INGRESS_DOMAIN_NAME}" \
               --record-set-name "${INGRESS}" \
               --cname "${AKS_INGRESS}" \
               --ttl 3600
