@@ -893,7 +893,7 @@ jobs:
 
             # Update root domain for blue-green deployments in production
             if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ]; then
-              ROOT_INGRESS=$(echo "${INGRESS}" | sed "s/-${BLUE_GREEN_INACTIVE_DEPLOYMENT}//")
+              ROOT_INGRESS="${INGRESS/-${BLUE_GREEN_INACTIVE_DEPLOYMENT}/}"
               echo "Updating DNS record for ${ROOT_INGRESS} to ${AKS_INGRESS}"
               az network dns record-set cname set-record \
                 --resource-group "AMU_DNS_RG" \
