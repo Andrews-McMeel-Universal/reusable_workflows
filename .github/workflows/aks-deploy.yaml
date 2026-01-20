@@ -539,6 +539,7 @@ jobs:
               if ($blueGreenDeployment -eq "true" -and $environment -eq "production") {
                   $rootIngress = $item.host -replace "-$inactiveDeployment", "" -replace "\.$", ""
                   $item.ingressClassName = "nginx-$environment-$inactiveDeployment"
+                  Write-Output "Adding server alias to $($item.name): $rootIngress"
                   $item.annotations."nginx.ingress.kubernetes.io/server-alias" = "$rootIngress"
               }
               else {
