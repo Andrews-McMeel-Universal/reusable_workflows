@@ -537,14 +537,13 @@ jobs:
 
               # Add ingressClassName to ingress
               if ($blueGreenDeployment -eq "true" -and $environment -eq "production") {
+                  $rootIngress = $item.host -replace "-$inactiveDeployment", "" -replace "\.$", ""
                   $item.ingressClassName = "nginx-$environment-$inactiveDeployment"
+                  $item.annotations."nginx.ingress.kubernetes.io/server-alias" = "$rootIngress"
               }
               else {
                   $item.ingressClassName = "nginx-$environment"
               }
-
-              # Add ingressClassName to ingress
-              $item.ingressClassName = "nginx-$environment"
 
               # Reset annotations
               if ($null -eq $item.annotations) {
