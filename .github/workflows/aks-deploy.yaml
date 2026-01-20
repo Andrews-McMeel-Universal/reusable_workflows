@@ -543,12 +543,6 @@ jobs:
                   $item.ingressClassName = "nginx-$environment"
               }
 
-              # Add environment to ingress
-              if ($environmentIngress -ne "false") { 
-                  $item.host = "$environment.$($item.host)"
-                  Write-Output "Adding environment to $($item.name): $($item.host)"
-              }
-
               # Add ingressClassName to ingress
               $item.ingressClassName = "nginx-$environment"
 
