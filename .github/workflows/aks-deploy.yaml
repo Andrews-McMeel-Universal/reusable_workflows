@@ -519,10 +519,8 @@ jobs:
 
               # Add environment to ingress
               if ($environmentIngress -ne "false") {
-                  if ($blueGreenDeployment -eq "true" -and $environment -eq "production" -and $inactiveDeployment -eq "green") {
-                      if ($inactiveDeployment -eq "green") {
-                          $item.host = "$environment-green.$($item.host)"
-                      }
+                  if ($blueGreenDeployment -eq "true" -and $environment -eq "production") {
+                      $item.host = "$environment-$inactiveDeployment.$($item.host)"
                       Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
                   }
                   else {
@@ -532,7 +530,7 @@ jobs:
               }
 
               # Add ingressClassName to ingress
-              if ($blueGreenDeployment -eq "true" -and $environment -eq "production" -and $inactiveDeployment -eq "green") {
+              if ($blueGreenDeployment -eq "true" -and $environment -eq "production") {
                   $item.ingressClassName = "nginx-$environment-$inactiveDeployment"
               }
               else {
@@ -849,7 +847,7 @@ jobs:
           # Set AKS cluster ingress
           AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
 
-          # Add environment and blue/green deployment suffixes if applicable
+          # Add environment suffixes if applicable
           if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
             INGRESS="${AKS_CLUSTER_NAME}-${ENVIRONMENT}"
           else
@@ -857,8 +855,8 @@ jobs:
           fi
 
           # Add blue/green deployment suffix if applicable
-          if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ] && [ "${BLUE_GREEN_INACTIVE_DEPLOYMENT}" == "green" ]; then
-            INGRESS="${INGRESS}-green"
+          if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ]; then
+            INGRESS="${INGRESS}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}"
           fi
 
           AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
