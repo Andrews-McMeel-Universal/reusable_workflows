@@ -273,11 +273,11 @@ jobs:
           $blueGreenDeployment = "${{ inputs.blueGreenDeployment }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -ne "false") {
               if ($blueGreenDeployment -eq "true" -and $appEnvironment -eq "production") {
-                  $item.host = "$appEnvironment-$inactiveDeployment.$ingress"
+                  $ingress = "$appEnvironment-$inactiveDeployment.$ingress"
                   Write-Output "Adding environment and inactive deployment to $($item.name): $ingress"
               }
               else {
-                  $item.host = "$appEnvironment.$ingress"
+                  $ingress = "$appEnvironment.$ingress"
                   Write-Output "Adding environment to $($item.name): $ingress"
               }
           }
