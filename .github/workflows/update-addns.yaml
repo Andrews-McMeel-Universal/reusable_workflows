@@ -72,7 +72,7 @@ jobs:
 
           $hostnameList = @()
           if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
-            $baseHost = $env:hostName -replace '-blue$', '' -replace '-green$', ''
+            $baseHost = $env:hostName -replace '-blue', '' -replace '-green', ''
           
             $hostnameList += "$baseHost"
           }
