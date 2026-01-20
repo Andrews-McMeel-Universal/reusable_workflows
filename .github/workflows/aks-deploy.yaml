@@ -269,7 +269,7 @@ jobs:
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
 
           # Add environment to ingress
-          $inactiveDeployment = "${{ steps.bg-deployment.outputs.inactiveDeployment }}" -replace '"', '' -replace "'", ""
+          $inactiveDeployment = "${{ env.inactiveDeployment }}" -replace '"', '' -replace "'", ""
           $blueGreenDeployment = "${{ inputs.blueGreenDeployment }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -ne "false") {
               if ($blueGreenDeployment -eq "true" -and $appEnvironment -eq "production") {
