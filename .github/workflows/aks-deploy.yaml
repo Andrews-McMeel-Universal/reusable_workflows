@@ -140,11 +140,55 @@ jobs:
         run: |
           Install-Module -Name powershell-yaml -Force
 
+      - name: Install PowerShell modules for Accessing Azure Table Storage
+        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
+        shell: pwsh
+        run: |
+          Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
+
       - name: Login via Az module
         if: inputs.haIngress == 'true'
         uses: azure/login@v2
         with:
           creds: "${{ secrets.azureCredentials }}"
+
+      - name: Get Blue/Green Deployment Info
+        id: bg-deployment
+        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
+        shell: pwsh
+        env:
+          storageAccountName: amucloudapps
+          appInfoTableName: DeployedApplications
+          repositoryName: ${{ github.event.repository.name }}
+          environment: ${{ inputs.environment }}
+        run: |
+          # Get Blue/Green Deployment Info
+          $storageAccountKey = ${{ secrets.storageAccountKey }}
+          $storageContext = New-AzStorageContext -StorageAccountName ${env:storageAccountName} -StorageAccountKey $storageAccountKey
+
+          #Get Storage table
+          try {
+              $appInfoTable = (Get-AzStorageTable -Name ${env:appInfoTableName} -Context $storageContext -ErrorAction Stop).CloudTable
+              }
+          catch {
+              Write-Error -Message "Error accessing cloud ${env:appInfoTableName} table.  Error message was: $_.Exception.Message"
+              return
+          }
+
+          $aksIngress = (Get-AzTableRow -Table $appInfoTable -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "AksIngress").AksIngress
+
+          if ($aksIngress -match "-green") {
+              $activeDeployment = "green"
+              $inactiveDeployment = "blue"
+          }
+          else {
+              $activeDeployment = "blue"
+              $inactiveDeployment = "green"
+          }
+          Write-Output "activeDeployment=$activeDeployment"
+          Write-Output "activeDeployment=$activeDeployment" >> $env:GITHUB_ENV
+          Write-Output "inactiveDeployment=$inactiveDeployment"
+          Write-Output "inactiveDeployment=$inactiveDeployment" >> $env:GITHUB_ENV
 
       - name: Get AKS cluster info
         if: inputs.haIngress == 'true'
@@ -152,7 +196,7 @@ jobs:
         shell: bash
         run: |
           AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
-          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
+          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_ENV
 
       - name: Extract Helm values
         id: setenvs
@@ -350,7 +394,8 @@ jobs:
       minReplicas: ${{ env.minReplicas }}
       chartsPath: ${{ env.chartsPath }}
       wwwIngress: ${{ env.wwwIngress }}
-      datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation || 'centralus' }}
+      datacenterLocation: ${{ env.datacenterLocation || 'centralus' }}
+      inactiveDeployment: ${{ env.inactiveDeployment }}
 
   deploy:
     name: AKS Deploy
@@ -369,51 +414,6 @@ jobs:
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Force
-
-      - name: Install PowerShell modules for Accessing Azure Table Storage
-        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
-        shell: pwsh
-        run: |
-          Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
-
-      - name: Get Blue/Green Deployment Info
-        id: bg-deployment
-        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
-        shell: pwsh
-        env:
-          storageAccountName: amucloudapps
-          appInfoTableName: DeployedApplications
-          repositoryName: ${{ github.event.repository.name }}
-          environment: ${{ inputs.environment }}
-        run: |
-          # Get Blue/Green Deployment Info
-          $storageAccountKey = ${{ secrets.storageAccountKey }}
-          $storageContext = New-AzStorageContext -StorageAccountName ${env:storageAccountName} -StorageAccountKey $storageAccountKey
-
-          #Get Storage table
-          try {
-              $appInfoTable = (Get-AzStorageTable -Name ${env:appInfoTableName} -Context $storageContext -ErrorAction Stop).CloudTable
-              }
-          catch {
-              Write-Error -Message "Error accessing cloud ${env:appInfoTableName} table.  Error message was: $_.Exception.Message"
-              return
-          }
-
-          $aksIngress = (Get-AzTableRow -Table $appInfoTable -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "AksIngress").AksIngress
-
-          if ($aksIngress -match "-green") {
-              $activeDeployment = "green"
-              $inactiveDeployment = "blue"
-          }
-          else {
-              $activeDeployment = "blue"
-              $inactiveDeployment = "green"
-          }
-          Write-Output "activeDeployment=$activeDeployment"
-          Write-Output "activeDeployment=$activeDeployment" >> $env:GITHUB_OUTPUT
-          Write-Output "inactiveDeployment=$inactiveDeployment"
-          Write-Output "inactiveDeployment=$inactiveDeployment" >> $env:GITHUB_OUTPUT
-
       - name: Create values override file
         id: values-override
         shell: pwsh
@@ -439,7 +439,7 @@ jobs:
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
           $blueGreenDeployment = "${{ inputs.blueGreenDeployment }}" -replace '"', '' -replace "'", ""
           $clusterIssuer = "letsencrypt-$environment"
-          $inactiveDeployment = "${{ steps.bg-deployment.outputs.inactiveDeployment }}" -replace '"', '' -replace "'", ""
+          $inactiveDeployment = "${{ needs.build.outputs.inactiveDeployment }}" -replace '"', '' -replace "'", ""
 
           $domains = @()
           $updatedIngress = @()
@@ -730,7 +730,7 @@ jobs:
           ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           ENVIRONMENT: ${{ inputs.environment }}
           BLUE_GREEN_DEPLOYMENT: ${{ inputs.blueGreenDeployment }}
-          INACTIVE_DEPLOYMENT: ${{ steps.bg-deployment.outputs.inactiveDeployment }}
+          INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.inactiveDeployment }}
         run: |
           # Switch Kubernetes Namespace
           if [ $ENVIRONMENT_NAMESPACE == "true" ]; then
@@ -839,7 +839,7 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
           ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           BLUE_GREEN_DEPLOYMENT: ${{ inputs.blueGreenDeployment }}
-          BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ steps.bg-deployment.outputs.inactiveDeployment }}
+          BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.inactiveDeployment }}
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
           INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
           DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation || 'centralus' }}
