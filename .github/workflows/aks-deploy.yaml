@@ -268,10 +268,18 @@ jobs:
           # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
 
-          # Add environment to ingress if needed
-          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          # Add environment to ingress
+          $inactiveDeployment = "${{ steps.bg-deployment.outputs.inactiveDeployment }}" -replace '"', '' -replace "'", ""
+          $blueGreenDeployment = "${{ inputs.blueGreenDeployment }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -ne "false") {
-              $ingress = "$appEnvironment.$ingress"
+              if ($blueGreenDeployment -eq "true" -and $appEnvironment -eq "production") {
+                  $item.host = "$appEnvironment-$inactiveDeployment.$ingress"
+                  Write-Output "Adding environment and inactive deployment to $($item.name): $ingress"
+              }
+              else {
+                  $item.host = "$appEnvironment.$ingress"
+                  Write-Output "Adding environment to $($item.name): $ingress"
+              }
           }
 
           # Add datacenter location to ingress if HA hostname is enabled
@@ -902,7 +910,6 @@ jobs:
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
       - name: Install PowerShell modules for Accessing Azure Table Storage
-        if: inputs.blueGreenDeployment != 'true'
         shell: pwsh
         run: |
           Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
