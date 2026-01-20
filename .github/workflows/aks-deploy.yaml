@@ -94,7 +94,7 @@ on:
         required: false
         type: string
         description: "Use organization's remote Helm templates"
-        default: ${{ vars.REMOTE_HELM_TEMPLATES || 'false' }}
+        default: ${{ vars.REMOTE_HELM_TEMPLATES }}
     secrets:
       azureClusterName:
         required: true
