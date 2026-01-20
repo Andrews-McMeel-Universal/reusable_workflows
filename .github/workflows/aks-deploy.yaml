@@ -734,7 +734,7 @@ jobs:
         run: |
           # Switch Kubernetes Namespace
           if [ $ENVIRONMENT_NAMESPACE == "true" ]; then
-            if [ $BLUE_GREEN_DEPLOYMENT == "true" ] && [ $ENVIRONMENT == "production" ] && [ $INACTIVE_DEPLOYMENT == "green" ]; then
+            if [ $BLUE_GREEN_DEPLOYMENT == "true" ] && [ $ENVIRONMENT == "production" ]; then
               ENVIRONMENT="${ENVIRONMENT}-${INACTIVE_DEPLOYMENT}"
             fi
             kubectl config set-context --current --namespace="${ENVIRONMENT}"
