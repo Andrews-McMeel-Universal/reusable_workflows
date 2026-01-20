@@ -444,7 +444,6 @@ jobs:
           $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
           $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
           $blueGreenDeployment = "${{ inputs.blueGreenDeployment }}" -replace '"', '' -replace "'", ""
-          $clusterIssuer = "letsencrypt-$environment"
           $inactiveDeployment = "${{ needs.build.outputs.inactiveDeployment }}" -replace '"', '' -replace "'", ""
 
           $domains = @()
@@ -537,13 +536,23 @@ jobs:
 
               # Add ingressClassName to ingress
               if ($blueGreenDeployment -eq "true" -and $environment -eq "production") {
-                  $rootIngress = $item.host -replace "-$inactiveDeployment", "" -replace "\.$", ""
+
+                  # Set ingress class name
                   $item.ingressClassName = "nginx-$environment-$inactiveDeployment"
+
+                  # Add cluster issuer annotation
+                  $item.annotations."cert-manager.io/cluster-issuer" = "letsencrypt-$environment-$inactiveDeployment"
+
+                  $rootIngress = $item.host -replace "-$inactiveDeployment", "" -replace "\.$", ""
                   Write-Output "Adding server alias to $($item.name): $rootIngress"
                   $item.annotations."nginx.ingress.kubernetes.io/server-alias" = "$rootIngress"
               }
               else {
+                  # Set ingress class name
                   $item.ingressClassName = "nginx-$environment"
+
+                  # Add cluster issuer annotation
+                  $item.annotations."cert-manager.io/cluster-issuer" = "letsencrypt-$environment"
               }
 
               # Reset annotations
@@ -551,8 +560,6 @@ jobs:
                   $item.annotations = @{}
               }
 
-              # Add cluster issuer annotation
-              $item.annotations."cert-manager.io/cluster-issuer" = $clusterIssuer
 
               # Add whitelist annotation
               $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$adminIngressWhitelist"
