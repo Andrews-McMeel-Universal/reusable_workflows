@@ -274,11 +274,9 @@ jobs:
           if ($environmentIngress -ne "false") {
               if ($blueGreenDeployment -eq "true" -and $appEnvironment -eq "production") {
                   $ingress = "$appEnvironment-$inactiveDeployment.$ingress"
-                  Write-Output "Adding environment and inactive deployment to $($item.name): $ingress"
               }
               else {
                   $ingress = "$appEnvironment.$ingress"
-                  Write-Output "Adding environment to $($item.name): $ingress"
               }
           }
 
