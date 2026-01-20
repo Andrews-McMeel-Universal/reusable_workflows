@@ -854,12 +854,14 @@ jobs:
             INGRESS="${AKS_CLUSTER_NAME}"
           fi
 
-          # Add blue/green deployment suffix if applicable
+          # Set AKS ingress FQDN
           if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ]; then
-            INGRESS="${INGRESS}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}"
+            AKS_INGRESS="${INGRESS}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
+            DNS_RECORD_TTL=600
+          else
+            AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
+            DNS_RECORD_TTL=3600
           fi
-
-          AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
           echo "aksIngress=${AKS_INGRESS}"
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
 
@@ -874,13 +876,25 @@ jobs:
 
           # Update DNS record
           for INGRESS in "${INGRESSES[@]}"; do
-            echo "Updating DNS record for ${INGRESS} to $AKS_INGRESS"
+            echo "Updating DNS record for ${INGRESS} to ${AKS_INGRESS}"
             az network dns record-set cname set-record \
               --resource-group "AMU_DNS_RG" \
               --zone-name "${INGRESS_DOMAIN_NAME}" \
               --record-set-name "${INGRESS}" \
               --cname "${AKS_INGRESS}" \
-              --ttl 3600
+              --ttl ${DNS_RECORD_TTL}
+
+            # Update root domain for blue-green deployments in production
+            if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ]; then
+              ROOT_INGRESS=$(echo "${INGRESS}" | sed "s/-${BLUE_GREEN_INACTIVE_DEPLOYMENT}//")
+              echo "Updating DNS record for ${ROOT_INGRESS} to ${AKS_INGRESS}"
+              az network dns record-set cname set-record \
+                --resource-group "AMU_DNS_RG" \
+                --zone-name "${INGRESS_DOMAIN_NAME}" \
+                --record-set-name "${ROOT_INGRESS}" \
+                --cname "${AKS_INGRESS}" \
+                --ttl ${DNS_RECORD_TTL}
+            fi
           done
 
       - name: Create Sentry release
