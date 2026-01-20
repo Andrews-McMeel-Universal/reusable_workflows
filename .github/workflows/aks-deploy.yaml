@@ -145,27 +145,33 @@ jobs:
         id: aks-info
         shell: bash
         run: |
+          # Get AKS cluster info
+
           AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
+          if [ -z "$AKS_LOCATION" ]; then
+            AKS_LOCATION="centralus"
+          fi
           echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
 
       - name: Extract Helm values
         id: setenvs
         shell: pwsh
+        env:
+          appEnvironment: ${{ inputs.environment }}
+          haIngress: ${{ inputs.haIngress }}
+          chartsPath: ./deployments/charts
+          datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation }}
         run: |
+          # Extract Helm values
+
           # Get charts path
           $basePath = Get-Location
-          if (Test-Path -Path (Join-Path $basePath "./deployments/${{ inputs.environment }}-charts")) {
-              $chartsPath = "./deployments/${{ inputs.environment }}-charts"
-          }
-          else {
-              $chartsPath = "./deployments/charts"
-          }
           Write-Output "chartsPath=$chartsPath" >> $env:GITHUB_ENV
           Write-Output "Using charts path: $chartsPath"
           
-          $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
+          $valuesYamlPath = Join-Path $basePath $env:chartsPath "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
-          $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
+          $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
           # Set app name
@@ -179,12 +185,11 @@ jobs:
           Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
 
           # Set the max replicas based on the environment
-          $appEnvironment = "${{ inputs.environment }}"
-          if ($appEnvironment -eq "development") {
+          if ($env:appEnvironment -eq "development") {
               $minReplicas = 1
               $maxReplicas = 2
           }
-          elseif ($appEnvironment -eq "staging") {
+          elseif ($env:appEnvironment -eq "staging") {
               $minReplicas = 2
               $maxReplicas = 4
           }
@@ -207,7 +212,7 @@ jobs:
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -ge "2.0.0")) {
               $ingress = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).host
-              if (($appConfig.ingress.redirectToWWW -eq $true) -and ($appEnvironment -eq "production") -and ($environmentIngress -ne "true")) {
+              if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true")) {
                   $wwwIngress = "true"
               }
           }
@@ -221,16 +226,14 @@ jobs:
           # Add environment to ingress if needed
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -ne "false") {
-              $ingress = "$appEnvironment.$ingress"
+              $ingress = "${env:appEnvironment}.$ingress"
           }
 
           # Add datacenter location to ingress if HA hostname is enabled
-          $haIngress = "${{ inputs.haIngress }}" -replace '"', '' -replace "'", ""
-          if ($haIngress -eq "true") {
-              $datacenterLocation = "${{ steps.aks-info.outputs.datacenterLocation }}"
+          if ($env:haIngress -eq "true") {
               $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
 
-              if ($subDomain -match $datacenterLocation) {
+              if ($subDomain -match "$env:datacenterLocation") {
                   Write-Output "Datacenter location already present in ingress: $($ingress)"
                   continue
               }
@@ -246,10 +249,10 @@ jobs:
 
               Write-Output "Adding datacenter location to ingress: $($ingress)"
               if ($subDomain -ne "") {
-                  $ingress = "$subDomain.$datacenterLocation.$domainName"
+                  $ingress = "$subDomain.${env:datacenterLocation}.$domainName"
               }
               else {
-                  $ingress = "$datacenterLocation.$domainName"
+                  $ingress = "${env:datacenterLocation}.$domainName"
               }
           }
 
@@ -274,6 +277,8 @@ jobs:
         id: insert-new-line
         shell: bash
         run: |
+          # Insert new line after build arguments
+
           buildArguments=$(echo "${{ steps.get-envs.outputs.buildArguments }}" | sed 's/^ ; //g' | sed 's/; /\n/g')
           echo 'buildArguments<<EOF' >> $GITHUB_ENV
           echo "$buildArguments" >> $GITHUB_ENV
@@ -303,13 +308,21 @@ jobs:
 
       - name: Enable write access if image has already been deployed
         shell: bash
+        env:
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          GITHUB_SHA: ${{ github.sha }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" --query "digest" -o tsv || echo "")
+          # Enable write access if image has already been deployed
+
+          REGISTRY_HOSTNAME="${{ secrets.registryHostName }}"
+
+          IMAGE_MANIFEST=$(az acr repository show --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}:${GITHUB_SHA}-${ENVIRONMENT}" --query "digest" -o tsv || echo "")
           if [ -z "${IMAGE_MANIFEST}" ]; then
             echo "Failed to get current image manifest, proceeding with deployment."
           else
             echo "Enabling write access for image manifest."
-            az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --write-enabled true
+            az acr repository update --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}@${IMAGE_MANIFEST}" --write-enabled true
           fi
 
       - name: Set up Docker Buildx
@@ -344,7 +357,7 @@ jobs:
       minReplicas: ${{ env.minReplicas }}
       chartsPath: ${{ env.chartsPath }}
       wwwIngress: ${{ env.wwwIngress }}
-      datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation || 'centralus' }}
+      datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation }}
 
   deploy:
     name: AKS Deploy
@@ -367,37 +380,44 @@ jobs:
       - name: Create values override file
         id: values-override
         shell: pwsh
+        env:
+          environment: ${{ inputs.environment }}
+          chartsPath: ${{ needs.build.outputs.chartsPath }}
+          haIngress: ${{ inputs.haIngress }}
+          adminIngressWhitelist: ${{ inputs.adminIngressWhitelist }}
+          serviceIngressWhitelist: ${{ inputs.serviceIngressWhitelist }}
+          datacenterLocation: ${{ needs.build.outputs.datacenterLocation }}
+          domainName: ${{ needs.build.outputs.domainName }}
+          wwwIngress: ${{ needs.build.outputs.wwwIngress }}
+          ingress: ${{ needs.build.outputs.ingress }}
+          ingressWhitelist: ${{ inputs.ingressWhitelist }}
         run: |
+          # Create values override file
+
           # Get charts path
           $basePath = Get-Location
-          $environment = "${{ inputs.environment }}"
-          $chartsPath = "${{ needs.build.outputs.chartsPath }}"
-          Write-Output "Using charts path: $chartsPath"
+          Write-Output "Using charts path: $env:chartsPath"
           
-          $valuesYamlPath = Join-Path $basePath $chartsPath "values.yaml"
+          $valuesYamlPath = Join-Path $basePath $env:chartsPath "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
-          $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
+          $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
           $appName = $chartConfig.name
-          $appConfig.environment = $environment
+          $appConfig.environment = $env:environment
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
-          $haIngress = "${{ inputs.haIngress }}" -replace '"', '' -replace "'", ""
-          $adminIngressWhitelist = "${{ inputs.adminIngressWhitelist }}"
-          $serviceIngressWhitelist = "${{ inputs.serviceIngressWhitelist }}"
           $clusterIssuer = "letsencrypt-$environment"
 
           $domains = @()
           $updatedIngress = @()
           foreach ($item in $appConfig.ingress) {
               # Set ingress whitelist if not set
-              $ingressWhitelist = "${{ inputs.ingressWhitelist }}"
               $ipRegex = '^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){2}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/(3[0-2]|[12]?[0-9]))?$'
 
               $allIPsValid = $true
-              $ingressWhitelist -split ',' | ForEach-Object {
+              $env:ingressWhitelist -split ',' | ForEach-Object {
                   if ($_ -notmatch $ipRegex) {
                       $allIPsValid = $false
                   }
@@ -406,7 +426,7 @@ jobs:
               if (($item.name -ne "admin-ingress") -and (-not $allIPsValid)) {
                   Write-Output "Ingress whitelist not set for $($item.name)"
                   
-                  if (($ingressWhitelist -eq "service") -or ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
+                  if (($env:ingressWhitelist -eq "service") -or ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
                       # Use service whitelist
                       Write-Output "Overriding ingress whitelist with service whitelist for $($item.name)"
                       $ingressWhitelist = $serviceIngressWhitelist
@@ -424,11 +444,11 @@ jobs:
               }
               elseif ($item.privateIngress -eq "true") {
                   Write-Output "Private ingress is enabled, setting ingress whitelist to service whitelist for $($item.name)"
-                  if (($adminIngressWhitelist -ne "207.67.20.252") -or ($adminIngressWhitelist -ne "")) {
-                      $ingressWhitelist = $adminIngressWhitelist
+                  if (($env:adminIngressWhitelist -ne "207.67.20.252") -or ($env:adminIngressWhitelist -ne "")) {
+                      $ingressWhitelist = $env:adminIngressWhitelist
                   }
                   else {
-                      $ingressWhitelist = $serviceIngressWhitelist
+                      $ingressWhitelist = $env:serviceIngressWhitelist
                   }
               }
               elseif ($webAuthentication -eq "true") {
@@ -437,36 +457,34 @@ jobs:
               }
 
               # Add datacenter location to ingress if HA hostname is enabled
-              if ($haIngress -eq "true") {
-                  $datacenterLocation = "${{ needs.build.outputs.datacenterLocation }}"
-                  $subDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
-                  $domainName = "${{ needs.build.outputs.domainName }}"
+              if ($env:haIngress -eq "true") {
+                  $subDomain = $item.host -replace "$env:domainName", '' -replace "\.$", ""
 
-                  if ($subDomain -match $datacenterLocation) {
+                  if ($subDomain -match $env:datacenterLocation) {
                       Write-Output "Datacenter location already present in $($item.name): $($item.host)"
                       continue
                   }
 
                   if ($subDomain -match "\.service") {
                       if ($subDomain -match "services") {
-                          $domainName = "services.$domainName"
+                          $domainName = "services.${env:domainName}"
                       }
                       else {
-                          $domainName = "service.$domainName"
+                          $domainName = "service.${env:domainName}"
                       }
                   }
 
                   Write-Output "Adding datacenter location to $($item.name): $($item.host)"
                   if ($subDomain -ne "") {
-                      $item.host = "$subDomain.$datacenterLocation.$domainName"
+                      $item.host = "$subDomain.${env:datacenterLocation}.$domainName"
                   }
                   else {
-                      $item.host = "$datacenterLocation.$domainName"
+                      $item.host = "${env:datacenterLocation}.$domainName"
                   }
               }
 
               # Add environment to ingress
-              if ($environmentIngress -ne "false") { 
+              if ($environmentIngress -ne "false") {
                   $item.host = "$environment.$($item.host)"
                   Write-Output "Adding environment to $($item.name): $($item.host)"
               }
@@ -483,11 +501,11 @@ jobs:
               $item.annotations."cert-manager.io/cluster-issuer" = $clusterIssuer
 
               # Add whitelist annotation
-              $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$adminIngressWhitelist"
+              $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$env:adminIngressWhitelist"
 
               if ($item.name -eq "ingress") {
                   # Add WWW to ingress
-                  if (($item.redirectToWWW -eq $true) -and ($environment -eq "production") -and ($environmentIngress -ne "true")) {
+                  if (($item.redirectToWWW -eq $true) -and ($env:environment -eq "production") -and ($environmentIngress -ne "true")) {
                       # Add www redirect ingress
                       $updatedIngress += [PSCustomObject]@{
                           name = "wwwredirect"
@@ -505,7 +523,7 @@ jobs:
                   }
 
                   # Set ingress host to primary domain variable
-                  $dnsPrimaryDomain = $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
+                  $dnsPrimaryDomain = $item.host -replace "$env:domainName", '' -replace "\.$", ""
 
                   # Add webAuthentication to main ingress
                   if ($webAuthentication -eq "true") {
@@ -516,8 +534,8 @@ jobs:
                   }
               }
               elseif ($item.name -eq "admin-ingress") {
-                  if (($adminIngressWhitelist -ne "207.67.20.252") -or ($adminIngressWhitelist -ne "")) {
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $adminIngressWhitelist
+                  if (($env:adminIngressWhitelist -ne "207.67.20.252") -or ($env:adminIngressWhitelist -ne "")) {
+                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $env:adminIngressWhitelist
                   }
                   else {
                       $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = "207.67.20.252"
@@ -526,7 +544,7 @@ jobs:
               }
 
               # Add www redirect to ingress
-              if (($item.name -ne "ingress") -and ("${{ needs.build.outputs.wwwIngress }}" -eq "true") -and ($item.redirectToWWW -ne $false) -and ($item.host -match "${{ needs.build.outputs.ingress }}") -or (($item.name -ne "ingress") -and ($item.redirectToWWW -eq $true))) {
+              if (($item.name -ne "ingress") -and ("$env:wwwIngress" -eq "true") -and ($item.redirectToWWW -ne $false) -and ($item.host -match "$env:ingress") -or (($item.name -ne "ingress") -and ($item.redirectToWWW -eq $true))) {
                   Write-Output "Adding www to $($item.name) host"
                   $item.host = "www.$($item.host)"
               }
@@ -552,11 +570,11 @@ jobs:
               }
 
               # Add hostnames to domains variable
-              if ($item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", "" -eq "" -or $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", "" -eq " " -or $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", "" -eq $null) {
+              if ($item.host -replace "$env:domainName", '' -replace "\.$", "" -eq "" -or $item.host -replace "$env:domainName", '' -replace "\.$", "" -eq " " -or $item.host -replace "$env:domainName", '' -replace "\.$", "" -eq $null) {
                   Write-Output "Skipping adding empty hostname $($item.host) to domains list"
                   continue
               }
-              $domains += $item.host -replace "${{ needs.build.outputs.domainName }}", '' -replace "\.$", ""
+              $domains += $item.host -replace "$env:domainName", '' -replace "\.$", ""
               Write-Output "Adding $($item.host) to domains list"
           }
 
@@ -580,7 +598,7 @@ jobs:
           }
 
           # Remove www redirect ingress if not production
-          if ($environment -ne "production") {
+          if ($env:environment -ne "production") {
               $appConfig.ingress = $appConfig.ingress | Where-Object { $_.name -ne "wwwredirect" }
           }
 
@@ -588,7 +606,7 @@ jobs:
           $keysToRemove = @()
 
           foreach ($key in $appConfig.Keys) {
-              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "service")) {
+              if (($key -ne "ingress") -and ($key -ne "$env:environment") -and ($key -ne "service")) {
                   $keysToRemove += $key
               }
           }
@@ -642,6 +660,8 @@ jobs:
         id: aks-resource-group
         shell: bash
         run: |
+          # Get AKS cluster resource group
+
           AKS_RESOURCE_GROUP=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].resourceGroup" -o tsv)
           echo "AKS_RESOURCE_GROUP=${AKS_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
 
@@ -658,6 +678,8 @@ jobs:
           ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
+          # Switch Kubernetes Namespace
+
           if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
             kubectl config set-context --current --namespace="${ENVIRONMENT}"
             echo "namespace=${ENVIRONMENT}" >> $GITHUB_OUTPUT
@@ -667,26 +689,37 @@ jobs:
 
       - name: Update .env Kubernetes secret
         shell: bash
+        env:
+          APP_NAME: ${{ needs.build.outputs.appName }}
         run: |
-          if kubectl get secret "${{ needs.build.outputs.appName }}-config-secret" > /dev/null 2>&1; then
-              kubectl delete secret "${{ needs.build.outputs.appName }}-config-secret"
+          # Update .env Kubernetes secret
+
+          if kubectl get secret "${APP_NAME}-config-secret" > /dev/null 2>&1; then
+              kubectl delete secret "${APP_NAME}-config-secret"
           fi
-          kubectl create secret generic "${{ needs.build.outputs.appName }}-config-secret" --validate='warn' --from-env-file ${{ github.workspace }}/.env
+          kubectl create secret generic "${APP_NAME}-config-secret" --validate='warn' --from-env-file ${{ github.workspace }}/.env
 
       - name: Update basic web authentication Kubernetes secret
         shell: bash
+        env:
+          WEB_AUTHENTICATION: ${{ inputs.webAuthentication }}
+          APP_NAME: ${{ needs.build.outputs.appName }}
         run: |
-          if [[ "${{ inputs.webAuthentication }}" == "true" ]]; then
-              if [[ -z "${{ secrets.webAuthenticationUsername }}" ]] || [[ -z "${{ secrets.webAuthenticationPassword }}" ]]; then
+          # Update basic web authentication Kubernetes secret
+          WEB_AUTHENTICATION_USERNAME="${{ secrets.webAuthenticationUsername }}"
+          WEB_AUTHENTICATION_PASSWORD="${{ secrets.webAuthenticationPassword }}"
+
+          if [[ "${WEB_AUTHENTICATION}" == "true" ]]; then
+              if [[ -z "${WEB_AUTHENTICATION_USERNAME}" ]] || [[ -z "${WEB_AUTHENTICATION_PASSWORD}" ]]; then
                   echo "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
                   exit 1
               fi
           
-              if kubectl get secret "${{ needs.build.outputs.appName }}-basic-auth" > /dev/null 2>&1; then
-                  kubectl delete secret "${{ needs.build.outputs.appName }}-basic-auth"
+              if kubectl get secret "${APP_NAME}-basic-auth" > /dev/null 2>&1; then
+                  kubectl delete secret "${APP_NAME}-basic-auth"
               fi
-              htpasswd -cb auth "${{ secrets.webAuthenticationUsername }}" "${{ secrets.webAuthenticationPassword }}"
-              kubectl create secret generic "${{ needs.build.outputs.appName }}-basic-auth" --from-file=auth
+              htpasswd -cb auth "${WEB_AUTHENTICATION_USERNAME}" "${WEB_AUTHENTICATION_PASSWORD}"
+              kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
           fi
 
       - name: Create K8s Image Pull Secret
@@ -701,8 +734,13 @@ jobs:
       - name: Get previous image tag used in deployment
         id: get-previous-image
         shell: bash
+        env:
+          APP_NAME: ${{ needs.build.outputs.appName }}
+          NAMESPACE: ${{ steps.namespace.outputs.namespace }}
         run: |
-          PREVIOUS_IMAGE=$(kubectl get deployment "${{ needs.build.outputs.appName }}" -n "${{ steps.namespace.outputs.namespace }}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}' || echo "")
+          # Get previous image tag used in deployment
+
+          PREVIOUS_IMAGE=$(kubectl get deployment "${APP_NAME}" -n "${NAMESPACE}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}' || echo "")
           if [ -z "${PREVIOUS_IMAGE}" ]; then
             echo "No previous image found, proceeding with deployment"
           else
@@ -725,21 +763,30 @@ jobs:
       - name: Unlock and untag previous ACR image
         if: ${{ steps.get-previous-image.outputs.previousImage != '' }}
         shell: bash
+        env:
+          DEPLOYMENT_PREVIOUS_IMAGE: ${{ steps.get-previous-image.outputs.previousImage }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          GITHUB_SHA: ${{ github.sha }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          PREVIOUS_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ steps.get-previous-image.outputs.previousImage }}" --query "digest" -o tsv || true)
-          if [[ -n "$PREVIOUS_MANIFEST" ]] && [[ "${{ steps.get-previous-image.outputs.previousImage }}" != "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" ]]; then
+          # Unlock and untag previous ACR image
+
+          REGISTRY_HOSTNAME="${{ secrets.registryHostName }}"
+
+          PREVIOUS_MANIFEST=$(az acr repository show --name "${REGISTRY_HOSTNAME}" --image "${DEPLOYMENT_PREVIOUS_IMAGE}" --query "digest" -o tsv || true)
+          if [[ -n "$PREVIOUS_MANIFEST" ]] && [[ "${DEPLOYMENT_PREVIOUS_IMAGE}" != "${REPOSITORY_NAME}:${GITHUB_SHA}-${ENVIRONMENT}" ]]; then
             echo "Unlocking previous manifest: ${PREVIOUS_MANIFEST}"
-            az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
+            az acr repository update --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}@${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
             while read -r TAG; do
               SEMVER_REGEX="^[0-9]+\.[0-9]+\.[0-9]+$"
               if [[ ! "${TAG}" =~ $SEMVER_REGEX ]]; then
-                echo "Untagging ${{ github.event.repository.name }}:${TAG}"
-                az acr repository untag --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${TAG}"
+                echo "Untagging ${REPOSITORY_NAME}:${TAG}"
+                az acr repository untag --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}:${TAG}"
               else
-                echo "Skipping untagging ${{ github.event.repository.name }}:${TAG}"
+                echo "Skipping untagging ${REPOSITORY_NAME}:${TAG}"
               fi
-            done < <(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${PREVIOUS_MANIFEST}" --query "tags" -o tsv)
-          elif [[ "${{ steps.get-previous-image.outputs.previousImage }}" == "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" ]]; then
+            done < <(az acr repository show --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}@${PREVIOUS_MANIFEST}" --query "tags" -o tsv)
+          elif [[ "${DEPLOYMENT_PREVIOUS_IMAGE}" == "${REPOSITORY_NAME}:${GITHUB_SHA}-${ENVIRONMENT}" ]]; then
             echo "Deployment image is the same as the current image. Skipping unlocking."
           else
             echo "Previous manifest could not be found. Skipping unlocking."
@@ -747,12 +794,20 @@ jobs:
 
       - name: Disable delete access for newly deployed image
         shell: bash
+        env:
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          GITHUB_SHA: ${{ github.sha }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          IMAGE_MANIFEST=$(az acr repository show --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}" --query "digest" -o tsv)
+          # Disable delete access for newly deployed image
+
+          REGISTRY_HOSTNAME="${{ secrets.registryHostName }}"
+
+          IMAGE_MANIFEST=$(az acr repository show --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}:${GITHUB_SHA}-${ENVIRONMENT}" --query "digest" -o tsv)
           if [ -z "${IMAGE_MANIFEST}" ]; then
             echo "Failed to get current image manifest"
           fi
-          az acr repository update --name "${{ secrets.registryHostName }}" --image "${{ github.event.repository.name }}@${IMAGE_MANIFEST}" --delete-enabled false
+          az acr repository update --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}@${IMAGE_MANIFEST}" --delete-enabled false
 
       - name: Create or Update Public DNS Record
         id: dns
@@ -760,10 +815,12 @@ jobs:
         env:
           ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           ENVIRONMENT: ${{ inputs.environment }}
-          DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation || 'centralus' }}
+          DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation }}
           INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
         run: |
+          # Create or Update Public DNS Record
+
           # Set AKS cluster ingress
           AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
 
@@ -814,6 +871,7 @@ jobs:
         id: date
         shell: bash
         run: |
+          # Get Current Date
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
 
       - name: Install PowerShell modules for Accessing Azure Table Storage
@@ -823,48 +881,67 @@ jobs:
 
       - name: Record deployment information in Azure Storage Table
         shell: pwsh
+        env:
+          storageAccountName: amucloudapps
+          appInfoTableName: DeployedApplications
+          repositoryName: ${{ github.event.repository.name }}
+          environment: ${{ inputs.environment }}
+          appName: ${{ needs.build.outputs.appName }}
+          appVersion: ${{ needs.build.outputs.appVersion }}
+          environmentKeyVault: ${{ inputs.environmentKeyVault }}
+          dnsPrimaryDomain: ${{ steps.values-override.outputs.dnsPrimaryDomain }}
+          domainName: ${{ needs.build.outputs.domainName }}
+          ingress: ${{ needs.build.outputs.ingress }}
+          aksIngress: ${{ steps.dns.outputs.aksIngress }}
+          aksResourceGroup: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
+          date: ${{ steps.date.outputs.date }}
         run: |
-          $storageAccountName = "amucloudapps"
-          $storageAccountKey = ${{ secrets.storageAccountKey }}
-          $appInfoTableName = "DeployedApplications"
-          $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+          # Record deployment information in Azure Storage Table
+          $azureClusterName = "${{ secrets.azureClusterName }}"
+          $storageAccountKey = (Get-AzStorageAccountKey -ResourceGroupName $env:aksResourceGroup -Name $env:storageAccountName)[0].Value
+          $storageContext = New-AzStorageContext -StorageAccountName $env:storageAccountName -StorageAccountKey $storageAccountKey
 
           #Get Storage table
           try {
-              $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
+              $appInfoTable = (Get-AzStorageTable -Name $env:appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable
               }
           catch {
-              Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+              Write-Error -Message "Error accessing cloud $env:appInfoTableName table.  Error message was: $_.Exception.Message"
               return
           }
 
           Add-AzTableRow `
               -Table $appInfoTable `
-              -partitionKey "${{ github.event.repository.name }}" `
-              -RowKey "${{ inputs.environment }}" `
+              -partitionKey "$env:repositoryName" `
+              -RowKey "$env:environment" `
               -property @{
-              "ApplicationName"="${{ needs.build.outputs.appName }}";
-              "Version"="${{ needs.build.outputs.appVersion }}";
-              "KeyVault"="${{ inputs.environmentKeyVault }}";
-              "HostName"="${{ steps.values-override.outputs.dnsPrimaryDomain }}";
-              "DomainName"="${{ needs.build.outputs.domainName }}";
-              "IngressFqdn"="${{ needs.build.outputs.ingress }}";
-              "AksIngress"="${{ steps.dns.outputs.aksIngress }}";
-              "Cluster"="${{ secrets.azureClusterName }}";
-              "ClusterResourceGroup"="${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}";
-              "LastDeploy"="${{ steps.date.outputs.date }}"
+              "ApplicationName"="$env:appName";
+              "Version"="$env:appVersion";
+              "KeyVault"="$env:environmentKeyVault";
+              "HostName"="$env:dnsPrimaryDomain";
+              "DomainName"="$env:domainName";
+              "IngressFqdn"="$env:ingress";
+              "AksIngress"="$env:aksIngress";
+              "Cluster"="$azureClusterName";
+              "ClusterResourceGroup"="$env:aksResourceGroup";
+              "LastDeploy"="$env:date"
               } -UpdateExisting | Out-Null
 
       - name: Create deployment summary
         shell: bash
+        env:
+          APP_NAME: ${{ needs.build.outputs.appName }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          APP_VERSION: ${{ needs.build.outputs.appVersion }}
+          ENVIRONMENT_KEY_VAULT: ${{ inputs.environmentKeyVault }}
+          INGRESS: ${{ needs.build.outputs.ingress }}
         run: |
-          echo "### ${{ needs.build.outputs.appName }} Deployment Details" >> $GITHUB_STEP_SUMMARY
-          echo "- **Application Name**: ${{ needs.build.outputs.appName }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${{ needs.build.outputs.appVersion }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Key Vault Name**: ${{ inputs.environmentKeyVault }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **FQDN**: ${{ needs.build.outputs.ingress }}" >> $GITHUB_STEP_SUMMARY
-
+          echo "### ${APP_NAME} Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Application Name**: ${APP_NAME}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${ENVIRONMENT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${APP_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Key Vault Name**: ${ENVIRONMENT_KEY_VAULT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **FQDN**: ${INGRESS}" >> $GITHUB_STEP_SUMMARY
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
         uses: jdcargile/ms-teams-notification@v1.4
