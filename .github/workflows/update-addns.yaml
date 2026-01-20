@@ -78,7 +78,7 @@ jobs:
           }
           $hostnameList += $env:hostName
 
-          for ($hostName in $hostnameList) {
+          foreach ($hostName in $hostnameList) {
             # Remove existing CNAME record
             try {
                 # Get existing CNAME record
