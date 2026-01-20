@@ -123,7 +123,14 @@ jobs:
             }
           }
 
+      - name: Sync DNS Zone
+        shell: pwsh
+        env:
+          domainName: ${{ env.domainName }}
+        run: |
           # Sync DNS Zone
+          $domainController = "${{ secrets.domainController }}"
+
           try {
               Write-Output "Syncing DNS Zone '$env:domainName'"
               Sync-DnsServerZone -Name "$env:domainName" -ComputerName $domainController
