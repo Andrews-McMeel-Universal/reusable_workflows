@@ -430,7 +430,7 @@ jobs:
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
-          $clusterIssuer = "letsencrypt-$environment"
+          $clusterIssuer = "letsencrypt-$env:environment"
 
           $domains = @()
           $updatedIngress = @()
@@ -507,12 +507,12 @@ jobs:
 
               # Add environment to ingress
               if ($environmentIngress -ne "false") {
-                  $item.host = "$environment.$($item.host)"
+                  $item.host = "${env:environment}.$($item.host)"
                   Write-Output "Adding environment to $($item.name): $($item.host)"
               }
 
               # Add ingressClassName to ingress
-              $item.ingressClassName = "nginx-$environment"
+              $item.ingressClassName = "nginx-${env:environment}"
 
               # Reset annotations
               if ($null -eq $item.annotations) {
