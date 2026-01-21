@@ -151,7 +151,7 @@ jobs:
           if [ -z "$AKS_LOCATION" ]; then
             AKS_LOCATION="centralus"
           fi
-          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
+          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_ENV
 
       - name: Extract Helm values
         id: setenvs
@@ -367,7 +367,7 @@ jobs:
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
       wwwIngress: ${{ env.wwwIngress }}
-      datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation }}
+      datacenterLocation: ${{ env.datacenterLocation }}
 
   deploy:
     name: AKS Deploy
