@@ -11,6 +11,11 @@ on:
         required: false
         type: string
         description: "AKS Key vault."
+      chartsPath:
+        required: false
+        type: string
+        description: "Relative path to Helm charts."
+        default: "./deployments/charts"
       dockerFilePath:
         required: false
         type: string
@@ -160,7 +165,7 @@ jobs:
         env:
           appEnvironment: ${{ inputs.environment }}
           haIngress: ${{ inputs.haIngress }}
-          chartsPath: ./deployments/charts
+          chartsPath: ${{ inputs.chartsPath }}
           datacenterLocation: ${{ env.datacenterLocation }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
         run: |
@@ -393,7 +398,7 @@ jobs:
         shell: pwsh
         env:
           environment: ${{ inputs.environment }}
-          chartsPath: ./deployments/charts
+          chartsPath: ${{ inputs.chartsPath }}
           haIngress: ${{ inputs.haIngress }}
           adminIngressWhitelist: ${{ inputs.adminIngressWhitelist }}
           serviceIngressWhitelist: ${{ inputs.serviceIngressWhitelist }}
@@ -660,7 +665,7 @@ jobs:
         uses: azure/k8s-bake@v3
         with:
           renderEngine: "helm"
-          helmChart: ./deployments/charts
+          helmChart: ${{ inputs.chartsPath }}
           releaseName: ${{ needs.build.outputs.release }}
           helm-version: "v3.19.2"
           overrideFiles: ./values-override.yaml
