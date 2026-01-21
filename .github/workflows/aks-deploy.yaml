@@ -141,17 +141,18 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
 
       - name: Get AKS cluster info
-        if: inputs.haIngress == 'true'
         id: aks-info
         shell: bash
         run: |
           # Get AKS cluster info
 
+          HA_INGRESS="${{ inputs.haIngress }}"
+          if [ "$HA_INGRESS" = "true" ]; then
           AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
-          if [ -z "$AKS_LOCATION" ]; then
+          else
             AKS_LOCATION="centralus"
           fi
-          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_OUTPUT
+          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_ENV
 
       - name: Extract Helm values
         id: setenvs
@@ -160,7 +161,7 @@ jobs:
           appEnvironment: ${{ inputs.environment }}
           haIngress: ${{ inputs.haIngress }}
           chartsPath: ./deployments/charts
-          datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation }}
+          datacenterLocation: ${{ env.datacenterLocation }}
         run: |
           # Extract Helm values
 
@@ -357,7 +358,7 @@ jobs:
       minReplicas: ${{ env.minReplicas }}
       chartsPath: ${{ env.chartsPath }}
       wwwIngress: ${{ env.wwwIngress }}
-      datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation }}
+      datacenterLocation: ${{ env.datacenterLocation }}
 
   deploy:
     name: AKS Deploy
@@ -382,7 +383,7 @@ jobs:
         shell: pwsh
         env:
           environment: ${{ inputs.environment }}
-          chartsPath: ${{ needs.build.outputs.chartsPath }}
+          chartsPath: ${{ inputs.chartsPath }}
           haIngress: ${{ inputs.haIngress }}
           adminIngressWhitelist: ${{ inputs.adminIngressWhitelist }}
           serviceIngressWhitelist: ${{ inputs.serviceIngressWhitelist }}
@@ -637,7 +638,7 @@ jobs:
         uses: azure/k8s-bake@v3
         with:
           renderEngine: "helm"
-          helmChart: ${{ needs.build.outputs.chartsPath }}
+          helmChart: ${{ inputs.chartsPath }}
           releaseName: ${{ needs.build.outputs.release }}
           helm-version: "v3.19.2"
           overrideFiles: ./values-override.yaml
@@ -898,7 +899,7 @@ jobs:
         run: |
           # Record deployment information in Azure Storage Table
           $azureClusterName = "${{ secrets.azureClusterName }}"
-          $storageAccountKey = (Get-AzStorageAccountKey -ResourceGroupName $env:aksResourceGroup -Name $env:storageAccountName)[0].Value
+          $storageAccountKey = ${{ secrets.storageAccountKey }}
           $storageContext = New-AzStorageContext -StorageAccountName $env:storageAccountName -StorageAccountKey $storageAccountKey
 
           #Get Storage table
