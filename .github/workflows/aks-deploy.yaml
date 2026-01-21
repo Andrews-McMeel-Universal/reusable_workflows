@@ -141,14 +141,15 @@ jobs:
           creds: "${{ secrets.azureCredentials }}"
 
       - name: Get AKS cluster info
-        if: inputs.haIngress == 'true'
         id: aks-info
         shell: bash
         run: |
           # Get AKS cluster info
 
-          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
-          if [ -z "$AKS_LOCATION" ]; then
+          HA_INGRESS="${{ inputs.haIngress }}"
+          if [ "$HA_INGRESS" = "true" ]; then
+            AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
+          else
             AKS_LOCATION="centralus"
           fi
           echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_ENV
@@ -160,7 +161,7 @@ jobs:
           appEnvironment: ${{ inputs.environment }}
           haIngress: ${{ inputs.haIngress }}
           chartsPath: ./deployments/charts
-          datacenterLocation: ${{ steps.aks-info.outputs.datacenterLocation }}
+          datacenterLocation: ${{ env.datacenterLocation }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
         run: |
           # Extract Helm values
