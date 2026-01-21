@@ -921,7 +921,7 @@ jobs:
         run: |
           # Record deployment information in Azure Storage Table
           $azureClusterName = "${{ secrets.azureClusterName }}"
-          $storageAccountKey = (Get-AzStorageAccountKey -ResourceGroupName $env:aksResourceGroup -Name $env:storageAccountName)[0].Value
+          $storageAccountKey = "${{ secrets.storageAccountKey }}"
           $storageContext = New-AzStorageContext -StorageAccountName $env:storageAccountName -StorageAccountKey $storageAccountKey
 
           #Get Storage table
