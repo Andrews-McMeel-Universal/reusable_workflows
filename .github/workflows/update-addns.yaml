@@ -33,11 +33,13 @@ jobs:
           repositoryName: ${{ github.event.repository.name }}
           environment: ${{ inputs.environment }}
         run: |
-          $storageAccountKey = ${{ secrets.storageAccountKey }}
+          # Retrieve Application information
 
+          # Set Azure Storage context
+          $storageAccountKey = ${{ secrets.storageAccountKey }}
           $storageContext = New-AzStorageContext -StorageAccountName $env:storageAccountName -StorageAccountKey $storageAccountKey
 
-          #Get Storage table
+          # Get Storage table
           try {
               $appInfoTable = (Get-AzStorageTable -Name $env:appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
               }
