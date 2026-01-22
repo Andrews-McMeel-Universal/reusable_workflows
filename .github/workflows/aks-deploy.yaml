@@ -544,7 +544,7 @@ jobs:
 
               # Add environment to ingress
               if ($environmentIngress -ne "false") {
-                  if ($blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
+                  if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
                       $item.host = "${env:environment}-$inactiveDeployment.$($item.host)"
                       Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
                   }
@@ -556,7 +556,6 @@ jobs:
 
               # Add ingressClassName to ingress
               if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
-
                   # Set ingress class name
                   $item.ingressClassName = "nginx-${env:environment}-${env:inactiveDeployment}"
 
