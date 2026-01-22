@@ -982,34 +982,34 @@ jobs:
           # Update Bunny CDN origin URL
           $bunnyCdnApiKey = "${{ secrets.bunnyCdnApiKey }}"
 
+          # Set headers
+          $headers = @{
+              "AccessKey" = "$bunnyCdnApiKey"
+              "accept" = "application/json"
+              "content-type" = "application/json"
+          }
+
           # Get Pull Zone ID
-          $bunnyCdnPullzoneId = curl --request GET `
-            --url "https://api.bunny.net/pullzone?page=0&perPage=1000&search=${env:bunnyCdnDomain}&includeCertificate=false" `
-            --header "AccessKey: ${bunnyCdnApiKey}" `
-            --header "accept: application/json" | `
-            ConvertFrom-Json | `
-            Select-Object -ExpandProperty Items | `
-            Select-Object -ExpandProperty Id
+          $uri = "https://api.bunny.net/pullzone?page=0&perPage=1000&search=${env:bunnyCdnDomain}&includeCertificate=false"
+          $bunnyCdnPullZoneId = (Invoke-WebRequest -Headers $headers -Uri $uri -Method 'GET' | ConvertFrom-Json).Items.Id
 
           # Update origin URL
-          $originUrl = "https://${env:dnsPrimaryDomain}.${env:ingressDomainName}"
           Write-Output "Updating Bunny CDN origin URL to: ${originUrl}"
-          try {
-              $response = curl --request POST `
-                --url "https://api.bunny.net/pullzone/${bunnyCdnPullzoneId}" `
-                --header "AccessKey: ${bunnyCdnApiKey}" `
-                --header "accept: application/json" `
-                --header "content-type: application/json" `
-                --data '
-              {
-                "PreloadingScreenShowOnFirstVisit": true,
-                "OriginUrl": "${originUrl}"
-              }
-              '
-              Write-Output "Bunny CDN origin URL updated successfully."
+          $originUrl = "https://${env:dnsPrimaryDomain}.${env:ingressDomainName}"
+          $body = @{
+              "PreloadingScreenShowOnFirstVisit" = "true"
+              "OriginUrl" = "$originUrl"
+          } | ConvertTo-Json
+          $uri = "https://api.bunny.net/pullzone/${bunnyCdnPullZoneId}"
+          $response = (Invoke-WebRequest -Headers $headers -Uri $uri -Method 'POST' -Body $body | ConvertFrom-Json)
+
+          if ($response.OriginUrl -match "$originUrl") {
+              Write-Output "Bunny CDN origin URL was updated successfully"
           }
-          catch {
-              Write-Error -Message "Error updating Bunny CDN origin URL. Error message was: $_.Exception.Message"
+          else {
+              throw "Bunny CDN origin URL update response did not contain the expected origin URL."
+              Write-Output "Output: $response"
+              exit 1
           }
 
       - name: Create Sentry release
