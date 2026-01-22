@@ -59,7 +59,6 @@ jobs:
           hostName: ${{ env.hostName }}
           domainName: ${{ env.domainName }}
           aksIngress: ${{ env.aksIngress }}
-          blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           environment: ${{ inputs.environment }}
         run: |
           $domainController = "${{ secrets.domainController }}"
