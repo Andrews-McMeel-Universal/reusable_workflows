@@ -224,8 +224,7 @@ jobs:
           # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
 
-          # Add environment to ingress if needed
-          $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
+          # Add environment to ingress
           if ($environmentIngress -ne "false") {
               $ingress = "${env:appEnvironment}.$ingress"
           }
@@ -430,7 +429,7 @@ jobs:
                   if (($env:ingressWhitelist -eq "service") -or ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
                       # Use service whitelist
                       Write-Output "Overriding ingress whitelist with service whitelist for $($item.name)"
-                      $ingressWhitelist = $serviceIngressWhitelist
+                      $ingressWhitelist = $env:serviceIngressWhitelist
                   }
                   elseif ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
                       # Use existing whitelist
@@ -814,18 +813,18 @@ jobs:
         id: dns
         shell: bash
         env:
-          ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           ENVIRONMENT: ${{ inputs.environment }}
-          DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation }}
-          INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
+          ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
+          INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
+          DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation }}
         run: |
           # Create or Update Public DNS Record
 
           # Set AKS cluster ingress
           AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
 
-          # Add environment and blue/green deployment suffixes if applicable
+          # Add environment suffixes if applicable
           if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
             INGRESS="${AKS_CLUSTER_NAME}-${ENVIRONMENT}"
           else
@@ -847,7 +846,7 @@ jobs:
 
           # Update DNS record
           for INGRESS in "${INGRESSES[@]}"; do
-            echo "Updating DNS record for ${INGRESS} to $AKS_INGRESS"
+            echo "Updating DNS record for ${INGRESS} to ${AKS_INGRESS}"
             az network dns record-set cname set-record \
               --resource-group "AMU_DNS_RG" \
               --zone-name "${INGRESS_DOMAIN_NAME}" \
