@@ -95,7 +95,6 @@ on:
         required: false
         type: string
         default: ${{ vars.ENV_ENCRYPTION_SECRET }}
-      
       blueGreenDeployment:
         required: false
         type: string
@@ -193,8 +192,8 @@ jobs:
           }
           Write-Output "activeDeployment=$activeDeployment"
           Write-Output "activeDeployment=$activeDeployment" >> $env:GITHUB_ENV
-          Write-Output "inactiveDeployment=$inactiveDeployment"
-          Write-Output "inactiveDeployment=$inactiveDeployment" >> $env:GITHUB_ENV
+          Write-Output "blueGreenInactiveDeployment=$inactiveDeployment"
+          Write-Output "blueGreenInactiveDeployment=$inactiveDeployment" >> $env:GITHUB_ENV
 
       - name: Login via Az module
         if: inputs.haIngress == 'true'
@@ -225,7 +224,7 @@ jobs:
           chartsPath: ./deployments/charts
           datacenterLocation: ${{ env.datacenterLocation }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
-          inactiveDeployment: ${{ env.inactiveDeployment }}
+          blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
         run: |
           # Extract Helm values
 
@@ -291,7 +290,7 @@ jobs:
           # Add environment to ingress
           if ($environmentIngress -ne "false") {
               if ($env:blueGreenDeployment -eq "true" -and $env:appEnvironment -eq "production") {
-                  $ingress = "${env:appEnvironment}-${env:inactiveDeployment}.$ingress"
+                  $ingress = "${env:appEnvironment}-${env:blueGreenInactiveDeployment}.$ingress"
               }
               else {
                   $ingress = "${env:appEnvironment}.$ingress"
@@ -426,7 +425,7 @@ jobs:
       minReplicas: ${{ env.minReplicas }}
       chartsPath: ${{ env.chartsPath }}
       wwwIngress: ${{ env.wwwIngress }}
-      inactiveDeployment: ${{ env.inactiveDeployment }}
+      blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
       datacenterLocation: ${{ env.datacenterLocation }}
 
   deploy:
@@ -462,7 +461,7 @@ jobs:
           ingress: ${{ needs.build.outputs.ingress }}
           ingressWhitelist: ${{ inputs.ingressWhitelist }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
-          inactiveDeployment: ${{ needs.build.outputs.inactiveDeployment }}
+          blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Create values override file
 
@@ -558,7 +557,7 @@ jobs:
               # Add environment to ingress
               if ($environmentIngress -ne "false") {
                   if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
-                      $item.host = "${env:environment}-${env:inactiveDeployment}.$($item.host)"
+                      $item.host = "${env:environment}-${env:blueGreenInactiveDeployment}.$($item.host)"
                       Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
                   }
                   else {
@@ -570,10 +569,10 @@ jobs:
               # Add ingressClassName to ingress
               if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
                   # Set ingress class name
-                  $item.ingressClassName = "nginx-${env:environment}-${env:inactiveDeployment}"
+                  $item.ingressClassName = "nginx-${env:environment}-${env:blueGreenInactiveDeployment}"
 
                   # Add cluster issuer annotation
-                  $item.annotations."cert-manager.io/cluster-issuer" = "letsencrypt-${env:environment}-${env:inactiveDeployment}"
+                  $item.annotations."cert-manager.io/cluster-issuer" = "letsencrypt-${env:environment}-${env:blueGreenInactiveDeployment}"
               }
               else {
                   # Set ingress class name
@@ -767,12 +766,12 @@ jobs:
           ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           ENVIRONMENT: ${{ inputs.environment }}
           BLUE_GREEN_DEPLOYMENT: ${{ inputs.blueGreenDeployment }}
-          INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.inactiveDeployment }}
+          BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Switch Kubernetes Namespace
           if [ $ENVIRONMENT_NAMESPACE == "true" ]; then
             if [ $BLUE_GREEN_DEPLOYMENT == "true" ] && [ $ENVIRONMENT == "production" ]; then
-              ENVIRONMENT="${ENVIRONMENT}-${INACTIVE_DEPLOYMENT}"
+              ENVIRONMENT="${ENVIRONMENT}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}"
             fi
             kubectl config set-context --current --namespace="${ENVIRONMENT}"
             echo "namespace=${ENVIRONMENT}" >> $GITHUB_OUTPUT
@@ -909,10 +908,10 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
           ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           BLUE_GREEN_DEPLOYMENT: ${{ inputs.blueGreenDeployment }}
-          BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.inactiveDeployment }}
+          BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
           INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
-          DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation || 'centralus' }}
+          DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation }}
         run: |
           # Create or Update Public DNS Record
 
@@ -929,10 +928,8 @@ jobs:
           # Set AKS ingress FQDN
           if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ]; then
             AKS_INGRESS="${INGRESS}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
-            DNS_RECORD_TTL=600
           else
             AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
-            DNS_RECORD_TTL=3600
           fi
           echo "aksIngress=${AKS_INGRESS}"
           echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
@@ -954,19 +951,7 @@ jobs:
               --zone-name "${INGRESS_DOMAIN_NAME}" \
               --record-set-name "${INGRESS}" \
               --cname "${AKS_INGRESS}" \
-              --ttl ${DNS_RECORD_TTL}
-
-            # Update root domain for blue-green deployments in production
-            if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ]; then
-              ROOT_INGRESS="${INGRESS/-${BLUE_GREEN_INACTIVE_DEPLOYMENT}/}"
-              echo "Updating DNS record for ${ROOT_INGRESS} to ${AKS_INGRESS}"
-              az network dns record-set cname set-record \
-                --resource-group "AMU_DNS_RG" \
-                --zone-name "${INGRESS_DOMAIN_NAME}" \
-                --record-set-name "${ROOT_INGRESS}" \
-                --cname "${AKS_INGRESS}" \
-                --ttl ${DNS_RECORD_TTL}
-            fi
+              --ttl 3600
           done
 
       - name: Update Bunny CDN origin URL
@@ -975,7 +960,6 @@ jobs:
         env:
           bunnyCdnDomain: ${{ inputs.bunnyCdnDomain }}
           environment: ${{ inputs.environment }}
-          inactiveDeployment: ${{ needs.build.outputs.inactiveDeployment }}
           dnsPrimaryDomain: ${{ steps.values-override.outputs.dnsPrimaryDomain }}
           ingressDomainName: ${{ needs.build.outputs.domainName }}
         run: |
