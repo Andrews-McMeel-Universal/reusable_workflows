@@ -488,7 +488,7 @@ jobs:
                   if (($env:ingressWhitelist -eq "service") -or ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
                       # Use service whitelist
                       Write-Output "Overriding ingress whitelist with service whitelist for $($item.name)"
-                      $ingressWhitelist = $serviceIngressWhitelist
+                      $ingressWhitelist = $env:serviceIngressWhitelist
                   }
                   elseif ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
                       # Use existing whitelist
@@ -545,7 +545,7 @@ jobs:
               # Add environment to ingress
               if ($environmentIngress -ne "false") {
                   if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
-                      $item.host = "${env:environment}-$inactiveDeployment.$($item.host)"
+                      $item.host = "${env:environment}-${env:inactiveDeployment}.$($item.host)"
                       Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
                   }
                   else {
