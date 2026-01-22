@@ -994,8 +994,8 @@ jobs:
           $bunnyCdnPullZoneId = (Invoke-WebRequest -Headers $headers -Uri $uri -Method 'GET' | ConvertFrom-Json).Items.Id
 
           # Update origin URL
-          Write-Output "Updating Bunny CDN origin URL to: ${originUrl}"
           $originUrl = "https://${env:dnsPrimaryDomain}.${env:ingressDomainName}"
+          Write-Output "Updating Bunny CDN origin URL to: ${originUrl}"
           $body = @{
               "PreloadingScreenShowOnFirstVisit" = "true"
               "OriginUrl" = "$originUrl"
