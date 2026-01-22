@@ -1,4 +1,4 @@
-name: Update Boley AD DNS
+name: Update Internal DNS
 
 on:
   workflow_call:
@@ -7,21 +7,6 @@ on:
         required: true
         type: string
         description: "Deploy environment. Can be development, staging, or production."
-      repositoryName:
-        required: false
-        type: string
-        description: "GitHub Repository Name."
-        default: ${{ github.event.repository.name }}
-      storageAccountName:
-        required: false
-        type: string
-        description: "Storage Account for application information table."
-        default: "amucloudapps"
-      appInfoTableName:
-        required: false
-        type: string
-        description: "Application information storage table."
-        default: "DeployedApplications"
     secrets:
       domainController:
         required: true
@@ -31,7 +16,7 @@ on:
 
 jobs:
   update-dns:
-    name: Update Boley DNS
+    name: Update Internal DNS
     runs-on: [self-hosted, Windows, boley]
     steps:
       - name: Install PowerShell modules
@@ -42,94 +27,98 @@ jobs:
       - name: Retrieve Application information
         id: getappinfo
         shell: pwsh
+        env:
+          appInfoTableName: DeployedApplications
+          storageAccountName: amucloudapps
+          repositoryName: ${{ github.event.repository.name }}
+          environment: ${{ inputs.environment }}
         run: |
-          $storageAccountName = "${{ inputs.storageAccountName }}"
+          # Retrieve Application information
+
+          # Set Azure Storage context
           $storageAccountKey = ${{ secrets.storageAccountKey }}
-          $appInfoTableName = "${{ inputs.appInfoTableName }}"
+          $storageContext = New-AzStorageContext -StorageAccountName $env:storageAccountName -StorageAccountKey $storageAccountKey
 
-          $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
-
-          #Get Storage table
+          # Get Storage table
           try {
-              $appInfoTable = (Get-AzStorageTable -Name $appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
+              $appInfoTable = (Get-AzStorageTable -Name $env:appInfoTableName -Context $storageContext -ErrorAction Stop).CloudTable 
               }
           catch {
-              Write-Error -Message "Error accessing cloud $appInfoTableName table.  Error message was: $_.Exception.Message"
+              Write-Error -Message "Error accessing cloud $env:appInfoTableName table.  Error message was: $_.Exception.Message"
               return
               }
 
-          $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey "${{ inputs.repositoryName }}" -RowKey "${{ inputs.environment }}"
+          $appInfo = Get-AzTableRow -Table $appInfoTable -PartitionKey "$env:repositoryName" -RowKey "$env:environment"
 
           echo "aksIngress=$($appInfo.AksIngress)" >> $env:GITHUB_ENV
           echo "hostName=$($appInfo.HostName)" >> $env:GITHUB_ENV
           echo "domainName=$($appInfo.DomainName)" >> $env:GITHUB_ENV
 
-      - name: Update Internal Boley DNS
+      - name: Update Internal DNS
         timeout-minutes: 15
         shell: pwsh
+        env:
+          hostName: ${{ env.hostName }}
+          domainName: ${{ env.domainName }}
+          aksIngress: ${{ env.aksIngress }}
+          environment: ${{ inputs.environment }}
         run: |
-          $hostName = "${{ env.hostName }}"
-          $domainName = "${{ env.domainName }}"
           $domainController = "${{ secrets.domainController }}"
-          $aksIngress = "${{ env.aksIngress }}"
 
           # Remove existing CNAME record
           try {
               # Get existing CNAME record
-              $existingRecord = Get-DnsServerResourceRecord -ZoneName "$domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$hostName" }
-
+              $existingRecord = Get-DnsServerResourceRecord -ZoneName "$env:domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$env:hostName" }
               # Error out if the existing record is not a CNAME record
               if ($existingRecord -and $existingRecord.RecordType -ne "CNAME") {
-                  Write-Host "Error: Existing record for '$hostName' is not a CNAME record. It is a $($existingRecord.RecordType) record."
+                  Write-Host "Error: Existing record for '$env:hostName' is not a CNAME record. It is a $($existingRecord.RecordType) record."
                   exit 1
               }
 
               # Remove record
               if ($existingRecord) {
-                  Write-Output "CNAME record '$hostName' already exists. Removing it before adding the new one."
-                  Remove-DnsServerResourceRecord -ZoneName "$domainName" -Name "$hostName" -ComputerName $domainController -RecordData $existingRecord.RecordData.HostNameAlias -RRType "CNAME" -Force
-                  Write-Output "Removed existing CNAME record for '$hostName.$domainName'"
+                  Write-Output "CNAME record '${env:hostName}' already exists. Removing it before adding the new one."
+                  Remove-DnsServerResourceRecord -ZoneName "$env:domainName" -Name "$env:hostName" -ComputerName $domainController -RecordData $existingRecord.RecordData.HostNameAlias -RRType "CNAME" -Force
+                  Write-Output "Removed existing CNAME record for '${env:hostName}.${env:domainName}'"
               }
           }
           catch {
               Write-Host "Error removing existing DNS record: $_"
-              if ($_.Exception) {
-                  if ($_.Exception.InnerException) {
-                      Write-Host "Inner Exception Message: $($_.Exception.InnerException.Message)"
-                  }
-              }
               exit 1
           }
 
           # Add new CNAME record
           try {
               # Add the new CNAME record
-              Write-Output "Adding CNAME record for '$aksIngress' to '$hostName.$domainName'"
-              Add-DnsServerResourceRecordCName -Name "$hostName" -HostNameAlias "$aksIngress" -ZoneName "$domainName" -ComputerName $domainController -PassThru
+              Write-Output "Adding CNAME record for '$env:aksIngress' to '${env:hostName}.${env:domainName}'"
+              Add-DnsServerResourceRecordCName -Name "$env:hostName" -HostNameAlias "$env:aksIngress" -ZoneName "$env:domainName" -ComputerName $domainController -PassThru
           } 
           catch {
               Write-Host "Error updating DNS record: $_"
-              if ($_.Exception) {
-                  if ($_.Exception.InnerException) {
-                      Write-Host "Inner Exception Message: $($_.Exception.InnerException.Message)"
-                  }
-              }
               exit 1
           }
 
           # Verify the update
           try {
               Write-Output "Verifying the DNS record..."
-              Get-DnsServerResourceRecord -ZoneName "$domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$hostName" } | Format-List
+              Get-DnsServerResourceRecord -ZoneName "$env:domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$env:hostName" } | Format-List
           }
           catch {
               Write-Host "Error verifying the DNS record: $_"
+              exit 1
           }
 
+      - name: Sync DNS Zone
+        shell: pwsh
+        env:
+          domainName: ${{ env.domainName }}
+        run: |
           # Sync DNS Zone
+          $domainController = "${{ secrets.domainController }}"
+
           try {
-              Write-Output "Syncing DNS Zone '$domainName'"
-              Sync-DnsServerZone -Name "$domainName" -ComputerName $domainController
+              Write-Output "Syncing DNS Zone '$env:domainName'"
+              Sync-DnsServerZone -Name "$env:domainName" -ComputerName $domainController
           } 
           catch {
               Write-Host "Skipping zone sync. Zone is currently being synced."
