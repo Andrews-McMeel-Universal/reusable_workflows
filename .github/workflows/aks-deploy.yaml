@@ -101,6 +101,16 @@ on:
         type: string
         description: "Enable blue/green deployment strategy"
         default: ${{ vars.BLUE_GREEN_DEPLOYMENT || 'false' }}
+      bunnyCdnDomain:
+        required: false
+        type: string
+        description: "Bunny CDN Domain. Set to the domain of your Bunny CDN."
+        default: ${{ vars.BUNNY_CDN_DOMAIN }}
+      updateBunnyCdnOrigin:
+        required: false
+        type: string
+        description: "Enable updating Bunny CDN pull zone origin after deployment"
+        default: ${{ vars.UPDATE_BUNNY_CDN_ORIGIN || 'false' }}
     secrets:
       azureClusterName:
         required: true
@@ -212,6 +222,8 @@ jobs:
           haIngress: ${{ inputs.haIngress }}
           chartsPath: ./deployments/charts
           datacenterLocation: ${{ env.datacenterLocation }}
+          blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
+          inactiveDeployment: ${{ env.inactiveDeployment }}
         run: |
           # Extract Helm values
 
@@ -275,11 +287,9 @@ jobs:
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
 
           # Add environment to ingress
-          $inactiveDeployment = "${{ env.inactiveDeployment }}" -replace '"', '' -replace "'", ""
-          $blueGreenDeployment = "${{ inputs.blueGreenDeployment }}" -replace '"', '' -replace "'", ""
           if ($environmentIngress -ne "false") {
-              if ($blueGreenDeployment -eq "true" -and $appEnvironment -eq "production") {
-                  $ingress = "$appEnvironment-$inactiveDeployment.$ingress"
+              if ($env:blueGreenDeployment -eq "true" -and $env:appEnvironment -eq "production") {
+                  $ingress = "${env:appEnvironment}-${env:inactiveDeployment}.$ingress"
               }
               else {
                   $ingress = "${env:appEnvironment}.$ingress"
@@ -434,6 +444,7 @@ jobs:
         shell: pwsh
         run: |
           Install-Module -Name powershell-yaml -Force
+
       - name: Create values override file
         id: values-override
         shell: pwsh
@@ -955,6 +966,35 @@ jobs:
                 --ttl ${DNS_RECORD_TTL}
             fi
           done
+
+      - name: Update Bunny CDN origin URL
+        if: inputs.bunnyCdnDomain != '' && inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
+        shell: bash
+        env:
+          BUNNY_CDN_DOMAIN: ${{ inputs.bunnyCdnDomain }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.inactiveDeployment }}
+          DNS_PRIMARY_DOMAIN: ${{ steps.values-override.outputs.dnsPrimaryDomain }}
+          INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
+        run: |
+          # Update Bunny CDN origin URL
+          BUNNY_CDN_API_KEY="${{ secrets.bunnyCdnApiKey }}"
+
+          # Get Pull Zone ID
+          BUNNY_PULL_ZONE_ID=$(curl --request GET \
+            --url "https://api.bunny.net/pullzone?page=0&perPage=1000&search=${BUNNY_CDN_DOMAIN}&includeCertificate=false" \
+            --header "AccessKey: ${BUNNY_CDN_API_KEY}" \
+            --header "accept: application/json")
+
+          # Update Bunny CDN origin URL
+          ORIGIN_URL="https://${DNS_PRIMARY_DOMAIN}.${INGRESS_DOMAIN_NAME}"
+
+          echo "Updating Bunny CDN origin URL to ${ORIGIN_URL}"
+          curl -X PUT "https://bunnycdn.com/api/pullzone/${BUNNY_PULL_ZONE_ID}" \
+            -H "AccessKey: ${BUNNY_CDN_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"OriginUrl\":\"${ORIGIN_URL}\"}"
+
 
       - name: Create Sentry release
         if: env.NEXT_PUBLIC_SENTRY_DSN && inputs.publishSentryRelease == 'true'
