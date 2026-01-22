@@ -132,6 +132,8 @@ on:
         required: false
       sentryAuthToken:
         required: false
+      bunnyCdnApiKey:
+        required: false
 
 jobs:
   build:
