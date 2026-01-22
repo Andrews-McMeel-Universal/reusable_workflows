@@ -765,10 +765,9 @@ jobs:
           if [ $ENVIRONMENT_NAMESPACE == "true" ]; then
             if [ $BLUE_GREEN_DEPLOYMENT == "true" ] && [ $ENVIRONMENT == "production" ]; then
               ENVIRONMENT="${ENVIRONMENT}-${INACTIVE_DEPLOYMENT}"
-            else
-              kubectl config set-context --current --namespace="${ENVIRONMENT}"
-              echo "namespace=${ENVIRONMENT}" >> $GITHUB_OUTPUT
             fi
+            kubectl config set-context --current --namespace="${ENVIRONMENT}"
+            echo "namespace=${ENVIRONMENT}" >> $GITHUB_OUTPUT
           else
             echo "namespace=default" >> $GITHUB_OUTPUT
           fi
