@@ -148,7 +148,7 @@ jobs:
 
           HA_INGRESS="${{ inputs.haIngress }}"
           if [ "$HA_INGRESS" = "true" ]; then
-          AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
+            AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
           else
             AKS_LOCATION="centralus"
           fi
