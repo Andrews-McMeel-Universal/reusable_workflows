@@ -479,7 +479,7 @@ jobs:
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
-          $clusterIssuer = "letsencrypt-$env:environment"
+          $clusterIssuer = "letsencrypt-${env:environment}"
 
           $domains = @()
           $updatedIngress = @()
@@ -917,8 +917,6 @@ jobs:
 
           # Set AKS cluster ingress
           AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
-
-          # Add environment suffixes if applicable
           if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
             INGRESS="${AKS_CLUSTER_NAME}-${ENVIRONMENT}"
           else
