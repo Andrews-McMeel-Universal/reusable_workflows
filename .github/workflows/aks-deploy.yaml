@@ -981,7 +981,7 @@ jobs:
           BUNNY_CDN_API_KEY="${{ secrets.bunnyCdnApiKey }}"
 
           # Get Pull Zone ID
-          BUNNY_PULL_ZONE_ID=$(curl --request GET \
+          BUNNY_CDN_PULLZONE_ID=$(curl --request GET \
             --url "https://api.bunny.net/pullzone?page=0&perPage=1000&search=${BUNNY_CDN_DOMAIN}&includeCertificate=false" \
             --header "AccessKey: ${BUNNY_CDN_API_KEY}" \
             --header "accept: application/json")
@@ -990,10 +990,17 @@ jobs:
           ORIGIN_URL="https://${DNS_PRIMARY_DOMAIN}.${INGRESS_DOMAIN_NAME}"
 
           echo "Updating Bunny CDN origin URL to ${ORIGIN_URL}"
-          curl -X PUT "https://bunnycdn.com/api/pullzone/${BUNNY_PULL_ZONE_ID}" \
-            -H "AccessKey: ${BUNNY_CDN_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{\"OriginUrl\":\"${ORIGIN_URL}\"}"
+          curl --request POST \
+              --url https://api.bunny.net/pullzone/${BUNNY_CDN_PULLZONE_ID} \
+              --header "AccessKey: ${BUNNY_CDN_API_KEY}" \
+              --header "accept: application/json" \
+              --header "content-type: application/json" \
+              --data "
+          {
+            \"PreloadingScreenShowOnFirstVisit\": true,
+            \"OriginUrl\": \"${ORIGIN_URL}\"
+          }
+          "
 
 
       - name: Create Sentry release
