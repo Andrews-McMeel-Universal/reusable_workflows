@@ -562,10 +562,6 @@ jobs:
 
                   # Add cluster issuer annotation
                   $item.annotations."cert-manager.io/cluster-issuer" = "letsencrypt-${env:environment}-${env:inactiveDeployment}"
-
-                  $rootIngress = $item.host -replace "-${env:inactiveDeployment}", "" -replace "\.$", ""
-                  Write-Output "Adding server alias to $($item.name): $rootIngress"
-                  $item.annotations."nginx.ingress.kubernetes.io/server-alias" = "$rootIngress"
               }
               else {
                   # Set ingress class name
