@@ -7,12 +7,6 @@ on:
         required: true
         type: string
         description: "Deploy environment. Can be development, staging, or production."
-      
-      blueGreenDeployment:
-        required: false
-        type: string
-        description: "Enable blue/green deployment strategy"
-        default: ${{ vars.BLUE_GREEN_DEPLOYMENT || 'false' }}
     secrets:
       domainController:
         required: true
@@ -70,57 +64,47 @@ jobs:
         run: |
           $domainController = "${{ secrets.domainController }}"
 
-          $hostnameList = @()
-          if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
-            $baseHost = $env:hostName -replace '-blue', '' -replace '-green', ''
-          
-            $hostnameList += "$baseHost"
+          # Remove existing CNAME record
+          try {
+              # Get existing CNAME record
+              $existingRecord = Get-DnsServerResourceRecord -ZoneName "$env:domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$env:hostName" }
+              # Error out if the existing record is not a CNAME record
+              if ($existingRecord -and $existingRecord.RecordType -ne "CNAME") {
+                  Write-Host "Error: Existing record for '$env:hostName' is not a CNAME record. It is a $($existingRecord.RecordType) record."
+                  exit 1
+              }
+
+              # Remove record
+              if ($existingRecord) {
+                  Write-Output "CNAME record '${env:hostName}' already exists. Removing it before adding the new one."
+                  Remove-DnsServerResourceRecord -ZoneName "$env:domainName" -Name "$env:hostName" -ComputerName $domainController -RecordData $existingRecord.RecordData.HostNameAlias -RRType "CNAME" -Force
+                  Write-Output "Removed existing CNAME record for '${env:hostName}.${env:domainName}'"
+              }
           }
-          $hostnameList += $env:hostName
+          catch {
+              Write-Host "Error removing existing DNS record: $_"
+              exit 1
+          }
 
-          foreach ($hostName in $hostnameList) {
-            # Remove existing CNAME record
-            try {
-                # Get existing CNAME record
-                $existingRecord = Get-DnsServerResourceRecord -ZoneName "$env:domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$hostName" }
-                # Error out if the existing record is not a CNAME record
-                if ($existingRecord -and $existingRecord.RecordType -ne "CNAME") {
-                    Write-Host "Error: Existing record for '$hostName' is not a CNAME record. It is a $($existingRecord.RecordType) record."
-                    exit 1
-                }
+          # Add new CNAME record
+          try {
+              # Add the new CNAME record
+              Write-Output "Adding CNAME record for '$env:aksIngress' to '${env:hostName}.${env:domainName}'"
+              Add-DnsServerResourceRecordCName -Name "$env:hostName" -HostNameAlias "$env:aksIngress" -ZoneName "$env:domainName" -ComputerName $domainController -PassThru
+          } 
+          catch {
+              Write-Host "Error updating DNS record: $_"
+              exit 1
+          }
 
-                # Remove record
-                if ($existingRecord) {
-                    Write-Output "CNAME record '$hostName' already exists. Removing it before adding the new one."
-                    Remove-DnsServerResourceRecord -ZoneName "$env:domainName" -Name "$hostName" -ComputerName $domainController -RecordData $existingRecord.RecordData.HostNameAlias -RRType "CNAME" -Force
-                    Write-Output "Removed existing CNAME record for '$hostName.$env:domainName'"
-                }
-            }
-            catch {
-                Write-Host "Error removing existing DNS record: $_"
-                exit 1
-            }
-
-            # Add new CNAME record
-            try {
-                # Add the new CNAME record
-                Write-Output "Adding CNAME record for '$env:aksIngress' to '$hostName.$env:domainName'"
-                Add-DnsServerResourceRecordCName -Name "$hostName" -HostNameAlias "$env:aksIngress" -ZoneName "$env:domainName" -ComputerName $domainController -PassThru
-            } 
-            catch {
-                Write-Host "Error updating DNS record: $_"
-                exit 1
-            }
-
-            # Verify the update
-            try {
-                Write-Output "Verifying the DNS record..."
-                Get-DnsServerResourceRecord -ZoneName "$env:domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$hostName" } | Format-List
-            }
-            catch {
-                Write-Host "Error verifying the DNS record: $_"
-                exit 1
-            }
+          # Verify the update
+          try {
+              Write-Output "Verifying the DNS record..."
+              Get-DnsServerResourceRecord -ZoneName "$env:domainName" -ComputerName $domainController | Where-Object { $_.HostName -eq "$env:hostName" } | Format-List
+          }
+          catch {
+              Write-Host "Error verifying the DNS record: $_"
+              exit 1
           }
 
       - name: Sync DNS Zone
