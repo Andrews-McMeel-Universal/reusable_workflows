@@ -562,8 +562,9 @@ jobs:
               }
 
               # Add datacenter location to ingress if HA hostname is enabled
+              $domainName = $env:domainName
               if ($env:haIngress -eq "true") {
-                  $subDomain = $item.host -replace "$env:domainName", '' -replace "\.$", ""
+                  $subDomain = $item.host -replace "$domainName", '' -replace "\.$", ""
 
                   if ($subDomain -match $env:datacenterLocation) {
                       Write-Output "Datacenter location already present in $($item.name): $($item.host)"
@@ -572,10 +573,10 @@ jobs:
 
                   if ($subDomain -match "\.service") {
                       if ($subDomain -match "services") {
-                          $domainName = "services.${env:domainName}"
+                          $domainName = "services.${domainName}"
                       }
                       else {
-                          $domainName = "service.${env:domainName}"
+                          $domainName = "service.${domainName}"
                       }
                   }
 
