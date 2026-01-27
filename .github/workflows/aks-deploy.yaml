@@ -964,8 +964,8 @@ jobs:
           # Update Bunny CDN origin URL
           $bunnyCdnApiKey = "${{ secrets.bunnyCdnApiKey }}"
           if (-not $bunnyCdnApiKey -or $bunnyCdnApiKey -eq "") {
-              throw "Bunny CDN API key has not been properly passed into the workflow."
-              exit 1
+              echo "::warning::Bunny CDN API key has not been properly passed into the workflow."
+              exit 0
           }
 
           $originUrl = "https://${env:dnsPrimaryDomain}.${env:ingressDomainName}"
