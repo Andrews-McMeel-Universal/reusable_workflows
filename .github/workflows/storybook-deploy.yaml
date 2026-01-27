@@ -10,7 +10,7 @@ on:
         default: ${{ vars.STORYBOOK_BUILD_SCRIPT_NAME || 'storybook:build' }}
       STORYBOOK_PUBLISH_CHANGES_ONLY:
         required: false
-        type: boolean
+        type: string
         description: Whether to publish only the changes to Storybook
         default: ${{ vars.STORYBOOK_PUBLISH_CHANGES_ONLY || 'true' }}
     secrets:
