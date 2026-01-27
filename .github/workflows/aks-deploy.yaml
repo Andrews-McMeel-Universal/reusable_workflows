@@ -953,7 +953,7 @@ jobs:
         run: |
           # Update Bunny CDN origin URL
           $bunnyCdnApiKey = "${{ secrets.bunnyCdnApiKey }}"
-          if (-not $bunnyCdnApiKey -or $bunnyCdnApiKey -eq "") {
+          if ($bunnyCdnApiKey -eq "") {
               echo "::warning::Bunny CDN API key has not been properly passed into the workflow."
               exit 0
           }
