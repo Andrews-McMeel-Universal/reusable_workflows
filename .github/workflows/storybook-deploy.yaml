@@ -48,6 +48,6 @@ jobs:
           buildScriptName: ${{ inputs.STORYBOOK_BUILD_SCRIPT_NAME }}
           exitZeroOnChanges: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
           allowConsoleErrors: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
-          onlyChanged: ${{ inputs.STORYBOOK_PUBLISH_CHANGES_ONLY }}
+          onlyChanged: ${{ inputs.STORYBOOK_PUBLISH_CHANGES_ONLY == 'true' }}
           skip: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
           autoAcceptChanges: ${{ contains(github.ref, steps.latest-release.outputs.release) }}
