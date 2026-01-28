@@ -786,7 +786,7 @@ jobs:
           if kubectl get secret "${APP_NAME}-basic-auth" > /dev/null 2>&1; then
               kubectl delete secret "${APP_NAME}-basic-auth"
           fi
-          printf "${WEB_AUTHENTICATION_USERNAME}:$(openssl passwd -5 ${WEB_AUTHENTICATION_PASSWORD})\n" > auth
+          printf '%s:%s\n' "$WEB_AUTHENTICATION_USERNAME" "$(openssl passwd -5 "$WEB_AUTHENTICATION_PASSWORD")" > auth
           kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
 
       - name: Create K8s Image Pull Secret
