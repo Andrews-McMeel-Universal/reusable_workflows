@@ -152,14 +152,14 @@ jobs:
           Install-Module -Name powershell-yaml -Force
 
       - name: Install PowerShell modules for Accessing Azure Table Storage
-        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
+        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production' && inputs.environmentIngress != 'false'
         shell: pwsh
         run: |
           Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
 
       - name: Get Blue/Green Deployment Info
         id: bg-deployment
-        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
+        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production' && inputs.environmentIngress != 'false'
         shell: pwsh
         env:
           storageAccountName: amucloudapps
@@ -180,18 +180,16 @@ jobs:
               return
           }
 
-          $aksIngress = (Get-AzTableRow -Table $appInfoTable -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "AksIngress").AksIngress
+          $activeDeployment = (Get-AzTableRow -Table $appInfoTable -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "ActiveBlueGreenDeployment").ActiveBlueGreenDeployment
 
-          if ($aksIngress -match "-green") {
-              $activeDeployment = "green"
+          if ($activeDeployment -match "green") {
               $inactiveDeployment = "blue"
           }
           else {
-              $activeDeployment = "blue"
               $inactiveDeployment = "green"
           }
-          Write-Output "activeDeployment=$activeDeployment"
-          Write-Output "activeDeployment=$activeDeployment" >> $env:GITHUB_ENV
+          Write-Output "blueGreenActiveDeployment=$activeDeployment"
+          Write-Output "blueGreenActiveDeployment=$activeDeployment" >> $env:GITHUB_ENV
           Write-Output "blueGreenInactiveDeployment=$inactiveDeployment"
           Write-Output "blueGreenInactiveDeployment=$inactiveDeployment" >> $env:GITHUB_ENV
 
@@ -590,7 +588,7 @@ jobs:
               # Add ingressClassName and cluster issuer
               $clusterIssuer = "letsencrypt-${env:environment}"
               $ingressClassName = "nginx-${env:environment}"
-              if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
+              if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production" -and $environmentIngress -eq 'true') {
                   $ingressClassName = "${ingressClassName}-${env:blueGreenInactiveDeployment}"
                   $clusterIssuer = "${clusterIssuer}-${env:blueGreenInactiveDeployment}"
               }
@@ -746,8 +744,10 @@ jobs:
           BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Switch Kubernetes Namespace
+
+          ENVIRONMENT_INGRESS=$(echo "${{ inputs.environmentIngress }}" | tr -d "'\"")
           if [ $ENVIRONMENT_NAMESPACE == "true" ]; then
-            if [ $BLUE_GREEN_DEPLOYMENT == "true" ] && [ $ENVIRONMENT == "production" ]; then
+            if [ $BLUE_GREEN_DEPLOYMENT == "true" ] && [ $ENVIRONMENT == "production" ] && [ "$ENVIRONMENT_INGRESS" == "true" ]; then
               ENVIRONMENT="${ENVIRONMENT}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}"
             fi
             kubectl config set-context --current --namespace="${ENVIRONMENT}"
@@ -899,7 +899,8 @@ jobs:
           fi
 
           # Set AKS ingress FQDN
-          if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ]; then
+          ENVIRONMENT_INGRESS=$(echo "${{ inputs.environmentIngress }}" | tr -d "'\"")
+          if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ] && [ "$ENVIRONMENT_INGRESS" == "true" ]; then
             AKS_INGRESS="${INGRESS}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
           else
             AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
@@ -928,7 +929,7 @@ jobs:
           done
 
       - name: Update Bunny CDN origin URL
-        if: inputs.bunnyCdnDomain != '' && inputs.blueGreenDeployment == 'true' && inputs.environment == 'production'
+        if: inputs.bunnyCdnDomain != '' && inputs.blueGreenDeployment == 'true' && inputs.environment == 'production' && inputs.environmentIngress == 'true'
         shell: pwsh
         env:
           bunnyCdnDomain: ${{ inputs.bunnyCdnDomain }}
@@ -1015,6 +1016,7 @@ jobs:
           aksIngress: ${{ steps.dns.outputs.aksIngress }}
           aksResourceGroup: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
           date: ${{ steps.date.outputs.date }}
+          blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Record deployment information in Azure Storage Table
           $azureClusterName = "${{ secrets.azureClusterName }}"
@@ -1045,6 +1047,7 @@ jobs:
               "Cluster"="$azureClusterName";
               "ClusterResourceGroup"="$env:aksResourceGroup";
               "LastDeploy"="$env:date"
+              "ActiveBlueGreenDeployment"="$env:blueGreenInactiveDeployment"
               } -UpdateExisting | Out-Null
 
       - name: Create deployment summary
