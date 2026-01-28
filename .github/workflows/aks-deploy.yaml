@@ -513,7 +513,7 @@ jobs:
                   $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
                   $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
               }
-              elseif ($allIPsValid) {
+              else {
                   Write-Output "Ingress whitelist not set for $($item.name)"
                   
                   if (($env:ingressWhitelist -eq "service") -or ($appConfigWhitelist -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
@@ -526,7 +526,7 @@ jobs:
                       Write-Output "Using existing ingress whitelist for $($item.name)"
                       $ingressWhitelist = $appConfigWhitelist
                   }
-                  elseif ($env:ingressWhitelist -ne "") {
+                  elseif (($env:ingressWhitelist -ne "") -and ($allIPsValid)) {
                       # Use provided whitelist
                       Write-Output "Using provided ingress whitelist for $($item.name)"
                       $ingressWhitelist = $env:ingressWhitelist
