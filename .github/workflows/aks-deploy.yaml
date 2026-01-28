@@ -916,6 +916,9 @@ jobs:
             INGRESS="${AKS_CLUSTER_NAME}"
           fi
 
+          # Remove service(s) from ingress domain name
+          INGRESS_DOMAIN_NAME=$(echo "${INGRESS_DOMAIN_NAME}" | sed 's/^service\.//;s/^services\.//')
+
           # Set AKS ingress FQDN
           if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ]; then
             AKS_INGRESS="${INGRESS}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
