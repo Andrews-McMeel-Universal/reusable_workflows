@@ -95,6 +95,11 @@ on:
         required: false
         type: string
         default: ${{ vars.ENV_ENCRYPTION_SECRET }}
+      remoteHelmTemplates:
+        required: false
+        type: string
+        description: "Use organization's remote Helm templates"
+        default: ${{ vars.REMOTE_HELM_TEMPLATES }}
       blueGreenDeployment:
         required: false
         type: string
@@ -221,16 +226,27 @@ jobs:
           haIngress: ${{ inputs.haIngress }}
           chartsPath: ${{ inputs.chartsPath }}
           datacenterLocation: ${{ env.datacenterLocation }}
+          remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
         run: |
           # Extract Helm values
 
-          # Get charts path
+          # Retrieve remote Helm templates
           $basePath = Get-Location
-          Write-Output "chartsPath=$chartsPath" >> $env:GITHUB_ENV
-          Write-Output "Using charts path: $chartsPath"
+          if ($env:remoteHelmTemplates -ne "false") {
+              Write-Output "Using remote Helm templates from organization repository"
+              $templateFiles = $env:remoteHelmTemplates -split ','
+              $templateDir = Join-Path $basePath $env:chartsPath "templates"
+              New-Item -ItemType Directory -Path $templateDir -Force | Out-Null
+              foreach ($templateFile in $templateFiles) {
+                  $templateUrl = "https://amucloudapps.blob.core.windows.net/deployments/charts/templates/$templateFile"
+                  Write-Output "Downloading Helm template: $templateUrl"
+                  Invoke-WebRequest -Uri $templateUrl -OutFile $templateDir
+              }
+          }
           
+          # Load Helm chart values
           $valuesYamlPath = Join-Path $basePath $env:chartsPath "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
           $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
@@ -415,7 +431,6 @@ jobs:
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
-      chartsPath: ${{ env.chartsPath }}
       wwwIngress: ${{ env.wwwIngress }}
       blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
       datacenterLocation: ${{ env.datacenterLocation }}
@@ -452,15 +467,27 @@ jobs:
           wwwIngress: ${{ needs.build.outputs.wwwIngress }}
           ingress: ${{ needs.build.outputs.ingress }}
           ingressWhitelist: ${{ inputs.ingressWhitelist }}
+          remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Create values override file
 
-          # Get charts path
+          # Retrieve remote Helm templates
           $basePath = Get-Location
-          Write-Output "Using charts path: $env:chartsPath"
-          
+          if ($env:remoteHelmTemplates -ne "false") {
+              Write-Output "Using remote Helm templates from organization repository"
+              $templateFiles = $env:remoteHelmTemplates -split ','
+              $templateDir = Join-Path $basePath $env:chartsPath "templates"
+              New-Item -ItemType Directory -Path $templateDir -Force | Out-Null
+              foreach ($templateFile in $templateFiles) {
+                  $templateUrl = "https://amucloudapps.blob.core.windows.net/deployments/charts/templates/$templateFile"
+                  Write-Output "Downloading Helm template: $templateUrl"
+                  Invoke-WebRequest -Uri $templateUrl -OutFile $templateDir
+              }
+          }
+
+          # Load Helm chart values
           $valuesYamlPath = Join-Path $basePath $env:chartsPath "values.yaml"
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
           $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
