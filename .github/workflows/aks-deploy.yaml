@@ -279,20 +279,10 @@ jobs:
           # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
 
-          # Add environment to ingress
-          if ($environmentIngress -ne "false") {
-              if ($env:blueGreenDeployment -eq "true" -and $env:appEnvironment -eq "production") {
-                  $ingress = "${env:appEnvironment}-${env:blueGreenInactiveDeployment}.$ingress"
-              }
-              else {
-                  $ingress = "${env:appEnvironment}.$ingress"
-              }
-          }
-
           # Add datacenter location to ingress if HA hostname is enabled
           $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
           if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
-              Write-Output "Adding datacenter location to $($item.name): $ingress"
+              Write-Output "Adding datacenter location to ingress: $ingress"
               if ($subDomain -match "\.service") {
                   if ($subDomain -match "services") {
                       $ingress = "services.$domainName"
@@ -305,6 +295,16 @@ jobs:
               $ingress = "${env:datacenterLocation}.$ingress"
               if ($subDomain -ne "") {
                   $ingress = "$subDomain.$ingress"
+              }
+          }
+
+          # Add environment to ingress
+          if ($environmentIngress -ne "false") {
+              if ($env:blueGreenDeployment -eq "true" -and $env:appEnvironment -eq "production") {
+                  $ingress = "${env:appEnvironment}-${env:blueGreenInactiveDeployment}.$ingress"
+              }
+              else {
+                  $ingress = "${env:appEnvironment}.$ingress"
               }
           }
 
