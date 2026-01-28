@@ -286,11 +286,12 @@ jobs:
               if ($subDomain -match "\.service") {
                   if ($subDomain -match "services") {
                       $ingress = "services.$domainName"
+                      $subDomain = $subDomain -replace "\.services", ""
                   }
                   else {
                       $ingress = "service.$domainName"
+                      $subDomain = $subDomain -replace "\.service", ""
                   }
-                  $subDomain = $subDomain -replace ".service", "" -replace ".services", ""
               }
               $ingress = "${env:datacenterLocation}.$ingress"
               if ($subDomain -ne "") {
@@ -561,11 +562,12 @@ jobs:
                   if ($subDomain -match "\.service") {
                       if ($subDomain -match "services") {
                           $item.host = "services.$domainName"
+                          $subDomain = $subDomain -replace "\.services", ""
                       }
                       else {
                           $item.host = "service.$domainName"
+                          $subDomain = $subDomain -replace "\.service", ""
                       }
-                      $subDomain = $subDomain -replace ".service", "" -replace ".services", ""
                   }
                   $item.host = "${env:datacenterLocation}.$($item.host)"
                   if ($subDomain -ne "") {
