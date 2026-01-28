@@ -1,0 +1,53 @@
+name: Storybook Deployment
+
+on:
+  workflow_call:
+    inputs:
+      STORYBOOK_BUILD_SCRIPT_NAME:
+        required: false
+        type: string
+        description: The yarn script name to build Storybook
+        default: ${{ vars.STORYBOOK_BUILD_SCRIPT_NAME || 'storybook:build' }}
+      STORYBOOK_PUBLISH_CHANGES_ONLY:
+        required: false
+        type: string
+        description: Whether to publish only the changes to Storybook
+        default: ${{ vars.STORYBOOK_PUBLISH_CHANGES_ONLY || 'true' }}
+    secrets:
+      PAT_ACTION_CI:
+        required: true
+      CHROMATIC_PROJECT_TOKEN:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy to Storybook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch latest release
+        uses: pozetroninc/github-action-get-latest-release@v0.8.0
+        id: latest-release
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}
+          excludes: prerelease, draft
+          token: ${{ secrets.PAT_ACTION_CI }}
+
+      - name: Use cache-yarn-install action
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+
+      - name: Publish to Storybook
+        uses: chromaui/action@v11
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          buildScriptName: ${{ inputs.STORYBOOK_BUILD_SCRIPT_NAME }}
+          exitZeroOnChanges: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+          allowConsoleErrors: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+          onlyChanged: ${{ inputs.STORYBOOK_PUBLISH_CHANGES_ONLY == 'true' }}
+          skip: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+          autoAcceptChanges: ${{ contains(github.ref, steps.latest-release.outputs.release) }}
