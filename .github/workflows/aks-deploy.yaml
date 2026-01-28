@@ -578,6 +578,7 @@ jobs:
                       else {
                           $domainName = "service.${domainName}"
                       }
+                      $subDomain = $subDomain -replace ".service", "" -replace ".services", ""
                   }
 
                   Write-Output "Adding datacenter location to $($item.name): $($item.host)"
