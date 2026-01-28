@@ -221,7 +221,7 @@ jobs:
         env:
           appEnvironment: ${{ inputs.environment }}
           haIngress: ${{ inputs.haIngress }}
-          chartsPath: ./deployments/charts
+          chartsPath: ${{ inputs.chartsPath }}
           datacenterLocation: ${{ env.datacenterLocation }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
