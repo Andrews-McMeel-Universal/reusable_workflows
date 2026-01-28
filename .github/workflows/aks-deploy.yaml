@@ -290,18 +290,30 @@ jobs:
 
           # Set ingress
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
-          if (($appConfig.schemaVersion -eq "2") -or ($chartConfig.version -ge "2.0.0")) {
-              $ingress = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).host
-              if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true")) {
-                  $wwwIngress = "true"
-              }
-          }
-          else {
-              $ingress = $appConfig.ingress.host
-          }
+          $ingress = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).host
 
           # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
+
+          # Add datacenter location to ingress if HA hostname is enabled
+          $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
+          if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
+              Write-Output "Adding datacenter location to ingress: $ingress"
+              if ($subDomain -match "\.service") {
+                  if ($subDomain -match "services") {
+                      $ingress = "services.$domainName"
+                      $subDomain = $subDomain -replace "\.services", ""
+                  }
+                  else {
+                      $ingress = "service.$domainName"
+                      $subDomain = $subDomain -replace "\.service", ""
+                  }
+              }
+              $ingress = "${env:datacenterLocation}.$ingress"
+              if ($subDomain -ne "") {
+                  $ingress = "$subDomain.$ingress"
+              }
+          }
 
           # Add environment to ingress
           if ($environmentIngress -ne "false") {
@@ -313,31 +325,9 @@ jobs:
               }
           }
 
-          # Add datacenter location to ingress if HA hostname is enabled
-          if ($env:haIngress -eq "true") {
-              $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
-
-              if ($subDomain -match "$env:datacenterLocation") {
-                  Write-Output "Datacenter location already present in ingress: $($ingress)"
-                  continue
-              }
-
-              if ($subDomain -match "\.service") {
-                  if ($subDomain -match "services") {
-                      $domainName = "services.$domainName"
-                  }
-                  else {
-                      $domainName = "service.$domainName"
-                  }
-              }
-
-              Write-Output "Adding datacenter location to ingress: $($ingress)"
-              if ($subDomain -ne "") {
-                  $ingress = "$subDomain.${env:datacenterLocation}.$domainName"
-              }
-              else {
-                  $ingress = "${env:datacenterLocation}.$domainName"
-              }
+          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:haIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
+              $wwwIngress = "true"
+              $ingress = "www.$ingress"
           }
 
           Write-Output "domainName=$domainName"
@@ -506,43 +496,35 @@ jobs:
 
           $webAuthentication = "${{ inputs.webAuthentication }}" -replace '"', '' -replace "'", ""
           $environmentIngress = "${{ inputs.environmentIngress }}" -replace '"', '' -replace "'", ""
-          $clusterIssuer = "letsencrypt-${env:environment}"
 
           $domains = @()
           $updatedIngress = @()
           foreach ($item in $appConfig.ingress) {
+              # Ensure annotations object exists
+              if ($null -eq $item.annotations) {
+                  $item.annotations = @{}
+              }
+
+              # Set variable for whitelist in app config
+              $appConfigWhitelist = $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+
               # Set ingress whitelist if not set
               $ipRegex = '^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){2}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/(3[0-2]|[12]?[0-9]))?$'
-
-              $allIPsValid = $true
               $env:ingressWhitelist -split ',' | ForEach-Object {
                   if ($_ -notmatch $ipRegex) {
+                      Write-Output "Invalid IP string found in ingress whitelist: $_"
                       $allIPsValid = $false
+                  }
+                  else {
+                      Write-Output "Valid IP found in ingress whitelist: $_"
+                      $allIPsValid = $true
                   }
               }
 
-              if (($item.name -ne "admin-ingress") -and (-not $allIPsValid)) {
-                  Write-Output "Ingress whitelist not set for $($item.name)"
-                  
-                  if (($env:ingressWhitelist -eq "service") -or ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
-                      # Use service whitelist
-                      Write-Output "Overriding ingress whitelist with service whitelist for $($item.name)"
-                      $ingressWhitelist = $env:serviceIngressWhitelist
-                  }
-                  elseif ($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range") {
-                      # Use existing whitelist
-                      Write-Output "Using existing ingress whitelist for $($item.name)"
-                      $ingressWhitelist = $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
-                  } 
-                  else {
-                      # Default to 0.0.0.0/0
-                      Write-Output "Defaulting to 0.0.0.0/0 ingress whitelist for $($item.name)"
-                      $ingressWhitelist = "0.0.0.0/0"
-                  }
-              }
-              elseif ($item.privateIngress -eq "true") {
+              # Set ingress whitelist
+              if ($item.privateIngress -eq $true) {
                   Write-Output "Private ingress is enabled, setting ingress whitelist to service whitelist for $($item.name)"
-                  if (($env:adminIngressWhitelist -ne "207.67.20.252") -or ($env:adminIngressWhitelist -ne "")) {
+                  if ($env:adminIngressWhitelist -ne "") {
                       $ingressWhitelist = $env:adminIngressWhitelist
                   }
                   else {
@@ -552,32 +534,71 @@ jobs:
               elseif ($webAuthentication -eq "true") {
                   Write-Output "Web authentication is enabled, setting ingress whitelist to '0.0.0.0/0' for $($item.name)"
                   $ingressWhitelist = "0.0.0.0/0"
+
+                  Write-Output "Adding basic auth to $($item.name)"
+                  $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
+                  $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
+                  $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
+              }
+              else {
+                  Write-Output "Ingress whitelist not set for $($item.name)"
+                  
+                  if (($env:ingressWhitelist -eq "service") -or ($appConfigWhitelist -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
+                      # Use service whitelist
+                      Write-Output "Overriding ingress whitelist with service whitelist for $($item.name)"
+                      $ingressWhitelist = $env:serviceIngressWhitelist
+                  }
+                  elseif ($appConfigWhitelist) {
+                      # Use existing whitelist
+                      Write-Output "Using existing ingress whitelist for $($item.name)"
+                      $ingressWhitelist = $appConfigWhitelist
+                  }
+                  elseif (($env:ingressWhitelist -ne "") -and ($allIPsValid)) {
+                      # Use provided whitelist
+                      Write-Output "Using provided ingress whitelist for $($item.name)"
+                      $ingressWhitelist = $env:ingressWhitelist
+                  }
+                  else {
+                      # Default to 0.0.0.0/0
+                      Write-Output "Defaulting to 0.0.0.0/0 ingress whitelist for $($item.name)"
+                      $ingressWhitelist = "0.0.0.0/0"
+                  }
+              }
+
+              # Configure the ingress whitelist
+              if ($item.name -notmatch "admin") {
+                  # Add ingressWhitelist to ingress
+                  Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
+                  $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
+              }
+              elseif ($item.name -match "admin") {
+                  if ($env:adminIngressWhitelist -ne "") {
+                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $env:adminIngressWhitelist
+                  }
+                  else {
+                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = "207.67.20.252"
+                  }
+                  Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")"
               }
 
               # Add datacenter location to ingress if HA hostname is enabled
-              if ($env:haIngress -eq "true") {
-                  $subDomain = $item.host -replace "$env:domainName", '' -replace "\.$", ""
-
-                  if ($subDomain -match $env:datacenterLocation) {
-                      Write-Output "Datacenter location already present in $($item.name): $($item.host)"
-                      continue
-                  }
-
+              $domainName = $env:domainName
+              $subDomain = $item.host -replace "$domainName", '' -replace "\.$", ""
+              if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
+                  Write-Output "Adding datacenter location to $($item.name): $($item.host)"
                   if ($subDomain -match "\.service") {
                       if ($subDomain -match "services") {
-                          $domainName = "services.${env:domainName}"
+                          $item.host = "services.$domainName"
+                          $subDomain = $subDomain -replace "\.services", ""
                       }
                       else {
-                          $domainName = "service.${env:domainName}"
+                          $item.host = "service.$domainName"
+                          $subDomain = $subDomain -replace "\.service", ""
                       }
                   }
-
-                  Write-Output "Adding datacenter location to $($item.name): $($item.host)"
+                  $item.host = "${env:datacenterLocation}.$($item.host)"
                   if ($subDomain -ne "") {
-                      $item.host = "$subDomain.${env:datacenterLocation}.$domainName"
-                  }
-                  else {
-                      $item.host = "${env:datacenterLocation}.$domainName"
+                      $item.host = "$subDomain.$($item.host)"
                   }
               }
 
@@ -593,40 +614,26 @@ jobs:
                   }
               }
 
-              # Add ingressClassName to ingress
+              # Add ingressClassName and cluster issuer
+              $clusterIssuer = "letsencrypt-${env:environment}"
+              $ingressClassName = "nginx-${env:environment}"
               if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
-                  # Set ingress class name
-                  $item.ingressClassName = "nginx-${env:environment}-${env:blueGreenInactiveDeployment}"
-
-                  # Add cluster issuer annotation
-                  $item.annotations."cert-manager.io/cluster-issuer" = "letsencrypt-${env:environment}-${env:blueGreenInactiveDeployment}"
+                  $ingressClassName = "${ingressClassName}-${env:blueGreenInactiveDeployment}"
+                  $clusterIssuer = "${clusterIssuer}-${env:blueGreenInactiveDeployment}"
               }
-              else {
-                  # Set ingress class name
-                  $item.ingressClassName = "nginx-${env:environment}"
+              $item.ingressClassName = "$ingressClassName"
+              $item.annotations."cert-manager.io/cluster-issuer" = "$clusterIssuer"
 
-                  # Add cluster issuer annotation
-                  $item.annotations."cert-manager.io/cluster-issuer" = "letsencrypt-${env:environment}"
-              }
-
-              # Reset annotations
-              if ($null -eq $item.annotations) {
-                  $item.annotations = @{}
-              }
-
-
-              # Add whitelist annotation
-              $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$env:adminIngressWhitelist"
-
+              # Handle www redirect and primary domain
               if ($item.name -eq "ingress") {
                   # Add WWW to ingress
-                  if (($item.redirectToWWW -eq $true) -and ($env:environment -eq "production") -and ($environmentIngress -ne "true")) {
+                  if (($item.redirectToWWW -eq $true) -and ($env:environment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
                       # Add www redirect ingress
                       $updatedIngress += [PSCustomObject]@{
                           name = "wwwredirect"
                           host = $item.host
                           path = "/(.*)"
-                          ingressClassName = $item.ingressClassName
+                          ingressClassName = $ingressClassName
                           annotations = @{
                               "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
                               "cert-manager.io/cluster-issuer" = $clusterIssuer
@@ -639,43 +646,18 @@ jobs:
 
                   # Set ingress host to primary domain variable
                   $dnsPrimaryDomain = $item.host -replace "$env:domainName", '' -replace "\.$", ""
-
-                  # Add webAuthentication to main ingress
-                  if ($webAuthentication -eq "true") {
-                      Write-Output "Adding basic auth to $($item.name)"
-                      $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
-                      $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
-                      $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
-                  }
               }
-              elseif ($item.name -eq "admin-ingress") {
-                  if (($env:adminIngressWhitelist -ne "207.67.20.252") -or ($env:adminIngressWhitelist -ne "")) {
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $env:adminIngressWhitelist
-                  }
-                  else {
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = "207.67.20.252"
-                  }
-                  Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")"
+              else {
+                if (($env:wwwIngress -eq "true") -and ($item.redirectToWWW -ne $false) -and ("$env:ingress" -match $item.host) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
+                    Write-Output "Adding www to $($item.name) host"
+                    $item.host = "www.$($item.host)"
+                }
               }
 
-              # Add www redirect to ingress
-              if (($item.name -ne "ingress") -and ("$env:wwwIngress" -eq "true") -and ($item.redirectToWWW -ne $false) -and ($item.host -match "$env:ingress") -or (($item.name -ne "ingress") -and ($item.redirectToWWW -eq $true))) {
-                  Write-Output "Adding www to $($item.name) host"
-                  $item.host = "www.$($item.host)"
-              }
+              # Add whitelist annotation
+              $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$env:adminIngressWhitelist"
 
-              # Ensure the ingress whitelist is set for all other ingresses except admin-ingress
-              if ($item.name -ne "admin-ingress") {
-                  # Add ingressWhitelist to ingress
-                  Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
-                  $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
-              }
-
-              # Remove annotations if empty
-              if ($item.annotations.Count -eq 0) {
-                  $item.Remove("annotations")
-              }
-
+              # Add updated ingress to list
               $updatedIngress += [PSCustomObject]@{
                   name = $item.name
                   host = $item.host
@@ -710,11 +692,6 @@ jobs:
           }
           else {
               Write-Output "No service found in values.yaml to set internal load balancer annotation."
-          }
-
-          # Remove www redirect ingress if not production
-          if ($env:environment -ne "production") {
-              $appConfig.ingress = $appConfig.ingress | Where-Object { $_.name -ne "wwwredirect" }
           }
 
           # Store keys to remove in a separate list
@@ -819,27 +796,25 @@ jobs:
           kubectl create secret generic "${APP_NAME}-config-secret" --validate='warn' --from-env-file ${{ github.workspace }}/.env
 
       - name: Update basic web authentication Kubernetes secret
+        if: ${{ inputs.webAuthentication == 'true' }}
         shell: bash
         env:
-          WEB_AUTHENTICATION: ${{ inputs.webAuthentication }}
           APP_NAME: ${{ needs.build.outputs.appName }}
         run: |
           # Update basic web authentication Kubernetes secret
           WEB_AUTHENTICATION_USERNAME="${{ secrets.webAuthenticationUsername }}"
           WEB_AUTHENTICATION_PASSWORD="${{ secrets.webAuthenticationPassword }}"
 
-          if [[ "${WEB_AUTHENTICATION}" == "true" ]]; then
-              if [[ -z "${WEB_AUTHENTICATION_USERNAME}" ]] || [[ -z "${WEB_AUTHENTICATION_PASSWORD}" ]]; then
-                  echo "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
-                  exit 1
-              fi
-          
-              if kubectl get secret "${APP_NAME}-basic-auth" > /dev/null 2>&1; then
-                  kubectl delete secret "${APP_NAME}-basic-auth"
-              fi
-              htpasswd -cb auth "${WEB_AUTHENTICATION_USERNAME}" "${WEB_AUTHENTICATION_PASSWORD}"
-              kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
+          if [[ -z "${WEB_AUTHENTICATION_USERNAME}" ]] || [[ -z "${WEB_AUTHENTICATION_PASSWORD}" ]]; then
+              echo "::error::Please make sure the 'webAuthenticationUsername' and 'webAuthenticationPassword' GitHub environment secrets are set correctly."
+              exit 1
           fi
+          
+          if kubectl get secret "${APP_NAME}-basic-auth" > /dev/null 2>&1; then
+              kubectl delete secret "${APP_NAME}-basic-auth"
+          fi
+          printf '%s:%s\n' "$WEB_AUTHENTICATION_USERNAME" "$(openssl passwd -5 "$WEB_AUTHENTICATION_PASSWORD")" > auth
+          kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
 
       - name: Create K8s Image Pull Secret
         uses: azure/k8s-create-secret@v5
@@ -990,6 +965,11 @@ jobs:
         run: |
           # Update Bunny CDN origin URL
           $bunnyCdnApiKey = "${{ secrets.bunnyCdnApiKey }}"
+          if ($bunnyCdnApiKey -eq "") {
+              echo "::warning::Bunny CDN API key has not been properly passed into the workflow."
+              exit 0
+          }
+
           $originUrl = "https://${env:dnsPrimaryDomain}.${env:ingressDomainName}"
 
           # Set headers
