@@ -291,6 +291,9 @@ jobs:
                       $subDomain = $subDomain -replace "\.service", ""
                   }
               }
+              else {
+                  $ingress = "$domainName"
+              }
               $ingress = "${env:datacenterLocation}.$ingress"
               if ($subDomain -ne "") {
                   $ingress = "$subDomain.$ingress"
@@ -299,6 +302,7 @@ jobs:
 
           # Add environment to ingress
           if ($environmentIngress -ne "false") {
+              Write-Output "Adding environment to ingress: $ingress"
               if ($env:blueGreenDeployment -eq "true" -and $env:appEnvironment -eq "production") {
                   $ingress = "${env:appEnvironment}-${env:blueGreenInactiveDeployment}.$ingress"
               }
@@ -567,6 +571,9 @@ jobs:
                           $subDomain = $subDomain -replace "\.service", ""
                       }
                   }
+                  else {
+                      $item.host = "$domainName"
+                  }
                   $item.host = "${env:datacenterLocation}.$($item.host)"
                   if ($subDomain -ne "") {
                       $item.host = "$subDomain.$($item.host)"
@@ -576,12 +583,12 @@ jobs:
               # Add environment to ingress
               if ($environmentIngress -ne "false") {
                   if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
-                      $item.host = "${env:environment}-${env:blueGreenInactiveDeployment}.$($item.host)"
                       Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
+                      $item.host = "${env:environment}-${env:blueGreenInactiveDeployment}.$($item.host)"
                   }
                   else {
-                      $item.host = "${env:environment}.$($item.host)"
                       Write-Output "Adding environment to $($item.name): $($item.host)"
+                      $item.host = "${env:environment}.$($item.host)"
                   }
               }
 
