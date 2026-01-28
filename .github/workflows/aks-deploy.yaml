@@ -290,34 +290,25 @@ jobs:
           }
 
           # Add datacenter location to ingress if HA hostname is enabled
-          if ($env:haIngress -eq "true") {
-              $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
-
-              if ($subDomain -match "$env:datacenterLocation") {
-                  Write-Output "Datacenter location already present in ingress: $($ingress)"
-                  continue
-              }
-
+          $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
+          if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
+              Write-Output "Adding datacenter location to $($item.name): $ingress"
               if ($subDomain -match "\.service") {
+                  $subDomain = $subDomain -replace ".service", "" -replace ".services", ""
                   if ($subDomain -match "services") {
-                      $domainName = "services.$domainName"
+                      $ingress = "services.$domainName"
                   }
                   else {
-                      $domainName = "service.$domainName"
+                      $ingress = "service.$domainName"
                   }
-                  $subDomain = $subDomain -replace ".service", "" -replace ".services", ""
               }
-
-              Write-Output "Adding datacenter location to ingress: $($ingress)"
+              $ingress = "${env:datacenterLocation}.$ingress"
               if ($subDomain -ne "") {
-                  $ingress = "$subDomain.${env:datacenterLocation}.$domainName"
-              }
-              else {
-                  $ingress = "${env:datacenterLocation}.$domainName"
+                  $ingress = "$subDomain.$ingress"
               }
           }
 
-          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:haIngress -eq "true") -and ($env:blueGreenDeployment -ne "true")) {
+          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:haIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
               $wwwIngress = "true"
               $ingress = "www.$ingress"
           }
@@ -572,22 +563,19 @@ jobs:
                       continue
                   }
 
+                  Write-Output "Adding datacenter location to $($item.name): $($item.host)"
                   if ($subDomain -match "\.service") {
+                      $subDomain = $subDomain -replace ".service", "" -replace ".services", ""
                       if ($subDomain -match "services") {
-                          $domainName = "services.${domainName}"
+                          $item.host = "services.$domainName"
                       }
                       else {
-                          $domainName = "service.${domainName}"
+                          $item.host = "service.$domainName"
                       }
-                      $subDomain = $subDomain -replace ".service", "" -replace ".services", ""
                   }
-
-                  Write-Output "Adding datacenter location to $($item.name): $($item.host)"
+                  $item.host = "${env:datacenterLocation}.$($item.host)"
                   if ($subDomain -ne "") {
-                      $item.host = "$subDomain.${env:datacenterLocation}.$domainName"
-                  }
-                  else {
-                      $item.host = "${env:datacenterLocation}.$domainName"
+                      $item.host = "$subDomain.$($item.host)"
                   }
               }
 
@@ -915,9 +903,6 @@ jobs:
           else
             INGRESS="${AKS_CLUSTER_NAME}"
           fi
-
-          # Remove service(s) from ingress domain name
-          INGRESS_DOMAIN_NAME=$(echo "${INGRESS_DOMAIN_NAME}" | sed 's/^service\.//;s/^services\.//')
 
           # Set AKS ingress FQDN
           if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ]; then
