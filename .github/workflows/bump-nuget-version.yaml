@@ -76,10 +76,21 @@ jobs:
               if (-not [string]::IsNullOrEmpty("$ProjectName")) {
                   $ProjectName = $ProjectName + "/"
               }
-              $ProjectFile = ("${ProjectName}${LibraryName}/${LibraryName}.csproj")
+              if (Test-Path -Path "${ProjectName}${LibraryName}/${LibraryName}.csproj") {
+                  $ProjectFile = ("${ProjectName}${LibraryName}/${LibraryName}.csproj")
+              }
+              else {
+                  $ProjectFile = (Get-ChildItem -Path "${ProjectName}${LibraryName}/*.csproj").Name
+              }
+              
           }
           else {
-              $ProjectFile = ("$ProjectName/$ProjectName.csproj")
+              if (Test-Path -Path "$ProjectName/$ProjectName.csproj") {
+                  $ProjectFile = ("$ProjectName/$ProjectName.csproj")
+              }
+              else {
+                  $ProjectFile = (Get-ChildItem -Path "$ProjectName/*.csproj").Name
+              }
           }
           $ProjectFileContents = Get-Content $ProjectFile -Raw
 
