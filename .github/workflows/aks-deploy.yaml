@@ -963,7 +963,7 @@ jobs:
           done
 
       - name: Update Bunny CDN origin URL
-        if: inputs.bunnyCdnDomain != '' && inputs.blueGreenDeployment == 'true' && inputs.environment == 'production' && inputs.environmentIngress == 'true'
+        if: inputs.updateBunnyCdnOrigin == 'true' && inputs.bunnyCdnDomain != '' && inputs.blueGreenDeployment == 'true' && inputs.environment == 'production' && inputs.environmentIngress == 'true'
         shell: pwsh
         env:
           bunnyCdnDomain: ${{ inputs.bunnyCdnDomain }}
