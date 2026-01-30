@@ -13,6 +13,16 @@ on:
         type: string
         description: Whether to publish only the changes to Storybook
         default: ${{ vars.STORYBOOK_PUBLISH_CHANGES_ONLY || 'true' }}
+      STORYBOOK_EXIT_ZERO_ON_CHANGES:
+        required: false
+        type: string
+        description: Whether to exit with zero status code on changes
+        default: ${{ vars.STORYBOOK_EXIT_ZERO_ON_CHANGES || 'true' }}
+      STORYBOOK_ALLOW_CONSOLE_ERRORS:
+        required: false
+        type: string
+        description: Whether to allow console errors during Storybook build
+        default: ${{ vars.STORYBOOK_ALLOW_CONSOLE_ERRORS || 'true' }}
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -46,8 +56,8 @@ jobs:
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           buildScriptName: ${{ inputs.STORYBOOK_BUILD_SCRIPT_NAME }}
-          exitZeroOnChanges: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
-          allowConsoleErrors: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+          exitZeroOnChanges: ${{ inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES == 'true' || (inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES != 'false' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) }}
+          allowConsoleErrors: ${{ inputs.STORYBOOK_ALLOW_CONSOLE_ERRORS == 'true' || (inputs.STORYBOOK_ALLOW_CONSOLE_ERRORS != 'false' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) }}
           onlyChanged: ${{ inputs.STORYBOOK_PUBLISH_CHANGES_ONLY == 'true' }}
           skip: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
           autoAcceptChanges: ${{ contains(github.ref, steps.latest-release.outputs.release) }}
