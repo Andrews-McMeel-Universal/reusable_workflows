@@ -61,8 +61,8 @@ jobs:
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           buildScriptName: ${{ inputs.STORYBOOK_BUILD_SCRIPT_NAME }}
-          exitZeroOnChanges: ${{ inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES == 'true' || (inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES != 'false' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) }}
-          allowConsoleErrors: ${{ inputs.STORYBOOK_ALLOW_CONSOLE_ERRORS == 'true' || (inputs.STORYBOOK_ALLOW_CONSOLE_ERRORS != 'false' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) }}
+          exitZeroOnChanges: ${{ (inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES != 'false' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) || inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES == 'true' }}
+          allowConsoleErrors: ${{ (inputs.STORYBOOK_ALLOW_CONSOLE_ERRORS != 'false' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) || inputs.STORYBOOK_ALLOW_CONSOLE_ERRORS == 'true' }}
           onlyChanged: ${{ inputs.STORYBOOK_PUBLISH_CHANGES_ONLY == 'true' }}
           skip: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
-          autoAcceptChanges: ${{ inputs.STORYBOOK_AUTO_ACCEPT_CHANGES == 'true' || (inputs.STORYBOOK_AUTO_ACCEPT_CHANGES != 'false' && contains(github.ref, steps.latest-release.outputs.release)) }}
+          autoAcceptChanges: ${{ (inputs.STORYBOOK_AUTO_ACCEPT_CHANGES != 'false' && contains(github.ref, steps.latest-release.outputs.release)) || inputs.STORYBOOK_AUTO_ACCEPT_CHANGES == 'true' }}
