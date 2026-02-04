@@ -46,8 +46,14 @@ jobs:
       - name: Install PowerShell modules
         shell: pwsh
         run: |
-          Install-Module -Name SimplySql -RequiredVersion 1.9.1 -Force
-          Install-Module -Name Az -Force
+          $installModules = @(
+              @{ Name = "SimplySql"; RequiredVersion = "1.9.1" },
+              @{ Name = "Az.Storage" }
+          )
+
+          foreach ($module in $installModules) {
+              Install-Module @module -Force
+          }
 
       - name: Update Game Configs
         shell: pwsh
@@ -59,7 +65,7 @@ jobs:
           $CacheControl = "max-age=86400"
 
           Import-Module SimplySql
-          Import-Module Az
+          Import-Module Az.Storage
           
           Function Get-MimeType {
               param (

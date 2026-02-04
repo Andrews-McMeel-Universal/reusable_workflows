@@ -151,16 +151,21 @@ jobs:
           submodules: ${{ inputs.checkoutSubmodules }}
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
 
-      - name: Install PowerShell modules for YAML processing
+      - name: Install PowerShell modules
         shell: pwsh
+        env:
+          blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
+          environment: ${{ inputs.environment }}
+          environmentIngress: ${{ inputs.environmentIngress }}
         run: |
-          Install-Module -Name powershell-yaml -Force
-
-      - name: Install PowerShell modules for Accessing Azure Table Storage
-        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production' && inputs.environmentIngress != 'false'
-        shell: pwsh
-        run: |
-          Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
+          # Install PowerShell modules
+          $installModules = @(
+            "powershell-yaml"
+          )
+          if ($env:blueGreenDeployment -eq 'true' -and $env:environment -eq 'production' -and $env:environmentIngress -ne 'false') {
+            $installModules += @("AzTable","Az.Storage","Az.Resources")
+          }
+          Install-Module -Name $installModules -Force
 
       - name: Get Blue/Green Deployment Info
         id: bg-deployment
@@ -448,10 +453,14 @@ jobs:
         with:
           ref: ${{ inputs.checkoutRef }}
 
-      - name: Install PowerShell modules for YAML processing
+      - name: Install PowerShell modules
         shell: pwsh
         run: |
-          Install-Module -Name powershell-yaml -Force
+          # Install PowerShell modules
+          $installModules = @(
+            "powershell-yaml","AzTable","Az.Storage","Az.Resources"
+          )
+          Install-Module -Name $installModules -Force
 
       - name: Create values override file
         id: values-override
@@ -1028,11 +1037,6 @@ jobs:
         run: |
           # Get Current Date
           echo "date=$(date +'%m/%d/%YT%H:%M:%S')" >> $GITHUB_OUTPUT
-
-      - name: Install PowerShell modules for Accessing Azure Table Storage
-        shell: pwsh
-        run: |
-          Install-Module -Name AzTable,Az.Storage,Az.Resources -Force
 
       - name: Record deployment information in Azure Storage Table
         shell: pwsh

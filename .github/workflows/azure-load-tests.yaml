@@ -41,7 +41,11 @@ jobs:
     - name: Install PowerShell modules
       shell: pwsh
       run: |
-        Install-Module -Name Az.Storage,Az.Resources -Force
+        $installModules = @(
+            "Az.Storage",
+            "Az.Resources"
+          )
+        Install-Module -Name $installModules -Force
 
     - name: Login via Az module
       uses: azure/login@v2
