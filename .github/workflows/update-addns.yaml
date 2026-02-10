@@ -22,7 +22,10 @@ jobs:
       - name: Install PowerShell modules
         shell: pwsh
         run: |
-          Install-Module -Name AzTable -Force
+          $installModules = @(
+            "AzTable"
+          )
+          Install-Module -Name $installModules -Force
 
       - name: Retrieve Application information
         id: getappinfo
