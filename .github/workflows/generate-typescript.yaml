@@ -11,11 +11,6 @@ on:
         required: false
         type: string
         default: ${{ vars.APPLICATION_CI_COREPACK_INSTALL || 'true' }}
-      githubRunner:
-        required: false
-        type: string
-        description: "The type of runner to use"
-        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
     secrets:
       PAT_ACTION_CI:
         required: false
@@ -23,7 +18,7 @@ on:
 jobs:
   generate-typescript:
     name: Generate TypeScript Types
-    runs-on: ${{ inputs.githubRunner }}
+    runs-on: azure
     steps:
       - name: Checkout
         uses: actions/checkout@v4
