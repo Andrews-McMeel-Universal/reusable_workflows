@@ -80,9 +80,10 @@ jobs:
           image: docker-ci:latest
           run: |
             ${{ env.dockerCmd }} &
+            PID=$!
             sleep 15
-            RESULT=$?
-            if kill -0 "$PID" 2>/dev/null; then
+            if kill -0 "$PID" 2>/dev/null
+            then
               wget -O - -q "http://localhost:${{ env.dockerContainerPort }}${{ inputs.healthCheckPath }}" ||
               curl "http://localhost:${{ env.dockerContainerPort }}${{ inputs.healthCheckPath }}"
             else
