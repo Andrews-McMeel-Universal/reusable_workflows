@@ -10,12 +10,13 @@ on:
       targetRepository:
         type: string
         description: 'Input a repository name'
-        required: true
+        required: false
+        default: ${{ vars.REMOTE_DISPATCH_TARGET_REPOSITORY || 'digital-products-admin_ui' }}
       targetRepositoryOwner:
         type: string
         description: 'Input a repository owner'
         required: false
-        default: 'Andrews-McMeel-Universal'
+        default: ${{ vars.REMOTE_DISPATCH_TARGET_REPOSITORY_OWNER || 'Andrews-McMeel-Universal' }}
     secrets:
       PAT_ACTION_CI:
         required: true
