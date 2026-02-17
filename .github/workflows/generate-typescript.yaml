@@ -1,0 +1,65 @@
+name: Generate TypeScript Types
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
+      corepackInstall:
+        required: false
+        type: string
+        default: ${{ vars.APPLICATION_CI_COREPACK_INSTALL || 'true' }}
+      githubRunner:
+        required: false
+        type: string
+        description: "The type of runner to use"
+        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
+    secrets:
+      PAT_ACTION_CI:
+        required: false
+
+jobs:
+  generate-typescript:
+    name: Generate TypeScript Types
+    runs-on: ${{ inputs.githubRunner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+          fetch-depth: 0
+
+      - name: Use cache-yarn-install action
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+        with:
+          enable-corepack: ${{ inputs.corepackInstall }}
+
+      - name: Generate TypeScript Types
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          SERVICE_URL: dpadmin.service.amuniversal.com
+        run: |
+            if [[ "${ENVIRONMENT}" != "production" ]]; then
+              SERVICE_URL="${ENVIRONMENT}.${SERVICE_URL}"
+            fi
+            yarn openapi-typescript https://${SERVICE_URL}/swagger/v1/swagger.json -o ./src/types/dpAdminSchema.${ENVIRONMENT}.ts
+
+      - name: Generate TypeScript Build ID
+        id: build_id
+        run: echo "BUILD_ID=$(date +%s)" >> $GITHUB_ENV
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "Update TypeScript types for ${{ inputs.environment }} environment"
+          branch: maintenance/typescript/${{ inputs.environment }}-types-${{ env.BUILD_ID }}
+          committer: AMU Automations <amu_deploy@amuniversal.com>
+          delete-branch: true
+          title: "Update TypeScript types for ${{ inputs.environment }} environment"
+          body: |
+            Updating TypeScript types for ${{ inputs.environment }} environment in response to changes in the API or data structures. This ensures that our TypeScript definitions remain accurate and up-to-date, providing better type safety and developer experience.
+          labels: |
+            maintenance
+            typescript
