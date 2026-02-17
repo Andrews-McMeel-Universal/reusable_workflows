@@ -82,7 +82,7 @@ jobs:
             ${{ env.dockerCmd }} &
             sleep 15
             RESULT=$?
-            if [ $RESULT -eq 0 ]; then
+            if kill -0 "$PID" 2>/dev/null; then
               wget -O - -q "http://localhost:${{ env.dockerContainerPort }}${{ inputs.healthCheckPath }}" ||
               curl "http://localhost:${{ env.dockerContainerPort }}${{ inputs.healthCheckPath }}"
             else
