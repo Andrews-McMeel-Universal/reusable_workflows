@@ -75,17 +75,25 @@ jobs:
           echo "dockerCmd=$dockerCmd" >> $GITHUB_ENV
 
       - name: Run tests in Docker Container
-        uses: maus007/docker-run-action-fork@v1
-        with:
-          image: docker-ci:latest
-          run: |
-            ${{ env.dockerCmd }} &
-            PID=$!
-            sleep 15
-            if kill -0 "$PID" 2>/dev/null
-            then
-              wget -O - -q "http://localhost:${{ env.dockerContainerPort }}${{ inputs.healthCheckPath }}" ||
-              curl "http://localhost:${{ env.dockerContainerPort }}${{ inputs.healthCheckPath }}"
-            else
-              exit 1
-            fi
+        shell: sh
+        env:
+          DOCKER_CONTAINER_PORT: ${{ env.dockerContainerPort }}
+          HEALTH_CHECK_PATH: ${{ inputs.healthCheckPath }}
+        run: |
+          docker run --rm \
+            -e DOCKER_CONTAINER_PORT="$DOCKER_CONTAINER_PORT" \
+            -e HEALTH_CHECK_PATH="$HEALTH_CHECK_PATH" \
+            -p "${DOCKER_CONTAINER_PORT}:${DOCKER_CONTAINER_PORT}" \
+            docker-ci:latest \
+            sh -lc '
+              ${{ env.dockerCmd }} &
+              PID=$!
+              sleep 15
+              URL="http://localhost:${DOCKER_CONTAINER_PORT}${HEALTH_CHECK_PATH}"
+              if kill -0 "$PID" 2>/dev/null
+                then
+                wget -O - -q "$URL" || curl -fsS "$URL"
+              else
+                exit 1
+              fi
+            '
