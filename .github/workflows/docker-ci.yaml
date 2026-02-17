@@ -75,7 +75,7 @@ jobs:
           echo "dockerCmd=$dockerCmd" >> $GITHUB_ENV
 
       - name: Run tests in Docker Container
-        uses: addnab/docker-run-action@v3
+        uses: maus007/docker-run-action-fork@v1
         with:
           image: docker-ci:latest
           run: |
