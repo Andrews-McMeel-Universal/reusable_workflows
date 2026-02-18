@@ -39,7 +39,7 @@ jobs:
             if [[ "${ENVIRONMENT}" != "production" ]]; then
               SERVICE_URL="${ENVIRONMENT}.${SERVICE_URL}"
             fi
-            yarn openapi-typescript https://${SERVICE_URL}/swagger/v1/swagger.json -o ./src/types/dpAdminSchema.${ENVIRONMENT}.ts
+            yarn openapi-typescript https://${SERVICE_URL}/swagger/v1/swagger.json -o ./src/types/dpAdminSchema.${ENVIRONMENT}.d.ts
 
       - name: Generate TypeScript Build ID
         id: build_id
@@ -48,13 +48,14 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "Update TypeScript types for ${{ inputs.environment }} environment"
+          commit-message: "updated typescript definitions for the `${{ inputs.environment }}` environment"
           branch: maintenance/typescript/${{ inputs.environment }}-types-${{ env.BUILD_ID }}
           committer: AMU Automations <amu_deploy@amuniversal.com>
           delete-branch: true
-          title: "Update TypeScript types for ${{ inputs.environment }} environment"
+          title: "chore: update typescript definitions for the `${{ inputs.environment }}` environment"
           body: |
-            Updating TypeScript types for ${{ inputs.environment }} environment in response to changes in the API or data structures. This ensures that our TypeScript definitions remain accurate and up-to-date, providing better type safety and developer experience.
+            Updating TypeScript types for `${{ inputs.environment }}` environment in response to changes in the API or data structures.
+            
+            This ensures that our TypeScript definitions remain accurate and up-to-date, providing better type safety and developer experience.
           labels: |
             maintenance
-            typescript
