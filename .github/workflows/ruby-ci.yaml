@@ -4,8 +4,10 @@ on:
   workflow_call:
     inputs:
       environment:
-        required: true
+        required: false
         type: string
+        description: "The environment to use for the CI"
+        default: ${{ vars.APPLICATION_CI_ENVIRONMENT || 'development' }}
       APT_PACKAGES:
         required: false
         type: string
