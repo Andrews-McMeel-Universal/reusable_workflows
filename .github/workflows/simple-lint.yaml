@@ -7,7 +7,7 @@ on:
     inputs:
       runPrettier:
         default: ${{ vars.SIMPLE_LINT_RUN_PRETTIER || 'true' }}
-        type: boolean
+        type: string
       prettierPlugins:
         description: Install Prettier plugins, i.e. '@prettier/plugin-php @prettier/plugin-other'
         type: string
@@ -22,7 +22,7 @@ on:
 jobs:
   prettier:
     name: Prettier Check
-    if: ${{ inputs.runPrettier != 'false'}}
+    if: ${{ inputs.runPrettier != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
