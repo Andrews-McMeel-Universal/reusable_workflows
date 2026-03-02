@@ -962,6 +962,10 @@ jobs:
 
           # Update DNS record
           for INGRESS in "${INGRESSES[@]}"; do
+            if [ -z "${INGRESS}" ]; then
+              echo "Empty ingress found, skipping DNS update for this entry."
+              continue
+            fi
             echo "Updating DNS record for ${INGRESS} to ${AKS_INGRESS}"
             az network dns record-set cname set-record \
               --resource-group "AMU_DNS_RG" \
