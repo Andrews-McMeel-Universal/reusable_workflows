@@ -39,7 +39,7 @@ jobs:
             if [[ "${ENVIRONMENT}" != "production" ]]; then
               SERVICE_URL="${ENVIRONMENT}.${SERVICE_URL}"
             fi
-            yarn openapi-typescript https://${SERVICE_URL}/swagger/v1/swagger.json -o ./src/types/dpAdminSchema.${ENVIRONMENT}.d.ts
+            yarn openapi-typescript https://${SERVICE_URL}/swagger/v1/swagger.json -o ./src/types/schemas/dpAdminSchema.${ENVIRONMENT}.d.ts
 
       - name: Generate TypeScript Build ID
         id: build_id
