@@ -57,8 +57,8 @@ jobs:
             HEAD=${{ github.event.pull_request.head.sha }}
           else
             # For pushes, GitHub provides before/after
-            BASE="$(git rev-list -n 2 "$HEAD" | tail -n 1 || true)"
             HEAD="${{ github.sha }}"
+            BASE="$(git rev-list -n 2 "$HEAD" | tail -n 1 || true)"
           fi
 
           # Initialize flags
