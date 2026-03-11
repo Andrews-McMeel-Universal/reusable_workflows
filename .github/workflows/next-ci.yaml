@@ -25,7 +25,7 @@ on:
       LINT_FORMATTER:
         required: false
         type: string
-        default: ${{ vars.APPLICATION_CI_LINT_FORMATTER || 'true' }}
+        default: ${{ vars.APPLICATION_CI_LINT_FORMATTER || 'false' }}
       RUN_JEST_TESTS:
         required: false
         type: string
