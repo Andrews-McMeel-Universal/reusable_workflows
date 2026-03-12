@@ -51,6 +51,9 @@ jobs:
           commit-message: "updated typescript definitions for the `${{ inputs.environment }}` environment"
           branch: maintenance/typescript/${{ inputs.environment }}-types-${{ env.BUILD_ID }}
           committer: AMU Automations <amu_deploy@amuniversal.com>
+          token: ${{ secrets.PAT_ACTION_CI }}
+          git-token: ${{ secrets.PAT_ACTION_CI }}
+          author: AMU Automations <amu_deploy@amuniversal.com>
           delete-branch: true
           title: "chore: update typescript definitions for the `${{ inputs.environment }}` environment"
           body: |
