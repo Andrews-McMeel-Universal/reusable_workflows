@@ -77,10 +77,11 @@ jobs:
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed_pr: ${{ inputs.onlyChanged }}
-          git_identity: ${{ github.actor }}
+          git_identity: author
           prettier_version: ${{ env.prettier-version }}
           working_directory: ${{ github.workspace }}
           allow_other_plugins: true
+          github_token: ${{ secrets.PAT_ACTION_CI }}
 
       - name: Run prettier with .prettierrc.json configuration
         if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
@@ -90,10 +91,11 @@ jobs:
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed_pr: ${{ inputs.onlyChanged }}
-          git_identity: ${{ github.actor }}
+          git_identity: author
           prettier_version: ${{ env.prettier-version }}
           working_directory: ${{ github.workspace }}
           allow_other_plugins: true
+          github_token: ${{ secrets.PAT_ACTION_CI }}
 
       - name: Run prettier without any configuration files
         if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
@@ -103,10 +105,11 @@ jobs:
           prettier_plugins: ${{ inputs.prettierPlugins }}
           commit_message: "[Simple Linter] Apply prettier changes"
           only_changed_pr: ${{ inputs.onlyChanged }}
-          git_identity: ${{ github.actor }}
+          git_identity: author
           prettier_version: ${{ env.prettier-version }}
           working_directory: ${{ github.workspace }}
           allow_other_plugins: true
+          github_token: ${{ secrets.PAT_ACTION_CI }}
 
   lint-workflows:
     name: Workflow linter
