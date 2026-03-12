@@ -32,13 +32,10 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Install jq apt package
-        run: sudo apt-get update -y && sudo apt-get install jq -y
-
       - name: Get Prettier version
         id: prettier-version
         run: |
-          VERSION=$(yarn list --pattern prettier | grep " prettier" | awk -F '@' '{print $2}')
+          VERSION=$(grep '"prettier"' package.json | awk -F ":" '{print $2}' | tr -d '"^, ')
           if [[ -z "$VERSION" ]]; then
             echo "prettier-version=latest" >> $GITHUB_ENV
           else
