@@ -670,7 +670,7 @@ jobs:
               echo "Empty ingress found, skipping DNS update for this entry."
               continue
             fi
-            echo "Updating DNS record for ${INGRESS} to ${AKS_INGRESS}"
+            echo "Updating DNS record for ${INGRESS} to ${K8S_INGRESS}"
             az network dns record-set cname set-record \
               --resource-group "AMU_DNS_RG" \
               --zone-name "${INGRESS_DOMAIN_NAME}" \
@@ -739,7 +739,7 @@ jobs:
               "HostName"="$env:dnsPrimaryDomain";
               "DomainName"="$env:domainName";
               "IngressFqdn"="$env:ingress";
-              "K8sIngress"="$env:k8sIngress";
+              "aksIngress"="$env:k8sIngress";
               "Cluster"="$k8sClusterName";
               "ClusterResourceGroup"="$env:k8sResourceGroup";
               "LastDeploy"="$env:date"
