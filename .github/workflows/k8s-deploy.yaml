@@ -633,7 +633,7 @@ jobs:
           images: |
             "ghcr.io/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
           imagepullsecrets: |
-            "${{ needs.build.outputs.appName }}-pull-secret"
+            ${{ needs.build.outputs.appName }}-pull-secret
           pull-images: false
 
       - name: Create or Update Public DNS Record
