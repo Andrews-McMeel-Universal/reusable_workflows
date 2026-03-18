@@ -675,7 +675,7 @@ jobs:
               --resource-group "AMU_DNS_RG" \
               --zone-name "${INGRESS_DOMAIN_NAME}" \
               --record-set-name "${INGRESS}" \
-              --cname "${AKS_INGRESS}" \
+              --cname "${K8S_INGRESS}" \
               --ttl 3600
           done
 
