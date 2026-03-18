@@ -143,6 +143,7 @@ jobs:
           appEnvironment: ${{ inputs.environment }}
           chartsPath: ${{ inputs.chartsPath }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
+          repositoryOwner: ${{ github.repository_owner }}
         run: |
           # Extract Helm values
 
@@ -165,6 +166,11 @@ jobs:
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
           $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
+
+          # Convert repository owner to lowercase for image naming
+          $repositoryOwner = $env:repositoryOwner.ToLower()
+          Write-Output "repositoryOwner=$repositoryOwner"
+          Write-Output "repositoryOwner=$repositoryOwner" >> $env:GITHUB_ENV
 
           # Set app name
           $appName = $chartConfig.name
@@ -251,7 +257,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          images: ghcr.io/${{ env.repositoryOwner }}/${{ github.event.repository.name }}
           tags: |
             type=raw,value=${{ github.sha }}-${{ inputs.environment }}
             type=raw,value=${{ inputs.environment }}
@@ -292,6 +298,7 @@ jobs:
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
+      repositoryOwner: ${{ env.repositoryOwner }}
 
   deploy:
     name: AKS Deploy
@@ -534,9 +541,9 @@ jobs:
           helm-version: "v3.19.2"
           overrideFiles: ./values-override.yaml
           overrides: |
-            deployment.image.repository:ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+            deployment.image.repository:ghcr.io/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}
             deployment.image.tag:${{ github.sha }}-${{ inputs.environment }}
-            image.repository:ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+            image.repository:ghcr.io/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
             autoscaling.minReplicas:${{ needs.build.outputs.minReplicas }}
@@ -624,7 +631,7 @@ jobs:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            "ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
+            "ghcr.io/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
           imagepullsecrets: |
             "${{ needs.build.outputs.appName }}-pull-secret"
           pull-images: false
