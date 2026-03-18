@@ -534,9 +534,9 @@ jobs:
           helm-version: "v3.19.2"
           overrideFiles: ./values-override.yaml
           overrides: |
-            deployment.image.repository:ghcr.io/${{ github.event.repository.name }}
+            deployment.image.repository:ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
             deployment.image.tag:${{ github.sha }}-${{ inputs.environment }}
-            image.repository:ghcr.io/${{ github.event.repository.name }}
+            image.repository:ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
             autoscaling.minReplicas:${{ needs.build.outputs.minReplicas }}
