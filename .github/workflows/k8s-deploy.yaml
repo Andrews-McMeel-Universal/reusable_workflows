@@ -624,7 +624,7 @@ jobs:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            "ghcr.io/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
+            "ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
           imagepullsecrets: |
             "${{ needs.build.outputs.appName }}-pull-secret"
           pull-images: false
