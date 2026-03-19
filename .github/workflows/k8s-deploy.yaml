@@ -505,7 +505,7 @@ jobs:
           $keysToRemove = @()
 
           foreach ($key in $appConfig.Keys) {
-              if (($key -ne "ingress") -and ($key -ne "$env:environment") -and ($key -ne "service")) {
+              if (($key -ne "ingress") -and ($key -ne "$env:environment") -and ($key -ne "service") -and ($key -ne "nodeSelector")) {
                   $keysToRemove += $key
               }
           }
@@ -516,7 +516,7 @@ jobs:
           }
 
           # Enable node selector for designating which nodes to host pods on
-          $appConfig.nodeSelector.environment = "$env:environment"
+          $appConfig.nodeSelector += @{"environment" = "$env:environment"}
 
           # Write to file
           $appConfig | ConvertTo-Yaml | ForEach-Object { $_ -replace "  name:", "- name:" } | Out-File -FilePath "./values-override.yaml"
