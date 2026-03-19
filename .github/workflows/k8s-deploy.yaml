@@ -515,6 +515,8 @@ jobs:
               $appConfig.Remove($key)
           }
 
+          $appConfig.nodeSelector."environment" = "$env:environment"
+
           # Write to file
           $appConfig | ConvertTo-Yaml | ForEach-Object { $_ -replace "  name:", "- name:" } | Out-File -FilePath "./values-override.yaml"
 
