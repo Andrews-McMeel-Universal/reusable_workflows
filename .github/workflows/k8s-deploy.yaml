@@ -574,7 +574,6 @@ jobs:
         run: |
           # Switch Kubernetes Namespace
 
-          ENVIRONMENT_INGRESS=$(echo "${{ inputs.environmentIngress }}" | tr -d "'\"")
           if [ $ENVIRONMENT_NAMESPACE == "true" ]; then
             kubectl config set-context --current --namespace="${ENVIRONMENT}"
             echo "namespace=${ENVIRONMENT}" >> $GITHUB_OUTPUT
