@@ -550,6 +550,7 @@ jobs:
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
             autoscaling.minReplicas:${{ needs.build.outputs.minReplicas }}
+            service.type:ClusterIP
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
