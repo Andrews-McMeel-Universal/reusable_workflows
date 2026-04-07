@@ -20,7 +20,9 @@ on:
       AZURE_CREDENTIALS:
         required: true
       PAT_ACTION_CI:
-        required: false
+        required: true
+      JIRA_TOKEN:
+        required: true
 
 jobs:
   lighthouse:
