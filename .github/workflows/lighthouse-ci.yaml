@@ -1,0 +1,225 @@
+name: Performance Testing
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      chartsPath:
+        required: false
+        type: string
+        description: "Relative path to Helm charts."
+        default: "./deployments/charts"
+      lighthouseCIEndpoints:
+        required: false
+        description: Lighthouse CI testing endpoints
+        type: string
+        default: ${{ vars.LIGHTHOUSE_CI_TESTING_ENDPOINTS || '/' }}
+      ENV_ENCRYPTION_SECRET:
+        required: false
+        type: string
+        default: ${{ vars.ENV_ENCRYPTION_SECRET }}
+      JIRA_AUTOMATIONS_EMAIL:
+        required: false
+        type: string
+        default: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
+      JIRA_AUTOMATIONS_DOMAIN:
+        required: false
+        type: string
+        default: ${{ vars.JIRA_AUTOMATIONS_DOMAIN }}
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+      PAT_ACTION_CI:
+        required: true
+      JIRA_TOKEN:
+        required: true
+
+jobs:
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Retrieve Jira Ticket Key
+        id: retrieve-jira-ticket
+        uses: Andrews-McMeel-Universal/retrieve-jira-ticket@v1
+
+      - name: Sanitize repository name
+        id: repo-name
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          SANITIZED_REPO_NAME=$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-' | sed 's/^-*//;s/-*$//;s/--*/-/g')
+          echo "repo-name=${SANITIZED_REPO_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Use cache-yarn-install action
+        if: inputs.environment == 'development'
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+
+      - name: Prepare environment encryption key
+        id: env-enc-key
+        run: |
+          ENV_ENCRYPTION_SECRET="$(jq -r '.inputs.ENV_ENCRYPTION_SECRET' $GITHUB_EVENT_PATH | base64 --decode 2>/dev/null)"
+          echo "::add-mask::${ENV_ENCRYPTION_SECRET}"
+          echo "envEncryptionSecret=${ENV_ENCRYPTION_SECRET}" >> $GITHUB_OUTPUT
+
+      - name: Use .env cache action
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
+          enableCaching: true
+          envEncryptionSecret: ${{ steps.env-enc-key.outputs.envEncryptionSecret }}
+
+      - name: Use cache-next-build action
+        if: inputs.environment == 'development'
+        uses: Andrews-McMeel-Universal/cache-next-build@v1
+
+      - name: Insert new line after each testing endpoint
+        id: insert-new-line
+        run: |
+          TESTING_ENDPOINTS=$(echo "${{ inputs.lighthouseCIEndpoints }}" | sed 's/,/\n/g')
+          echo 'TESTING_ENDPOINTS<<EOF' >> $GITHUB_ENV
+          echo "$TESTING_ENDPOINTS" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
+      - name: Audit URLs using Lighthouse
+        id: lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            ${{ env.TESTING_ENDPOINTS }}
+          budgetPath: ./budget.json
+          uploadArtifacts: true
+          temporaryPublicStorage: false
+
+      - name: Azure Login
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' }}
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.AZURE_CREDENTIALS }}"
+          enable-AzPSSession: true
+
+      - name: Upload Lighthouse Report to Azure Storage Account
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' }}
+        id: lighthouse-reports
+        shell: pwsh
+        run: |
+          $resourceGroupName = "AMU_DevOps_RG"
+          $storageAccountName = "amutestassets"
+          $storageAccountKey = (Get-AzStorageAccountKey -ResourceGroupName $resourceGroupName -Name $storageAccountName)[0].Value
+          $storageContext = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+          $storageAccountContainerName = "lighthouse-reports"
+          $reportDirectory = "${{ steps.lighthouse.outputs.resultsPath }}"
+          $storageAccountContainerDestPath = "${{ steps.repo-name.outputs.repo-name }}/${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}"
+          $manifest = '${{ steps.lighthouse.outputs.manifest }}' | ConvertFrom-Json
+
+          if ($manifest -match "html") {
+              Write-Output "lighthouse-report-exists=true" >> $env:GITHUB_OUTPUT
+              Write-Output "lighthouse-report-exists=true"
+              Write-Output "### Lighthouse Reports" >> $env:GITHUB_STEP_SUMMARY
+          }
+
+          $jiraReports = @()
+          $githubReports = @()
+          foreach ($result in $manifest) {
+              $endpoint = ($result.url).Replace('http://localhost:3000','').Replace('http://localhost:3000','') -replace "^/","" -replace "/","-"
+              $htmlPath = $result.htmlPath
+
+              # Upload file
+              Set-AzStorageBlobContent -File "$htmlPath" -Container "$storageAccountContainerName" -Blob "$storageAccountContainerDestPath/$endpoint.report.html" -Context $storageContext -Force -Properties @{"ContentType" = "text/html"};
+              Write-Output "- [$endpoint](https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html)" >> $env:GITHUB_STEP_SUMMARY
+              $githubReports += "| [/$endpoint](https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html) |,"
+              $jiraReports += "- [/$endpoint|https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html],"
+          }
+          Write-Output "jiraReports=$jiraReports" >> $env:GITHUB_OUTPUT
+          Write-Output "githubReports=$githubReports" >> $env:GITHUB_OUTPUT
+
+      - name: Insert new line after each report for formatting
+        id: gh-reports
+        run: |
+          GITHUB_REPORTS=$(echo "${{ steps.lighthouse-reports.outputs.githubReports }}" | sed 's/,/\n/g')
+          echo 'GITHUB_REPORTS<<EOF' >> $GITHUB_ENV
+          echo "$GITHUB_REPORTS" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
+          JIRA_REPORTS=$(echo "${{ steps.lighthouse-reports.outputs.jiraReports }}" | sed 's/,/\n/g')
+          echo 'JIRA_REPORTS<<EOF' >> $GITHUB_ENV
+          echo "$JIRA_REPORTS" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
+      - name: Check if Lighthouse Jira Comment Exists
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
+        id: check-jira-comments
+        shell: pwsh
+        run: |
+          $ticket = "${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}"
+          $uri = "https://${{ vars.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net/rest/api/2/issue/$ticket"
+          $username = "${{ vars.JIRA_AUTOMATIONS_EMAIL }}"
+          $token = "${{ secrets.JIRA_TOKEN }}"
+          $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$token)))
+          $headers = @{
+              Authorization = ("Basic {0}" -f $base64AuthInfo)
+              "Content-Type" = "application/json"
+          }
+
+          try {
+              $response = Invoke-RestMethod -Headers $headers -Uri $uri -Method Get
+              Write-Output "Ticket $ticket found."
+          }
+          catch {
+              Write-Error "Exception occurred while fetching ticket: $_"
+              exit 1
+          }
+
+          $comments = $response.fields.comment.comments
+          foreach ($comment in $comments) {
+              if ($comment.body -match "This ticket's Lighthouse Reports:") {
+                  Write-Output "comment-found=true" >> $env:GITHUB_OUTPUT
+                  $commentFound = $true
+                  break
+              }
+          }
+
+      - name: Login to Jira
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: https://${{ vars.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net
+          JIRA_USER_EMAIL: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_TOKEN }}
+
+      - name: Link Lighthouse Reports in Jira ticket
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}
+          comment: |
+            This ticket's Lighthouse Reports:
+            ${{ env.JIRA_REPORTS }}
+
+      - name: Check if Lighthouse report PR comment exists
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
+        id: github-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.number }}
+          body-includes: This PR's Lighthouse Reports
+          direction: last
+
+      - name: Create GitHub PR comment with Lighthouse Report links
+        if: ${{ steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.github-comment.outputs.comment-id }}
+          token: ${{ secrets.PAT_ACTION_CI }}
+          edit-mode: replace
+          body: |
+            This PR's Lighthouse Reports:
+            | Endpoint  |
+            | ------------- |
+            ${{ env.GITHUB_REPORTS }}
