@@ -69,7 +69,7 @@ jobs:
       - name: Insert new line after each testing endpoint
         id: insert-new-line
         run: |
-          TESTING_ENDPOINTS=$(echo "${{ inputs.lighthouseCIEndpoints }}" | sed 's/^,/\n/g')
+          TESTING_ENDPOINTS=$(echo "${{ inputs.lighthouseCIEndpoints }}" | sed 's/,/\n/g')
           echo 'TESTING_ENDPOINTS<<EOF' >> $GITHUB_ENV
           echo "$TESTING_ENDPOINTS" >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
