@@ -17,6 +17,8 @@ on:
         type: string
         default: ${{ vars.LIGHTHOUSE_CI_TESTING_ENDPOINTS || '/' }}
     secrets:
+      AZURE_CREDENTIALS:
+        required: true
       PAT_ACTION_CI:
         required: false
 
