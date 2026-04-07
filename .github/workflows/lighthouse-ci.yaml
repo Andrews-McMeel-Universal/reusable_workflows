@@ -133,17 +133,22 @@ jobs:
               Set-AzStorageBlobContent -File "$htmlPath" -Container "$storageAccountContainerName" -Blob "$storageAccountContainerDestPath/$endpoint.report.html" -Context $storageContext -Force -Properties @{"ContentType" = "text/html"};
               Write-Output "- [$endpoint](https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html)" >> $env:GITHUB_STEP_SUMMARY
               $githubReports += "| [/$endpoint](https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html) |,"
-              $jiraReports += "- [/$endpoint|https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html] \n"
+              $jiraReports += "- [/$endpoint|https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html],"
           }
           Write-Output "jiraReports=$jiraReports" >> $env:GITHUB_OUTPUT
           Write-Output "githubReports=$githubReports" >> $env:GITHUB_OUTPUT
 
-      - name: Insert new line after each GitHub Report
+      - name: Insert new line after each report for formatting
         id: gh-reports
         run: |
           GITHUB_REPORTS=$(echo "${{ steps.lighthouse-reports.outputs.githubReports }}" | sed 's/,/\n/g')
           echo 'GITHUB_REPORTS<<EOF' >> $GITHUB_ENV
           echo "$GITHUB_REPORTS" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
+          JIRA_REPORTS=$(echo "${{ steps.lighthouse-reports.outputs.jiraReports }}" | sed 's/,/\n/g')
+          echo 'JIRA_REPORTS<<EOF' >> $GITHUB_ENV
+          echo "$JIRA_REPORTS" >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
 
       - name: Check if Lighthouse Jira Comment Exists
@@ -194,7 +199,7 @@ jobs:
           issue: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}
           comment: |
             This ticket's Lighthouse Reports:
-            ${{ steps.lighthouse-reports.outputs.jiraReports }}
+            ${{ env.JIRA_REPORTS }}
 
       - name: Check if Lighthouse report PR comment exists
         if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
