@@ -1,0 +1,57 @@
+
+172.169.77.185 \\ Microsoft
+4.249.202.9 \\ Microsoft
+13.89.51.87 \\ Microsoft
+52.176.102.212 \\ Microsoft
+64.236.87.202 \\ Microsoft
+64.236.20.68 \\ Microsoft
+52.123.190.88 \\ Microsoft
+
+48.214.166.142 \\ Listed as "GoComics Store Function App Staging Slot Outbound IP Addresses" address
+48.214.185.137 \\ Listed as "GoComics Store Function App Staging Slot Outbound IP Addresses" address
+48.214.172.102 \\ Listed as "GoComics Store Function App Staging Slot Outbound IP Addresses" address
+
+135.148.100.196 \\ OVHcloud / Iran / Cogent Communications / EDGEUNO / Enki / Hurricane Electric
+159.89.163.66 \\ DigitalOcean
+
+37.157.220.194 \\ Armenia ??
+62.89.13.162 \\ Armenia ??
+
+172.168.124.78 \\ amuaksdev101 outbound ip
+130.131.225.64 \\ amugcaks101 production-green outbound ip
+104.43.255.133 \\ amugcaks101 production-blue outbound ip
+40.69.164.106 \\ amugcaks101 aks-micnp node outbound ip
+20.9.59.112 \\ amugcaks101 aks-uinp node outbound ip
+52.189.119.34 \\ amugcaks101 aks-uinp node outbound ip
+
+20.118.17.8 \\ amuaks203 staging/development nodes
+52.165.98.121 \\ amuaks201 production node
+130.131.160.123 \\ amuaks201 production node
+40.86.1.83 \\ amuaks201 staging/development nodes
+20.40.250.168 \\ amuaks203 production node
+135.119.112.17 \\ amuaks203 production node
+20.221.73.95 \\ amuaks203 production node
+
+20.118.5.182 \\ amuaks201-production-green-ingress
+52.230.145.76 \\ amuaks201-staging-ingress
+172.168.250.107 \\ amuaks201-production-ingress
+52.230.144.125 \\ amuaks201-development-ingress
+20.98.191.136 \\ amuaks201-production-blue-ingress
+40.86.1.83 \\ amuaks201 public ip address
+48.214.230.80 \\ amuaks201 public ip address
+48.214.229.157 \\ amuaks201 public ip address
+48.214.229.118 \\ amuaks201 public ip address
+
+4.150.156.175 \\ amuaks203-production-blue-ingress
+20.221.36.202 \\ amuaks203-production-green-ingress
+172.168.178.201 \\ amuaks203-production-ingress
+172.168.250.5 \\ amuaks203-staging-ingress
+132.196.118.208 \\ amuaks203-development-ingress
+
+48.214.165.46 \\ amugcaks101-staging-ingress
+13.86.97.93 \\ amugcaks101-production-blue-ingress
+20.15.146.207 \\ amugcaks101-production-green-ingress
+172.168.83.26 \\ amugcaks101-production-ingress
+172.168.126.213 \\ amugcaks101-development-ingress
+128.203.223.65 \\ amugcaks101 public ip address
+128.203.220.190 \\ amugcaks101 public ip address
