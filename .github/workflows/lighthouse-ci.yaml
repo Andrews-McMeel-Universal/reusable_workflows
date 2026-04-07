@@ -11,7 +11,7 @@ on:
         type: string
         description: "Relative path to Helm charts."
         default: "./deployments/charts"
-      lighthouseCiEndpoints:
+      lighthouseCIEndpoints:
         required: false
         description: Lighthouse CI testing endpoints
         type: string
@@ -66,10 +66,10 @@ jobs:
         if: inputs.environment == 'development'
         uses: Andrews-McMeel-Universal/cache-next-build@v1
 
-      - name: Insert new line after build arguments
+      - name: Insert new line after each testing endpoint
         id: insert-new-line
         run: |
-          TESTING_ENDPOINTS=$(echo "${{ inputs.LIGHTHOUSE_CI_TESTING_ENDPOINTS }}" | sed 's/^,/\n/g')
+          TESTING_ENDPOINTS=$(echo "${{ inputs.lighthouseCIEndpoints }}" | sed 's/^,/\n/g')
           echo 'TESTING_ENDPOINTS<<EOF' >> $GITHUB_ENV
           echo "$TESTING_ENDPOINTS" >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
