@@ -185,7 +185,7 @@ jobs:
           }
 
       - name: Login to Jira
-        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
         uses: atlassian/gajira-login@v3
         env:
           JIRA_BASE_URL: https://${{ vars.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net
@@ -193,7 +193,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_TOKEN }}
 
       - name: Link Lighthouse Reports in Jira ticket
-        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
         uses: atlassian/gajira-comment@v3
         with:
           issue: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}
