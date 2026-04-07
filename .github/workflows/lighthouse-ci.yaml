@@ -16,6 +16,18 @@ on:
         description: Lighthouse CI testing endpoints
         type: string
         default: ${{ vars.LIGHTHOUSE_CI_TESTING_ENDPOINTS || '/' }}
+      ENV_ENCRYPTION_SECRET:
+        required: false
+        type: string
+        default: ${{ vars.ENV_ENCRYPTION_SECRET }}
+      JIRA_AUTOMATIONS_EMAIL:
+        required: false
+        type: string
+        default: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
+      JIRA_AUTOMATIONS_DOMAIN:
+        required: false
+        type: string
+        default: ${{ vars.JIRA_AUTOMATIONS_DOMAIN }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -120,11 +132,19 @@ jobs:
               # Upload file
               Set-AzStorageBlobContent -File "$htmlPath" -Container "$storageAccountContainerName" -Blob "$storageAccountContainerDestPath/$endpoint.report.html" -Context $storageContext -Force -Properties @{"ContentType" = "text/html"};
               Write-Output "- [$endpoint](https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html)" >> $env:GITHUB_STEP_SUMMARY
-              $githubReports += "[/$endpoint](https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html)</br>"
+              $githubReports += "| [/$endpoint](https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html) |,"
               $jiraReports += "- [/$endpoint|https://amutestassets.blob.core.windows.net/lighthouse-reports/$storageAccountContainerDestPath/${endpoint}.report.html] \n"
           }
           Write-Output "jiraReports=$jiraReports" >> $env:GITHUB_OUTPUT
           Write-Output "githubReports=$githubReports" >> $env:GITHUB_OUTPUT
+
+      - name: Insert new line after each GitHub Report
+        id: gh-reports
+        run: |
+          GITHUB_REPORTS=$(echo "${{ steps.lighthouse-reports.outputs.githubReports }}" | sed 's/,/\n/g')
+          echo 'GITHUB_REPORTS<<EOF' >> $GITHUB_ENV
+          echo "$GITHUB_REPORTS" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
 
       - name: Check if Lighthouse Jira Comment Exists
         if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
@@ -160,7 +180,7 @@ jobs:
           }
 
       - name: Login to Jira
-        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
         uses: atlassian/gajira-login@v3
         env:
           JIRA_BASE_URL: https://${{ vars.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net
@@ -168,7 +188,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_TOKEN }}
 
       - name: Link Lighthouse Reports in Jira ticket
-        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
+        if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
         uses: atlassian/gajira-comment@v3
         with:
           issue: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}
@@ -195,4 +215,6 @@ jobs:
           edit-mode: replace
           body: |
             This PR's Lighthouse Reports:
-            ${{ steps.lighthouse-reports.outputs.githubReports }}
+            | Endpoint  |
+            | ------------- |
+            ${{ env.GITHUB_REPORTS }}
