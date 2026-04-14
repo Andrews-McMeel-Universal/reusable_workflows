@@ -524,7 +524,7 @@ jobs:
                       podAffinityTerm = @{
                           labelSelector = @{
                               matchLabels = @{
-                                app = "content-service"
+                                app = "$appName"
                               }
                           }
                           topologyKey = "kubernetes.io/hostname"
