@@ -505,7 +505,7 @@ jobs:
           $keysToRemove = @()
 
           foreach ($key in $appConfig.Keys) {
-              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "service") -and ($key -ne "nodeSelector") -and ($key -ne "affinity")) {
+              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "service") -and ($key -ne "nodeSelector")) {
                   $keysToRemove += $key
               }
           }
@@ -517,22 +517,6 @@ jobs:
 
           # Enable node selector for designating which nodes to host pods on
           $appConfig.nodeSelector += @{"environment" = "$env:environment"}
-          $appConfig.affinity = @{
-              podAntiAffinity = @{
-                  preferredDuringSchedulingIgnoredDuringExecution = @{
-                      weight = "100"
-                      podAffinityTerm = @{
-                          labelSelector = @{
-                              matchLabels = @{
-                                app = "$appName"
-                              }
-                          }
-                          topologyKey = "kubernetes.io/hostname"
-                      }
-                  }
-              }
-          }
-
 
           # Write to file
           $appConfig | ConvertTo-Yaml | ForEach-Object { $_ -replace "  name:", "- name:" } | Out-File -FilePath "./values-override.yaml"
