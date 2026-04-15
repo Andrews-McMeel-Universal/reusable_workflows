@@ -86,6 +86,11 @@ on:
         type: string
         description: "Publish Sentry release"
         default: ${{ vars.PUBLISH_SENTRY_RELEASE || 'true' }}
+      haIngress:
+        required: false
+        type: string
+        description: "Enable high availability hostname for ingress (ingress with datacenter location)"
+        default: ${{ vars.HA_INGRESS || 'false' }}
       envEncryptionSecret:
         required: false
         type: string
@@ -95,12 +100,33 @@ on:
         type: string
         description: "Use organization's remote Helm templates"
         default: ${{ vars.REMOTE_HELM_TEMPLATES }}
+      blueGreenDeployment:
+        required: false
+        type: string
+        description: "Enable blue/green deployment strategy"
+        default: ${{ vars.BLUE_GREEN_DEPLOYMENT || 'false' }}
+      bunnyCdnDomain:
+        required: false
+        type: string
+        description: "Bunny CDN Domain. Set to the domain of your Bunny CDN."
+        default: ${{ vars.BUNNY_CDN_DOMAIN }}
+      updateBunnyCdnOrigin:
+        required: false
+        type: string
+        description: "Enable updating Bunny CDN pull zone origin after deployment"
+        default: ${{ vars.UPDATE_BUNNY_CDN_ORIGIN || 'false' }}
     secrets:
+      k8sClusterName:
+        required: true
+      k8sKubeConfig:
+        required: true
       azureCredentials:
         required: true
-      registryUsername:
+      registryUserName:
         required: true
-      k8sClusterName:
+      registryHostName:
+        required: true
+      registryPassword:
         required: true
       storageAccountKey:
         required: true
@@ -112,8 +138,8 @@ on:
         required: false
       sentryAuthToken:
         required: false
-      k8sKubeConfig:
-        required: true
+      bunnyCdnApiKey:
+        required: false
 
 jobs:
   build:
@@ -129,21 +155,88 @@ jobs:
 
       - name: Install PowerShell modules
         shell: pwsh
+        env:
+          blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
+          environment: ${{ inputs.environment }}
+          environmentIngress: ${{ inputs.environmentIngress }}
         run: |
           # Install PowerShell modules
           $installModules = @(
             "powershell-yaml"
           )
+          if ($env:blueGreenDeployment -eq 'true' -and $env:environment -eq 'production' -and $env:environmentIngress -ne 'false') {
+            $installModules += @("AzTable","Az.Storage","Az.Resources")
+          }
           Install-Module -Name $installModules -Force
+
+      - name: Get Blue/Green Deployment Info
+        id: bg-deployment
+        if: inputs.blueGreenDeployment == 'true' && inputs.environment == 'production' && inputs.environmentIngress != 'false'
+        shell: pwsh
+        env:
+          storageAccountName: amucloudapps
+          appInfoTableName: DeployedApplications
+          repositoryName: ${{ github.event.repository.name }}
+          environment: ${{ inputs.environment }}
+        run: |
+          # Get Blue/Green Deployment Info
+          $storageAccountKey = ${{ secrets.storageAccountKey }}
+          $storageContext = New-AzStorageContext -StorageAccountName ${env:storageAccountName} -StorageAccountKey $storageAccountKey
+
+          #Get Storage table
+          try {
+              $appInfoTable = (Get-AzStorageTable -Name ${env:appInfoTableName} -Context $storageContext -ErrorAction Stop).CloudTable
+              }
+          catch {
+              Write-Error -Message "Error accessing cloud ${env:appInfoTableName} table.  Error message was: $_.Exception.Message"
+              return
+          }
+
+          $activeDeployment = (Get-AzTableRow -Table $appInfoTable -partitionKey ${env:repositoryName} -RowKey ${env:environment} -SelectColumn "ActiveBlueGreenDeployment").ActiveBlueGreenDeployment
+
+          if ($activeDeployment -match "green") {
+              $inactiveDeployment = "blue"
+          }
+          else {
+              $inactiveDeployment = "green"
+          }
+          Write-Output "blueGreenActiveDeployment=$activeDeployment"
+          Write-Output "blueGreenActiveDeployment=$activeDeployment" >> $env:GITHUB_ENV
+          Write-Output "blueGreenInactiveDeployment=$inactiveDeployment"
+          Write-Output "blueGreenInactiveDeployment=$inactiveDeployment" >> $env:GITHUB_ENV
+
+      - name: Login via Az module
+        if: inputs.haIngress == 'true'
+        uses: azure/login@v2
+        with:
+          creds: "${{ secrets.azureCredentials }}"
+
+      - name: Get AKS cluster info
+        id: aks-info
+        shell: bash
+        run: |
+          # Get AKS cluster info
+
+          HA_INGRESS="${{ inputs.haIngress }}"
+          if [ "$HA_INGRESS" = "true" ]; then
+            AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
+          else
+            AKS_LOCATION="centralus"
+          fi
+          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_ENV
 
       - name: Extract Helm values
         id: setenvs
         shell: pwsh
         env:
           appEnvironment: ${{ inputs.environment }}
+          haIngress: ${{ inputs.haIngress }}
           chartsPath: ${{ inputs.chartsPath }}
+          datacenterLocation: ${{ env.datacenterLocation }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
           repositoryOwner: ${{ github.repository_owner }}
+          blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
+          blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
         run: |
           # Extract Helm values
 
@@ -212,18 +305,52 @@ jobs:
 
           # Set domain name
           $domainName = ($ingress.Split('.') | Select-Object -Last 2) -join '.'
+
+          # Add datacenter location to ingress if HA hostname is enabled
           $subDomain = $ingress -replace "$domainName", '' -replace "\.$", ""
+          if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
+              Write-Output "Adding datacenter location to ingress: $ingress"
+              if ($subDomain -match "\.service") {
+                  if ($subDomain -match "services") {
+                      $ingress = "services.$domainName"
+                      $subDomain = $subDomain -replace "\.services", ""
+                  }
+                  else {
+                      $ingress = "service.$domainName"
+                      $subDomain = $subDomain -replace "\.service", ""
+                  }
+              }
+              else {
+                  $ingress = "$domainName"
+              }
+              $ingress = "${env:datacenterLocation}.$ingress"
+              if ($subDomain -ne "") {
+                  $ingress = "$subDomain.$ingress"
+              }
+          }
 
           # Add environment to ingress
           if ($environmentIngress -ne "false") {
               Write-Output "Adding environment to ingress: $ingress"
-              $ingress = "${env:appEnvironment}.$ingress"
+              if ($env:blueGreenDeployment -eq "true" -and $env:appEnvironment -eq "production") {
+                  $ingress = "${env:appEnvironment}-${env:blueGreenInactiveDeployment}.$ingress"
+              }
+              else {
+                  $ingress = "${env:appEnvironment}.$ingress"
+              }
+          }
+
+          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:haIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
+              $wwwIngress = "true"
+              $ingress = "www.$ingress"
           }
 
           Write-Output "domainName=$domainName"
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
           Write-Output "ingress=$ingress"
           Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
+          Write-Output "wwwIngress=$wwwIngress"
+          Write-Output "wwwIngress=$wwwIngress" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -249,15 +376,15 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:
-          registry: ghcr.io
-          username: ${{ secrets.registryUsername }}
-          password: ${{ secrets.PAT_ACTION_CI }}
+          registry: ${{ secrets.registryHostName }}
+          username: ${{ secrets.registryUserName }}
+          password: ${{ secrets.registryPassword }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ env.repositoryOwner }}/${{ github.event.repository.name }}
+          images: ${{ secrets.registryHostName }}/${{ env.repositoryOwner }}/${{ github.event.repository.name }}
           tags: |
             type=raw,value=${{ github.sha }}-${{ inputs.environment }}
             type=raw,value=${{ inputs.environment }}
@@ -299,6 +426,9 @@ jobs:
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
       repositoryOwner: ${{ env.repositoryOwner }}
+      wwwIngress: ${{ env.wwwIngress }}
+      blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
+      datacenterLocation: ${{ env.datacenterLocation }}
 
   deploy:
     name: AKS Deploy
@@ -328,12 +458,17 @@ jobs:
         env:
           environment: ${{ inputs.environment }}
           chartsPath: ${{ inputs.chartsPath }}
+          haIngress: ${{ inputs.haIngress }}
           adminIngressWhitelist: ${{ inputs.adminIngressWhitelist }}
           serviceIngressWhitelist: ${{ inputs.serviceIngressWhitelist }}
+          datacenterLocation: ${{ needs.build.outputs.datacenterLocation }}
           domainName: ${{ needs.build.outputs.domainName }}
+          wwwIngress: ${{ needs.build.outputs.wwwIngress }}
           ingress: ${{ needs.build.outputs.ingress }}
           ingressWhitelist: ${{ inputs.ingressWhitelist }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
+          blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
+          blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Create values override file
 
@@ -372,7 +507,7 @@ jobs:
               }
 
               # Set variable for whitelist in app config
-              $appConfigWhitelist = $item.annotations."nginx.ingress.kubernetes.io/allow-list"
+              $appConfigWhitelist = $item.annotations."ingress.kubernetes.io/allow-list"
 
               # Set ingress whitelist if not set
               $ipRegex = '^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){2}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/(3[0-2]|[12]?[0-9]))?$'
@@ -450,23 +585,77 @@ jobs:
               # Set domain name and subdomain
               $domainName = $env:domainName
               $subDomain = $item.host -replace "$domainName", '' -replace "\.$", ""
+              if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
+                  Write-Output "Adding datacenter location to $($item.name): $($item.host)"
+                  if ($subDomain -match "\.service") {
+                      if ($subDomain -match "services") {
+                          $item.host = "services.$domainName"
+                          $subDomain = $subDomain -replace "\.services", ""
+                      }
+                      else {
+                          $item.host = "service.$domainName"
+                          $subDomain = $subDomain -replace "\.service", ""
+                      }
+                  }
+                  else {
+                      $item.host = "$domainName"
+                  }
+                  $item.host = "${env:datacenterLocation}.$($item.host)"
+                  if ($subDomain -ne "") {
+                      $item.host = "$subDomain.$($item.host)"
+                  }
+              }
 
               # Add environment to ingress
               if ($environmentIngress -ne "false") {
-                  Write-Output "Adding environment to $($item.name): $($item.host)"
-                  $item.host = "${env:environment}.$($item.host)"
+                  if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production") {
+                      Write-Output "Adding environment and inactive deployment to $($item.name): $($item.host)"
+                      $item.host = "${env:environment}-${env:blueGreenInactiveDeployment}.$($item.host)"
+                  }
+                  else {
+                      Write-Output "Adding environment to $($item.name): $($item.host)"
+                      $item.host = "${env:environment}.$($item.host)"
+                  }
               }
 
               # Add ingressClassName and cluster issuer
               $clusterIssuer = "letsencrypt-${env:environment}"
               $ingressClassName = "haproxy-${env:environment}"
+              if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production" -and $environmentIngress -eq 'true') {
+                  $ingressClassName = "${ingressClassName}-${env:blueGreenInactiveDeployment}"
+                  $clusterIssuer = "${clusterIssuer}-${env:blueGreenInactiveDeployment}"
+              }
               $item.ingressClassName = "$ingressClassName"
               $item.annotations."cert-manager.io/cluster-issuer" = "$clusterIssuer"
 
               # Set DNS primary domain
               if ($item.name -eq "ingress") {
+                  # Add WWW to ingress
+                  if (($item.redirectToWWW -eq $true) -and ($env:environment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
+                      # Add www redirect ingress
+                      $updatedIngress += [PSCustomObject]@{
+                          name = "wwwredirect"
+                          host = $item.host
+                          path = "/(.*)"
+                          ingressClassName = $ingressClassName
+                          annotations = @{
+                              "ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
+                              "cert-manager.io/cluster-issuer" = $clusterIssuer
+                          }
+                      }
+
+                      Write-Output "Adding www to $($item.name) host"
+                      $item.host = "www.$($item.host)"
+                  }
+
                   # Set ingress host to primary domain variable
                   $dnsPrimaryDomain = $item.host -replace "$env:domainName", '' -replace "\.$", ""
+              }
+              else {
+                if (($env:wwwIngress -eq "true") -and ($item.redirectToWWW -ne $false) -and ("$env:ingress" -match $item.host) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
+                    Write-Output "Adding www to $($item.name) host"
+                    $item.host = "www.$($item.host)"
+                }
               }
 
               # Add whitelist annotation
@@ -544,9 +733,9 @@ jobs:
           helm-version: "v3.19.2"
           overrideFiles: ./values-override.yaml
           overrides: |
-            deployment.image.repository:ghcr.io/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}
+            deployment.image.repository:${{ secrets.registryHostName }}/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}
             deployment.image.tag:${{ github.sha }}-${{ inputs.environment }}
-            image.repository:ghcr.io/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}
+            image.repository:${{ secrets.registryHostName }}/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
             autoscaling.minReplicas:${{ needs.build.outputs.minReplicas }}
@@ -559,7 +748,16 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
-      - name: Set target K8s cluster context
+      - name: Get K8s cluster resource group
+        id: k8s-resource-group
+        shell: bash
+        run: |
+          # Get AKS cluster resource group
+
+          K8S_RESOURCE_GROUP="boleyhvcluster"
+          echo "K8S_RESOURCE_GROUP=${K8S_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
+
+      - name: Set target K8s cluster
         uses: azure/k8s-set-context@v4
         with:
           context: ${{ secrets.k8sClusterName }}
@@ -572,10 +770,16 @@ jobs:
         env:
           ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
           ENVIRONMENT: ${{ inputs.environment }}
+          BLUE_GREEN_DEPLOYMENT: ${{ inputs.blueGreenDeployment }}
+          BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Switch Kubernetes Namespace
 
+          ENVIRONMENT_INGRESS=$(echo "${{ inputs.environmentIngress }}" | tr -d "'\"")
           if [ $ENVIRONMENT_NAMESPACE == "true" ]; then
+            if [ $BLUE_GREEN_DEPLOYMENT == "true" ] && [ $ENVIRONMENT == "production" ] && [ "$ENVIRONMENT_INGRESS" == "true" ]; then
+              ENVIRONMENT="${ENVIRONMENT}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}"
+            fi
             kubectl config set-context --current --namespace="${ENVIRONMENT}"
             echo "namespace=${ENVIRONMENT}" >> $GITHUB_OUTPUT
           else
@@ -625,7 +829,7 @@ jobs:
           if kubectl get secret "${APP_NAME}-pull-secret" > /dev/null 2>&1; then
               kubectl delete secret "${APP_NAME}-pull-secret"
           fi
-          kubectl create secret docker-registry "${APP_NAME}-pull-secret" --docker-server="ghcr.io" --docker-username="${{ secrets.registryUsername }}" --docker-password="${{ secrets.PAT_ACTION_CI }}"
+          kubectl create secret docker-registry "${APP_NAME}-pull-secret" --docker-server="${{ secrets.registryHostName }}" --docker-username="${{ secrets.registryUserName }}" --docker-password="${{ secrets.registryPassword }}"
 
       - name: Deploy to Kubernetes cluster
         timeout-minutes: ${{ inputs.deploymentTimeout }}
@@ -634,7 +838,7 @@ jobs:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            "ghcr.io/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
+            "${{ secrets.registryHostName }}/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
           imagepullsecrets: |
             ${{ needs.build.outputs.appName }}-pull-secret
           pull-images: false
@@ -645,16 +849,29 @@ jobs:
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           ENVIRONMENT_NAMESPACE: ${{ inputs.environmentNamespace }}
+          BLUE_GREEN_DEPLOYMENT: ${{ inputs.blueGreenDeployment }}
+          BLUE_GREEN_INACTIVE_DEPLOYMENT: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
           INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
+          DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation }}
         run: |
           # Create or Update Public DNS Record
 
           # Set AKS cluster ingress
           K8S_CLUSTER_NAME="${{ secrets.k8sClusterName }}"
-          INGRESS="${ENVIRONMENT}.${K8S_CLUSTER_NAME}"
-          K8S_INGRESS="${INGRESS}.amuniversal.com."
+          if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
+            INGRESS="${ENVIRONMENT}.${K8S_CLUSTER_NAME}"
+          else
+            INGRESS="${K8S_CLUSTER_NAME}"
+          fi
 
+          # Set K8s ingress FQDN
+          ENVIRONMENT_INGRESS=$(echo "${{ inputs.environmentIngress }}" | tr -d "'\"")
+          if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ] && [ "$ENVIRONMENT_INGRESS" == "true" ]; then
+            K8S_INGRESS="${ENVIRONMENT}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}.${K8S_CLUSTER_NAME}.amuniversal.com."
+          else
+            K8S_INGRESS="${INGRESS}.amuniversal.com."
+          fi
           echo "k8sIngress=${K8S_INGRESS}"
           echo "k8sIngress=${K8S_INGRESS}" >> "$GITHUB_OUTPUT"
 
@@ -681,6 +898,54 @@ jobs:
               --cname "${K8S_INGRESS}" \
               --ttl 3600
           done
+
+      - name: Update Bunny CDN origin URL
+        if: inputs.updateBunnyCdnOrigin == 'true' && inputs.bunnyCdnDomain != '' && inputs.blueGreenDeployment == 'true' && inputs.environment == 'production' && inputs.environmentIngress == 'true'
+        shell: pwsh
+        env:
+          bunnyCdnDomain: ${{ inputs.bunnyCdnDomain }}
+          environment: ${{ inputs.environment }}
+          dnsPrimaryDomain: ${{ steps.values-override.outputs.dnsPrimaryDomain }}
+          ingressDomainName: ${{ needs.build.outputs.domainName }}
+        run: |
+          # Update Bunny CDN origin URL
+          $bunnyCdnApiKey = "${{ secrets.bunnyCdnApiKey }}"
+          if ($bunnyCdnApiKey -eq "") {
+              echo "::warning::Bunny CDN API key has not been properly passed into the workflow."
+              exit 0
+          }
+
+          $originUrl = "https://${env:dnsPrimaryDomain}.${env:ingressDomainName}"
+
+          # Set headers
+          $headers = @{
+              "AccessKey" = "$bunnyCdnApiKey"
+              "accept" = "application/json"
+              "content-type" = "application/json"
+          }
+          $body = @{
+              "PreloadingScreenShowOnFirstVisit" = "true"
+              "OriginUrl" = "$originUrl"
+          } | ConvertTo-Json
+
+          # Get Pull Zone ID
+          $uri = "https://api.bunny.net/pullzone?page=0&perPage=1000&search=${env:bunnyCdnDomain}&includeCertificate=false"
+          $bunnyCdnPullZoneId = (Invoke-WebRequest -Headers $headers -Uri $uri -Method 'GET' | ConvertFrom-Json).Items.Id
+
+          # Update origin URL
+          Write-Output "Updating Bunny CDN origin URL to: ${originUrl}"
+          $uri = "https://api.bunny.net/pullzone/${bunnyCdnPullZoneId}"
+          $response = (Invoke-WebRequest -Headers $headers -Uri $uri -Method 'POST' -Body $body | ConvertFrom-Json)
+
+          # Verify update
+          if ($response.OriginUrl -match "$originUrl") {
+              Write-Output "Bunny CDN origin URL was updated successfully"
+          }
+          else {
+              throw "Bunny CDN origin URL update response did not contain the expected origin URL."
+              Write-Output "Output: $response"
+              exit 1
+          }
 
       - name: Create Sentry release
         if: env.NEXT_PUBLIC_SENTRY_DSN && inputs.publishSentryRelease == 'true'
@@ -715,7 +980,9 @@ jobs:
           domainName: ${{ needs.build.outputs.domainName }}
           ingress: ${{ needs.build.outputs.ingress }}
           k8sIngress: ${{ steps.dns.outputs.k8sIngress }}
+          k8sResourceGroup: ${{ steps.k8s-resource-group.outputs.K8S_RESOURCE_GROUP }}
           date: ${{ steps.date.outputs.date }}
+          blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Record deployment information in Azure Storage Table
           $k8sClusterName = "${{ secrets.k8sClusterName }}"
@@ -742,10 +1009,11 @@ jobs:
               "HostName"="$env:dnsPrimaryDomain";
               "DomainName"="$env:domainName";
               "IngressFqdn"="$env:ingress";
-              "aksIngress"="$env:k8sIngress";
+              "AksIngress"="$env:k8sIngress";
               "Cluster"="$k8sClusterName";
               "ClusterResourceGroup"="$env:k8sResourceGroup";
               "LastDeploy"="$env:date"
+              "ActiveBlueGreenDeployment"="$env:blueGreenInactiveDeployment"
               } -UpdateExisting | Out-Null
 
       - name: Create deployment summary
