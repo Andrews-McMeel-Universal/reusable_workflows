@@ -37,7 +37,7 @@ on:
         required: false
         type: string
         description: "IP address that will be allowed to access the ephemeral deployment"
-        default: "207.67.20.252/32"
+        default: ${{ vars.EPHEMERAL_DEPLOYMENT_INGRESS_WHITELIST || '207.67.20.252/32' }}
       githubRunner:
         required: false
         type: string
@@ -251,8 +251,22 @@ jobs:
           az containerapp update --name "${{ needs.prepare.outputs.containerAppName }}" --resource-group "${{ inputs.clusterResourceGroup }}" --min-replicas 1
 
       - name: Add access restrictions to Container App ingress
+        env:
+          INGRESS_WHITELIST: ${{ inputs.ingressWhitelist }}
+          APP_NAME: ${{ needs.prepare.outputs.containerAppName }}
+          CLUSTER_RESOURCE_GROUP: ${{ inputs.clusterResourceGroup }}
         run: |
-          az containerapp ingress access-restriction set --action Allow --ip-address "${{ inputs.ingressWhitelist }}" --rule-name allow-range --name "${{ needs.prepare.outputs.containerAppName }}" --resource-group "${{ inputs.clusterResourceGroup }}"
+          WHITELIST_IPS=($(echo ${INGRESS_WHITELIST} | tr "," "\n"))
+          IP_INDEX=0
+          for IP in ${WHITELIST_IPS[@]}; do
+            IP_INDEX=$(expr $IP_INDEX + 1)
+            if [[ "${IP}" == "207.67.20.252/32" ]]; then
+              RULE_NAME="allow-range"
+            else
+              RULE_NAME="allow-range ${IP_INDEX}"
+            fi
+            az containerapp ingress access-restriction set --action Allow --ip-address "${IP}" --rule-name "${RULE_NAME}" --name "${APP_NAME}" --resource-group "${CLUSTER_RESOURCE_GROUP}"
+          done
 
       - name: Get Container App Hostname
         id: hostname
