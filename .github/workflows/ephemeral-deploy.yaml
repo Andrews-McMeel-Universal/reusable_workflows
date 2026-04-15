@@ -259,7 +259,7 @@ jobs:
           IFS=' ' read -r -a WHITELIST_IPS <<< "$(echo ${INGRESS_WHITELIST} | tr ',' ' ')"
           IP_INDEX=0
           for IP in "${WHITELIST_IPS[@]}"; do
-            IP_INDEX=$(($IP_INDEX + 1))
+            IP_INDEX=$((IP_INDEX + 1))
             if [[ "${IP}" == "207.67.20.252/32" ]]; then
               RULE_NAME="allow-range"
             else
