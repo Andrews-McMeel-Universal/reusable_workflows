@@ -79,6 +79,9 @@ jobs:
         with:
           bundler-cache: true
 
+      - name: Run webpack assets precompilation
+        run: bundle exec rake assets:precompile
+
       - name: Boot Rails server
         run: |
           bundle exec rails s -b 0.0.0.0 -p 3000 &
