@@ -55,6 +55,8 @@ jobs:
 
       - name: Use cache-yarn-install action
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+        with:
+          enable-corepack: false
 
       - name: Publish to Storybook
         uses: chromaui/action@v11

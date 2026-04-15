@@ -38,6 +38,15 @@ on:
         type: string
         description: "Check out submodules"
         default: ${{ vars.GIT_CHECKOUT_SUBMODULES }}
+      WEBPACK_ASSET_PRECOMPILATION:
+        required: false
+        type: string
+        description: "Run webpack asset precompilation step"
+        default: ${{ vars.APPLICATION_CI_WEBPACK_PRECOMPILATION || 'false' }}
+      YARN_INSTALL:
+        required: false
+        type: string
+        default: ${{ vars.APPLICATION_CI_YARN_INSTALL || 'false' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -78,6 +87,16 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+
+      - name: Run Yarn Install
+        if: ${{ inputs.YARN_INSTALL != 'false' }}
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+        with:
+          enable-corepack: false
+
+      - name: Run Webpack Asset Precompilation
+        if: ${{ inputs.WEBPACK_ASSET_PRECOMPILATION != 'false' }}
+        run: bundle exec rake assets:precompile
 
       - name: Boot Rails server
         run: |

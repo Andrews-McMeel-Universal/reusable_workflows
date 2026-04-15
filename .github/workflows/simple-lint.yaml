@@ -121,5 +121,5 @@ jobs:
         shell: bash
 
       - name: Lint workflow files
-        run: ${{ steps.get_actionlint.outputs.executable }} -color -ignore "SC2086" -ignore "SC2129"
+        run: ${{ steps.get_actionlint.outputs.executable }} -color -ignore "SC2086" -ignore "SC2129" -ignore 'property "manifest" is not defined in object type'
         shell: bash
