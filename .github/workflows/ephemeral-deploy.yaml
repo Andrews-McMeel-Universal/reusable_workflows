@@ -256,10 +256,10 @@ jobs:
           APP_NAME: ${{ needs.prepare.outputs.containerAppName }}
           CLUSTER_RESOURCE_GROUP: ${{ inputs.clusterResourceGroup }}
         run: |
-          WHITELIST_IPS=($(echo ${INGRESS_WHITELIST} | tr "," "\n"))
+          IFS=' ' read -r -a WHITELIST_IPS <<< "$(echo ${INGRESS_WHITELIST} | tr ',' ' ')"
           IP_INDEX=0
-          for IP in ${WHITELIST_IPS[@]}; do
-            IP_INDEX=$(expr $IP_INDEX + 1)
+          for IP in "${WHITELIST_IPS[@]}"; do
+            IP_INDEX=$((${IP_INDEX} + 1))
             if [[ "${IP}" == "207.67.20.252/32" ]]; then
               RULE_NAME="allow-range"
             else
