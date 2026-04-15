@@ -79,12 +79,12 @@ jobs:
         with:
           bundler-cache: true
 
-      - name: Run yarn install
+      - name: Run Yarn Install
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
         with:
           enable-corepack: false
 
-      - name: Run webpack assets precompilation
+      - name: Run Webpack Asset Precompilation
         run: bundle exec rake assets:precompile
 
       - name: Boot Rails server
