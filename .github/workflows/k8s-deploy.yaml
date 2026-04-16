@@ -824,7 +824,7 @@ jobs:
           if kubectl get secret "${APP_NAME}-pull-secret" > /dev/null 2>&1; then
               kubectl delete secret "${APP_NAME}-pull-secret"
           fi
-          kubectl create secret docker-registry "${APP_NAME}-pull-secret" --docker-server="${{ secrets.registryHostName }}" --docker-username="${{ github.actor }}" --docker-password="${{ secrets.GITHUB_TOKEN }}"
+          kubectl create secret docker-registry "${APP_NAME}-pull-secret" --docker-server="${{ secrets.registryHostName }}" --docker-username="${{ secrets.registryUserName }}" --docker-password="${{ secrets.registryPassword }}"
 
       - name: Deploy to Kubernetes cluster
         timeout-minutes: ${{ inputs.deploymentTimeout }}
