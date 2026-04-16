@@ -93,7 +93,7 @@ jobs:
           enable-corepack: false
 
       - name: Publish to Storybook
-        uses: chromaui/action@v16
+        uses: chromaui/action@v15
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           buildScriptName: ${{ inputs.STORYBOOK_BUILD_SCRIPT_NAME }}
