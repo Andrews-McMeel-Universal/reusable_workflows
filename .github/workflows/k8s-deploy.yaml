@@ -211,19 +211,14 @@ jobs:
         with:
           creds: "${{ secrets.azureCredentials }}"
 
-      - name: Get AKS cluster info
-        id: aks-info
+      - name: Get K8S cluster info
+        id: k8s-info
         shell: bash
         run: |
-          # Get AKS cluster info
+          # Get K8S cluster info
 
-          HA_INGRESS="${{ inputs.haIngress }}"
-          if [ "$HA_INGRESS" = "true" ]; then
-            AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
-          else
-            AKS_LOCATION="centralus"
-          fi
-          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_ENV
+          K8S_LOCATION="boley"
+          echo "datacenterLocation=${K8S_LOCATION}" >> $GITHUB_ENV
 
       - name: Extract Helm values
         id: setenvs
