@@ -1,4 +1,4 @@
-name: AKS Deployment
+name: K8s Deployment
 
 on:
   workflow_call:
@@ -70,7 +70,7 @@ on:
         required: false
         type: string
         description: "The type of runner to use"
-        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
+        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'boley' }}
       deploymentWebhook:
         required: false
         type: string
@@ -116,13 +116,15 @@ on:
         description: "Enable updating Bunny CDN pull zone origin after deployment"
         default: ${{ vars.UPDATE_BUNNY_CDN_ORIGIN || 'false' }}
     secrets:
-      azureClusterName:
+      k8sClusterName:
+        required: true
+      k8sKubeConfig:
         required: true
       azureCredentials:
         required: true
-      registryHostName:
-        required: true
       registryUserName:
+        required: true
+      registryHostName:
         required: true
       registryPassword:
         required: true
@@ -209,19 +211,14 @@ jobs:
         with:
           creds: "${{ secrets.azureCredentials }}"
 
-      - name: Get AKS cluster info
-        id: aks-info
+      - name: Get K8S cluster info
+        id: k8s-info
         shell: bash
         run: |
-          # Get AKS cluster info
+          # Get K8S cluster info
 
-          HA_INGRESS="${{ inputs.haIngress }}"
-          if [ "$HA_INGRESS" = "true" ]; then
-            AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
-          else
-            AKS_LOCATION="centralus"
-          fi
-          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_ENV
+          K8S_LOCATION="boley"
+          echo "datacenterLocation=${K8S_LOCATION}" >> $GITHUB_ENV
 
       - name: Extract Helm values
         id: setenvs
@@ -232,6 +229,7 @@ jobs:
           chartsPath: ${{ inputs.chartsPath }}
           datacenterLocation: ${{ env.datacenterLocation }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
+          repositoryOwner: ${{ github.repository_owner }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
         run: |
@@ -256,6 +254,11 @@ jobs:
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
           $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
+
+          # Convert repository owner to lowercase for image naming
+          $repositoryOwner = $env:repositoryOwner.ToLower()
+          Write-Output "repositoryOwner=$repositoryOwner"
+          Write-Output "repositoryOwner=$repositoryOwner" >> $env:GITHUB_ENV
 
           # Set app name
           $appName = $chartConfig.name
@@ -365,18 +368,18 @@ jobs:
           echo "$buildArguments" >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
 
-      - name: Login to Azure Container Registry
-        uses: azure/docker-login@v2
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
-          login-server: ${{ secrets.registryHostName }}
-          username: ${{ secrets.registryUserName }}
-          password: ${{ secrets.registryPassword }}
+          registry: ${{ secrets.registryHostName }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.registryHostName }}/${{ github.event.repository.name }}
+          images: ${{ secrets.registryHostName }}/${{ env.repositoryOwner }}/${{ github.event.repository.name }}
           tags: |
             type=raw,value=${{ github.sha }}-${{ inputs.environment }}
             type=raw,value=${{ inputs.environment }}
@@ -386,25 +389,6 @@ jobs:
             type=semver,value=${{ github.event.release.tag_name }},pattern={{major}},enable=${{ github.event.release.tag_name != '' }}
           flavor: |
             latest=false
-
-      - name: Enable write access if image has already been deployed
-        shell: bash
-        env:
-          REPOSITORY_NAME: ${{ github.event.repository.name }}
-          GITHUB_SHA: ${{ github.sha }}
-          ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          # Enable write access if image has already been deployed
-
-          REGISTRY_HOSTNAME="${{ secrets.registryHostName }}"
-
-          IMAGE_MANIFEST=$(az acr repository show --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}:${GITHUB_SHA}-${ENVIRONMENT}" --query "digest" -o tsv || echo "")
-          if [ -z "${IMAGE_MANIFEST}" ]; then
-            echo "Failed to get current image manifest, proceeding with deployment."
-          else
-            echo "Enabling write access for image manifest."
-            az acr repository update --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}@${IMAGE_MANIFEST}" --write-enabled true
-          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -436,6 +420,7 @@ jobs:
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
+      repositoryOwner: ${{ env.repositoryOwner }}
       wwwIngress: ${{ env.wwwIngress }}
       blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
       datacenterLocation: ${{ env.datacenterLocation }}
@@ -517,7 +502,7 @@ jobs:
               }
 
               # Set variable for whitelist in app config
-              $appConfigWhitelist = $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+              $appConfigWhitelist = $item.annotations."ingress.kubernetes.io/allow-list"
 
               # Set ingress whitelist if not set
               $ipRegex = '^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){2}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/(3[0-2]|[12]?[0-9]))?$'
@@ -547,9 +532,9 @@ jobs:
                   $ingressWhitelist = "0.0.0.0/0"
 
                   Write-Output "Adding basic auth to $($item.name)"
-                  $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
-                  $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
-                  $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
+                  $item.annotations."ingress.kubernetes.io/auth-type"="basic"
+                  $item.annotations."ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
+                  $item.annotations."ingress.kubernetes.io/auth-realm"="Authentication Required"
               }
               else {
                   Write-Output "Ingress whitelist not set for $($item.name)"
@@ -580,19 +565,19 @@ jobs:
               if ($item.name -notmatch "admin") {
                   # Add ingressWhitelist to ingress
                   Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
-                  $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
+                  $item.annotations."ingress.kubernetes.io/allow-list" = $ingressWhitelist
               }
               elseif ($item.name -match "admin") {
                   if ($env:adminIngressWhitelist -ne "") {
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $env:adminIngressWhitelist
+                      $item.annotations."ingress.kubernetes.io/allow-list" = $env:adminIngressWhitelist
                   }
                   else {
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = "207.67.20.252"
+                      $item.annotations."ingress.kubernetes.io/allow-list" = "207.67.20.252"
                   }
-                  Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")"
+                  Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."ingress.kubernetes.io/allow-list")"
               }
 
-              # Add datacenter location to ingress if HA hostname is enabled
+              # Set domain name and subdomain
               $domainName = $env:domainName
               $subDomain = $item.host -replace "$domainName", '' -replace "\.$", ""
               if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
@@ -630,7 +615,7 @@ jobs:
 
               # Add ingressClassName and cluster issuer
               $clusterIssuer = "letsencrypt-${env:environment}"
-              $ingressClassName = "nginx-${env:environment}"
+              $ingressClassName = "haproxy-${env:environment}"
               if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production" -and $environmentIngress -eq 'true') {
                   $ingressClassName = "${ingressClassName}-${env:blueGreenInactiveDeployment}"
                   $clusterIssuer = "${clusterIssuer}-${env:blueGreenInactiveDeployment}"
@@ -638,7 +623,7 @@ jobs:
               $item.ingressClassName = "$ingressClassName"
               $item.annotations."cert-manager.io/cluster-issuer" = "$clusterIssuer"
 
-              # Handle www redirect and primary domain
+              # Set DNS primary domain
               if ($item.name -eq "ingress") {
                   # Add WWW to ingress
                   if (($item.redirectToWWW -eq $true) -and ($env:environment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
@@ -649,7 +634,7 @@ jobs:
                           path = "/(.*)"
                           ingressClassName = $ingressClassName
                           annotations = @{
-                              "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
+                              "ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
                               "cert-manager.io/cluster-issuer" = $clusterIssuer
                           }
                       }
@@ -669,7 +654,7 @@ jobs:
               }
 
               # Add whitelist annotation
-              $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$env:adminIngressWhitelist"
+              $item.annotations."ingress.kubernetes.io/rate-limit-whitelist" = "$env:adminIngressWhitelist"
 
               # Add updated ingress to list
               $updatedIngress += [PSCustomObject]@{
@@ -698,21 +683,13 @@ jobs:
               if ($null -eq $appConfig.service.annotations) {
                   $appConfig.service.annotations = @{}
               }
-              # Ensure the service has the correct internal load balancer annotation
-              if (-not $appConfig.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal") {
-                  Write-Output "Setting service.beta.kubernetes.io/azure-load-balancer-internal annotation for the service"
-                  $appConfig.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal" = "true"
-              }
-          }
-          else {
-              Write-Output "No service found in values.yaml to set internal load balancer annotation."
           }
 
           # Store keys to remove in a separate list
           $keysToRemove = @()
 
           foreach ($key in $appConfig.Keys) {
-              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "service")) {
+              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "service") -and ($key -ne "nodeSelector")) {
                   $keysToRemove += $key
               }
           }
@@ -721,6 +698,9 @@ jobs:
           foreach ($key in $keysToRemove) {
               $appConfig.Remove($key)
           }
+
+          # Enable node selector for designating which nodes to host pods on
+          $appConfig.nodeSelector += @{"environment" = "$env:environment"}
 
           # Write to file
           $appConfig | ConvertTo-Yaml | ForEach-Object { $_ -replace "  name:", "- name:" } | Out-File -FilePath "./values-override.yaml"
@@ -748,12 +728,13 @@ jobs:
           helm-version: "v3.19.2"
           overrideFiles: ./values-override.yaml
           overrides: |
-            deployment.image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
+            deployment.image.repository:${{ secrets.registryHostName }}/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}
             deployment.image.tag:${{ github.sha }}-${{ inputs.environment }}
-            image.repository:${{ secrets.registryHostName }}/${{ github.event.repository.name }}
+            image.repository:${{ secrets.registryHostName }}/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
             autoscaling.minReplicas:${{ needs.build.outputs.minReplicas }}
+            service.type:ClusterIP
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
@@ -762,20 +743,21 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
-      - name: Get AKS cluster resource group
-        id: aks-resource-group
+      - name: Get K8s cluster resource group
+        id: k8s-resource-group
         shell: bash
         run: |
           # Get AKS cluster resource group
 
-          AKS_RESOURCE_GROUP=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].resourceGroup" -o tsv)
-          echo "AKS_RESOURCE_GROUP=${AKS_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
+          K8S_RESOURCE_GROUP="boleyhvcluster"
+          echo "K8S_RESOURCE_GROUP=${K8S_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
 
-      - name: Set target AKS cluster
-        uses: azure/aks-set-context@v4
+      - name: Set target K8s cluster
+        uses: azure/k8s-set-context@v4
         with:
-          cluster-name: ${{ secrets.azureClusterName }}
-          resource-group: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
+          context: ${{ secrets.k8sClusterName }}
+          method: kubeconfig
+          kubeconfig: ${{ secrets.k8sKubeConfig }}
 
       - name: Switch Kubernetes Namespace
         id: namespace
@@ -833,91 +815,28 @@ jobs:
           kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
 
       - name: Create K8s Image Pull Secret
-        uses: azure/k8s-create-secret@v5
-        with:
-          container-registry-url: ${{ secrets.registryHostName }}
-          container-registry-username: ${{ secrets.registryUserName  }}
-          container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: "${{ needs.build.outputs.appName }}-pull-secret"
-          namespace: ${{ steps.namespace.outputs.namespace }}
-
-      - name: Get previous image tag used in deployment
-        id: get-previous-image
         shell: bash
         env:
           APP_NAME: ${{ needs.build.outputs.appName }}
-          NAMESPACE: ${{ steps.namespace.outputs.namespace }}
         run: |
-          # Get previous image tag used in deployment
+          # Update .env Kubernetes secret
 
-          PREVIOUS_IMAGE=$(kubectl get deployment "${APP_NAME}" -n "${NAMESPACE}" -o=jsonpath='{$.spec.template.spec.containers[:1].image}' | awk -F '/' '{print $2}' || echo "")
-          if [ -z "${PREVIOUS_IMAGE}" ]; then
-            echo "No previous image found, proceeding with deployment"
-          else
-            echo "Previous image found: ${PREVIOUS_IMAGE}"
+          if kubectl get secret "${APP_NAME}-pull-secret" > /dev/null 2>&1; then
+              kubectl delete secret "${APP_NAME}-pull-secret"
           fi
-          echo "previousImage=${PREVIOUS_IMAGE}" >> $GITHUB_OUTPUT
+          kubectl create secret docker-registry "${APP_NAME}-pull-secret" --docker-server="${{ secrets.registryHostName }}" --docker-username="${{ github.actor }}" --docker-password="${{ secrets.GITHUB_TOKEN }}"
 
-      - name: Deploy to Azure Kubernetes Service
+      - name: Deploy to Kubernetes cluster
         timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: azure/k8s-deploy@v5
         with:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
           images: |
-            "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
+            "${{ secrets.registryHostName }}/${{ needs.build.outputs.repositoryOwner }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
           imagepullsecrets: |
-            "${{ needs.build.outputs.appName }}-pull-secret"
+            ${{ needs.build.outputs.appName }}-pull-secret
           pull-images: false
-
-      - name: Unlock and untag previous ACR image
-        if: ${{ steps.get-previous-image.outputs.previousImage != '' }}
-        shell: bash
-        env:
-          DEPLOYMENT_PREVIOUS_IMAGE: ${{ steps.get-previous-image.outputs.previousImage }}
-          REPOSITORY_NAME: ${{ github.event.repository.name }}
-          GITHUB_SHA: ${{ github.sha }}
-          ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          # Unlock and untag previous ACR image
-
-          REGISTRY_HOSTNAME="${{ secrets.registryHostName }}"
-
-          PREVIOUS_MANIFEST=$(az acr repository show --name "${REGISTRY_HOSTNAME}" --image "${DEPLOYMENT_PREVIOUS_IMAGE}" --query "digest" -o tsv || true)
-          if [[ -n "$PREVIOUS_MANIFEST" ]] && [[ "${DEPLOYMENT_PREVIOUS_IMAGE}" != "${REPOSITORY_NAME}:${GITHUB_SHA}-${ENVIRONMENT}" ]]; then
-            echo "Unlocking previous manifest: ${PREVIOUS_MANIFEST}"
-            az acr repository update --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}@${PREVIOUS_MANIFEST}" --delete-enabled true --write-enabled true
-            while read -r TAG; do
-              SEMVER_REGEX="^[0-9]+\.[0-9]+\.[0-9]+$"
-              if [[ ! "${TAG}" =~ $SEMVER_REGEX ]]; then
-                echo "Untagging ${REPOSITORY_NAME}:${TAG}"
-                az acr repository untag --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}:${TAG}"
-              else
-                echo "Skipping untagging ${REPOSITORY_NAME}:${TAG}"
-              fi
-            done < <(az acr repository show --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}@${PREVIOUS_MANIFEST}" --query "tags" -o tsv)
-          elif [[ "${DEPLOYMENT_PREVIOUS_IMAGE}" == "${REPOSITORY_NAME}:${GITHUB_SHA}-${ENVIRONMENT}" ]]; then
-            echo "Deployment image is the same as the current image. Skipping unlocking."
-          else
-            echo "Previous manifest could not be found. Skipping unlocking."
-          fi
-
-      - name: Disable delete access for newly deployed image
-        shell: bash
-        env:
-          REPOSITORY_NAME: ${{ github.event.repository.name }}
-          GITHUB_SHA: ${{ github.sha }}
-          ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          # Disable delete access for newly deployed image
-
-          REGISTRY_HOSTNAME="${{ secrets.registryHostName }}"
-
-          IMAGE_MANIFEST=$(az acr repository show --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}:${GITHUB_SHA}-${ENVIRONMENT}" --query "digest" -o tsv)
-          if [ -z "${IMAGE_MANIFEST}" ]; then
-            echo "Failed to get current image manifest"
-          fi
-          az acr repository update --name "${REGISTRY_HOSTNAME}" --image "${REPOSITORY_NAME}@${IMAGE_MANIFEST}" --delete-enabled false
 
       - name: Create or Update Public DNS Record
         id: dns
@@ -934,22 +853,22 @@ jobs:
           # Create or Update Public DNS Record
 
           # Set AKS cluster ingress
-          AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
+          K8S_CLUSTER_NAME="${{ secrets.k8sClusterName }}"
           if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
-            INGRESS="${AKS_CLUSTER_NAME}-${ENVIRONMENT}"
+            INGRESS="${ENVIRONMENT}.${K8S_CLUSTER_NAME}"
           else
-            INGRESS="${AKS_CLUSTER_NAME}"
+            INGRESS="${K8S_CLUSTER_NAME}"
           fi
 
-          # Set AKS ingress FQDN
+          # Set K8s ingress FQDN
           ENVIRONMENT_INGRESS=$(echo "${{ inputs.environmentIngress }}" | tr -d "'\"")
           if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ] && [ "$ENVIRONMENT_INGRESS" == "true" ]; then
-            AKS_INGRESS="${INGRESS}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
+            K8S_INGRESS="${ENVIRONMENT}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}.${K8S_CLUSTER_NAME}.amuniversal.com."
           else
-            AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
+            K8S_INGRESS="${INGRESS}.amuniversal.com."
           fi
-          echo "aksIngress=${AKS_INGRESS}"
-          echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
+          echo "k8sIngress=${K8S_INGRESS}"
+          echo "k8sIngress=${K8S_INGRESS}" >> "$GITHUB_OUTPUT"
 
           # Populate INGRESSES array safely
           mapfile -t INGRESSES < <(echo "${INGRESS_DOMAINS}" | sed "s/ $//g" | tr ' ' '\n' | sort -u)
@@ -966,12 +885,12 @@ jobs:
               echo "Empty ingress found, skipping DNS update for this entry."
               continue
             fi
-            echo "Updating DNS record for ${INGRESS} to ${AKS_INGRESS}"
+            echo "Updating DNS record for ${INGRESS} to ${K8S_INGRESS}"
             az network dns record-set cname set-record \
               --resource-group "AMU_DNS_RG" \
               --zone-name "${INGRESS_DOMAIN_NAME}" \
               --record-set-name "${INGRESS}" \
-              --cname "${AKS_INGRESS}" \
+              --cname "${K8S_INGRESS}" \
               --ttl 3600
           done
 
@@ -1055,13 +974,13 @@ jobs:
           dnsPrimaryDomain: ${{ steps.values-override.outputs.dnsPrimaryDomain }}
           domainName: ${{ needs.build.outputs.domainName }}
           ingress: ${{ needs.build.outputs.ingress }}
-          aksIngress: ${{ steps.dns.outputs.aksIngress }}
-          aksResourceGroup: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
+          k8sIngress: ${{ steps.dns.outputs.k8sIngress }}
+          k8sResourceGroup: ${{ steps.k8s-resource-group.outputs.K8S_RESOURCE_GROUP }}
           date: ${{ steps.date.outputs.date }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Record deployment information in Azure Storage Table
-          $azureClusterName = "${{ secrets.azureClusterName }}"
+          $k8sClusterName = "${{ secrets.k8sClusterName }}"
           $storageAccountKey = ${{ secrets.storageAccountKey }}
           $storageContext = New-AzStorageContext -StorageAccountName $env:storageAccountName -StorageAccountKey $storageAccountKey
 
@@ -1085,9 +1004,9 @@ jobs:
               "HostName"="$env:dnsPrimaryDomain";
               "DomainName"="$env:domainName";
               "IngressFqdn"="$env:ingress";
-              "AksIngress"="$env:aksIngress";
-              "Cluster"="$azureClusterName";
-              "ClusterResourceGroup"="$env:aksResourceGroup";
+              "AksIngress"="$env:k8sIngress";
+              "Cluster"="$k8sClusterName";
+              "ClusterResourceGroup"="$env:k8sResourceGroup";
               "LastDeploy"="$env:date"
               "ActiveBlueGreenDeployment"="$env:blueGreenInactiveDeployment"
               } -UpdateExisting | Out-Null
@@ -1107,6 +1026,7 @@ jobs:
           echo "- **Version**: ${APP_VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "- **Key Vault Name**: ${ENVIRONMENT_KEY_VAULT}" >> $GITHUB_STEP_SUMMARY
           echo "- **FQDN**: ${INGRESS}" >> $GITHUB_STEP_SUMMARY
+
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
         uses: jdcargile/ms-teams-notification@v1.4

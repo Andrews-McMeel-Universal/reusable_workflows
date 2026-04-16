@@ -22,6 +22,10 @@ on:
         required: false
         type: string
         default: ${{ vars.APPLICATION_CI_LINT_JS || 'true' }}
+      LINT_FORMATTER:
+        required: false
+        type: string
+        default: ${{ vars.APPLICATION_CI_LINT_FORMATTER || 'false' }}
       RUN_JEST_TESTS:
         required: false
         type: string
@@ -184,8 +188,13 @@ jobs:
       - name: Lint scss
         if: ${{ inputs.LINT_SCSS == 'true' }}
         run: yarn lint:styles
+      
+      - name: Run formatter
+        if: ${{ inputs.LINT_FORMATTER == 'true' }}
+        run: yarn format
 
       - name: Push Linting Fixes
+        if: ${{ inputs.LINT_JS == 'true' || inputs.LINT_SCSS == 'true' || inputs.LINT_FORMATTER == 'true' }}
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_user_name: amutechtest
