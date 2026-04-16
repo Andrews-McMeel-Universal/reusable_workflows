@@ -120,9 +120,9 @@ on:
         required: true
       azureCredentials:
         required: true
-      registryHostName:
-        required: true
       registryUserName:
+        required: true
+      registryHostName:
         required: true
       registryPassword:
         required: true
@@ -232,6 +232,7 @@ jobs:
           chartsPath: ${{ inputs.chartsPath }}
           datacenterLocation: ${{ env.datacenterLocation }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
+          repositoryOwner: ${{ github.repository_owner }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
         run: |
@@ -256,6 +257,11 @@ jobs:
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
           $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
+
+          # Convert repository owner to lowercase for image naming
+          $repositoryOwner = $env:repositoryOwner.ToLower()
+          Write-Output "repositoryOwner=$repositoryOwner"
+          Write-Output "repositoryOwner=$repositoryOwner" >> $env:GITHUB_ENV
 
           # Set app name
           $appName = $chartConfig.name
@@ -436,6 +442,7 @@ jobs:
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
+      repositoryOwner: ${{ env.repositoryOwner }}
       wwwIngress: ${{ env.wwwIngress }}
       blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
       datacenterLocation: ${{ env.datacenterLocation }}
@@ -592,7 +599,7 @@ jobs:
                   Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")"
               }
 
-              # Add datacenter location to ingress if HA hostname is enabled
+              # Set domain name and subdomain
               $domainName = $env:domainName
               $subDomain = $item.host -replace "$domainName", '' -replace "\.$", ""
               if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
@@ -712,7 +719,7 @@ jobs:
           $keysToRemove = @()
 
           foreach ($key in $appConfig.Keys) {
-              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "service")) {
+              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "service") -and ($key -ne "nodeSelector")) {
                   $keysToRemove += $key
               }
           }
@@ -721,6 +728,9 @@ jobs:
           foreach ($key in $keysToRemove) {
               $appConfig.Remove($key)
           }
+
+          # Enable node selector for designating which nodes to host pods on
+          $appConfig.nodeSelector += @{"environment" = "$env:environment"}
 
           # Write to file
           $appConfig | ConvertTo-Yaml | ForEach-Object { $_ -replace "  name:", "- name:" } | Out-File -FilePath "./values-override.yaml"
@@ -867,7 +877,7 @@ jobs:
           images: |
             "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
           imagepullsecrets: |
-            "${{ needs.build.outputs.appName }}-pull-secret"
+            ${{ needs.build.outputs.appName }}-pull-secret
           pull-images: false
 
       - name: Unlock and untag previous ACR image
@@ -1107,6 +1117,7 @@ jobs:
           echo "- **Version**: ${APP_VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "- **Key Vault Name**: ${ENVIRONMENT_KEY_VAULT}" >> $GITHUB_STEP_SUMMARY
           echo "- **FQDN**: ${INGRESS}" >> $GITHUB_STEP_SUMMARY
+
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
         uses: jdcargile/ms-teams-notification@v1.4
