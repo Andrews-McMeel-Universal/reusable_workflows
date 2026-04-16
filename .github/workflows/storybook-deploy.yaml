@@ -42,7 +42,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
+
+      - name: Get changed files to determine if Storybook build is needed
+        id: changed-files
+        shell: bash
+        run: |
+          IFS=$'\n\t'
+
+          # Determine the range of commits to analyze
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE=${{ github.event.pull_request.base.sha }}
+            HEAD=${{ github.event.pull_request.head.sha }}
+          else
+            # For pushes, GitHub provides before/after
+            HEAD="${{ github.sha }}"
+            BASE="$(git rev-list -n 2 "$HEAD" | tail -n 1 || true)"
+          fi
+
+          # Initialize flags
+          SKIP_STORYBOOK_BUILD=true
+
+          # Analyze changed files
+          while IFS= read -r -d '' FILE; do
+            # Storybook-related Files
+            case "$FILE" in
+              src/*|package.json)
+                SKIP_STORYBOOK_BUILD=false
+                ;;
+            esac
+          done < <(git diff --name-only -z "$BASE" "$HEAD")
+
+          echo "---"
+          echo "SKIP_STORYBOOK_BUILD=$SKIP_STORYBOOK_BUILD" >> "$GITHUB_OUTPUT"
+          echo "SKIP_STORYBOOK_BUILD=$SKIP_STORYBOOK_BUILD"
 
       - name: Fetch latest release
         uses: pozetroninc/github-action-get-latest-release@v0.8.0
@@ -59,12 +93,11 @@ jobs:
           enable-corepack: false
 
       - name: Publish to Storybook
-        uses: chromaui/action@v11
+        uses: chromaui/action@v15
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           buildScriptName: ${{ inputs.STORYBOOK_BUILD_SCRIPT_NAME }}
           exitZeroOnChanges: ${{ (inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES != 'false' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) || inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES == 'true' }}
-          allowConsoleErrors: ${{ (inputs.STORYBOOK_ALLOW_CONSOLE_ERRORS != 'false' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) || inputs.STORYBOOK_ALLOW_CONSOLE_ERRORS == 'true' }}
           onlyChanged: ${{ inputs.STORYBOOK_PUBLISH_CHANGES_ONLY == 'true' }}
-          skip: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+          skip: ${{ steps.changed-files.outputs.SKIP_STORYBOOK_BUILD }}
           autoAcceptChanges: ${{ (inputs.STORYBOOK_AUTO_ACCEPT_CHANGES != 'false' && contains(github.ref, steps.latest-release.outputs.release)) || inputs.STORYBOOK_AUTO_ACCEPT_CHANGES == 'true' }}
