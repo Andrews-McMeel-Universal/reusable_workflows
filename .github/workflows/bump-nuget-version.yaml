@@ -85,11 +85,10 @@ jobs:
               
           }
           else {
-              if (Test-Path -Path "$ProjectName/$ProjectName.csproj") {
-                  $ProjectFile = ("$ProjectName/$ProjectName.csproj")
-              }
-              else {
-                  $ProjectFile = (Get-ChildItem -Path "$ProjectName/*.csproj").Name
+              $ProjectDirectory = (Get-ChildItem | Where-Object {$_.Name -cmatch "$ProjectName"}).Name
+              $ProjectFile = (Get-ChildItem $ProjectDirectory | Where-Object {$_.Name -cmatch "$ProjectName"}).FullName
+              if ($null -eq $ProjectFile) {
+                  $ProjectFile = (Get-ChildItem -Path "$ProjectDirectory/*.csproj").FullName
               }
           }
           $ProjectFileContents = Get-Content $ProjectFile -Raw
