@@ -426,7 +426,7 @@ jobs:
       datacenterLocation: ${{ env.datacenterLocation }}
 
   deploy:
-    name: AKS Deploy
+    name: K8s Deploy
     needs: [build]
     runs-on: ${{ inputs.githubRunner }}
     environment:
