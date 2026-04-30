@@ -10,7 +10,7 @@ on:
       environmentKeyVault:
         required: false
         type: string
-        description: "AKS Key vault."
+        description: "Azure Key vault."
       chartsPath:
         required: false
         type: string
@@ -747,7 +747,7 @@ jobs:
         id: k8s-resource-group
         shell: bash
         run: |
-          # Get AKS cluster resource group
+          # Get K8s cluster resource group
 
           K8S_RESOURCE_GROUP="boleyhvcluster"
           echo "K8S_RESOURCE_GROUP=${K8S_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
@@ -852,7 +852,7 @@ jobs:
         run: |
           # Create or Update Public DNS Record
 
-          # Set AKS cluster ingress
+          # Set K8s cluster ingress
           K8S_CLUSTER_NAME="${{ secrets.k8sClusterName }}"
           if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
             INGRESS="${ENVIRONMENT}.${K8S_CLUSTER_NAME}"
