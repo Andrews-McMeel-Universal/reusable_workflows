@@ -11,7 +11,7 @@ on:
       APT_PACKAGES:
         required: false
         type: string
-        default: "curl"
+        default: ${{ vars.APPLICATION_CI_APT_PACKAGES || 'curl' }}
         description: "Apt packages to install"
       INSTALL_NODE:
         required: false
