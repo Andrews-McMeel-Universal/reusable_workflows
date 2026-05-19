@@ -1,0 +1,103 @@
+name: Storybook Deployment
+
+on:
+  workflow_call:
+    inputs:
+      STORYBOOK_BUILD_SCRIPT_NAME:
+        required: false
+        type: string
+        description: The yarn script name to build Storybook
+        default: ${{ vars.STORYBOOK_BUILD_SCRIPT_NAME || 'storybook:build' }}
+      STORYBOOK_PUBLISH_CHANGES_ONLY:
+        required: false
+        type: string
+        description: Whether to publish only the changes to Storybook
+        default: ${{ vars.STORYBOOK_PUBLISH_CHANGES_ONLY || 'true' }}
+      STORYBOOK_EXIT_ZERO_ON_CHANGES:
+        required: false
+        type: string
+        description: Whether to exit with zero status code on changes
+        default: ${{ vars.STORYBOOK_EXIT_ZERO_ON_CHANGES || 'true' }}
+      STORYBOOK_ALLOW_CONSOLE_ERRORS:
+        required: false
+        type: string
+        description: Whether to allow console errors during Storybook build
+        default: ${{ vars.STORYBOOK_ALLOW_CONSOLE_ERRORS || 'true' }}
+      STORYBOOK_AUTO_ACCEPT_CHANGES:
+        required: false
+        type: string
+        description: Whether to auto-accept changes in Storybook
+        default: ${{ vars.STORYBOOK_AUTO_ACCEPT_CHANGES || 'false' }}
+    secrets:
+      PAT_ACTION_CI:
+        required: true
+      CHROMATIC_PROJECT_TOKEN:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy to Storybook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_ACTION_CI }}
+          fetch-depth: 0
+
+      - name: Get changed files to determine if Storybook build is needed
+        id: changed-files
+        shell: bash
+        run: |
+          IFS=$'\n\t'
+
+          # Determine the range of commits to analyze
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE=${{ github.event.pull_request.base.sha }}
+            HEAD=${{ github.event.pull_request.head.sha }}
+          else
+            # For pushes, GitHub provides before/after
+            HEAD="${{ github.sha }}"
+            BASE="$(git rev-list -n 2 "$HEAD" | tail -n 1 || true)"
+          fi
+
+          # Initialize flags
+          SKIP_STORYBOOK_BUILD=true
+
+          # Analyze changed files
+          while IFS= read -r -d '' FILE; do
+            # Storybook-related Files
+            case "$FILE" in
+              src/*|package.json)
+                SKIP_STORYBOOK_BUILD=false
+                ;;
+            esac
+          done < <(git diff --name-only -z "$BASE" "$HEAD")
+
+          echo "---"
+          echo "SKIP_STORYBOOK_BUILD=$SKIP_STORYBOOK_BUILD" >> "$GITHUB_OUTPUT"
+          echo "SKIP_STORYBOOK_BUILD=$SKIP_STORYBOOK_BUILD"
+
+      - name: Fetch latest release
+        uses: pozetroninc/github-action-get-latest-release@v0.8.0
+        id: latest-release
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository }}
+          excludes: prerelease, draft
+          token: ${{ secrets.PAT_ACTION_CI }}
+
+      - name: Use cache-yarn-install action
+        uses: Andrews-McMeel-Universal/cache-yarn-install@v1
+        with:
+          enable-corepack: false
+
+      - name: Publish to Storybook
+        uses: chromaui/action@v15
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          buildScriptName: ${{ inputs.STORYBOOK_BUILD_SCRIPT_NAME }}
+          exitZeroOnChanges: ${{ (inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES != 'false' && github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) || inputs.STORYBOOK_EXIT_ZERO_ON_CHANGES == 'true' }}
+          onlyChanged: ${{ inputs.STORYBOOK_PUBLISH_CHANGES_ONLY == 'true' }}
+          skip: ${{ steps.changed-files.outputs.SKIP_STORYBOOK_BUILD }}
+          autoAcceptChanges: ${{ (inputs.STORYBOOK_AUTO_ACCEPT_CHANGES != 'false' && contains(github.ref, steps.latest-release.outputs.release)) || inputs.STORYBOOK_AUTO_ACCEPT_CHANGES == 'true' }}

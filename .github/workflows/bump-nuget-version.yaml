@@ -25,13 +25,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.PAT_ACTION_CI || github.token }}
+
 
       - name: Check for existing version bump commit
         id: check-version-bump
         run: |
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          if git log --oneline "$BASE_SHA...$HEAD_SHA" | grep -q "Bump ${{ inputs.libraryName }} Nuget version"; then
+          if git log --oneline "$BASE_SHA...$HEAD_SHA" | grep -q "Bump${{ inputs.libraryName != '' && format(' {0} ', inputs.libraryName) || ' ' }}Nuget version"; then
             echo "version-bump-exists=true" >> $GITHUB_OUTPUT
           else
             echo "version-bump-exists=false" >> $GITHUB_OUTPUT
@@ -74,10 +76,20 @@ jobs:
               if (-not [string]::IsNullOrEmpty("$ProjectName")) {
                   $ProjectName = $ProjectName + "/"
               }
-              $ProjectFile = ("${ProjectName}${LibraryName}/${LibraryName}.csproj")
+              if (Test-Path -Path "${ProjectName}${LibraryName}/${LibraryName}.csproj") {
+                  $ProjectFile = ("${ProjectName}${LibraryName}/${LibraryName}.csproj")
+              }
+              else {
+                  $ProjectFile = (Get-ChildItem -Path "${ProjectName}${LibraryName}/*.csproj").Name
+              }
+              
           }
           else {
-              $ProjectFile = ("$ProjectName/$ProjectName.csproj")
+              $ProjectDirectory = (Get-ChildItem | Where-Object {$_.Name -cmatch "$ProjectName"}).Name
+              $ProjectFile = (Get-ChildItem $ProjectDirectory | Where-Object {$_.Name -cmatch "$ProjectName"}).FullName
+              if ($null -eq $ProjectFile) {
+                  $ProjectFile = (Get-ChildItem -Path "$ProjectDirectory/*.csproj").FullName
+              }
           }
           $ProjectFileContents = Get-Content $ProjectFile -Raw
 

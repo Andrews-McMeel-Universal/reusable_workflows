@@ -1,4 +1,4 @@
-name: Purge Azure CDN
+name: Purge CDN Caches
 
 on:
   workflow_call:
@@ -7,23 +7,6 @@ on:
         required: false
         type: string
         description: "Deploy Environment. Can be development, staging, or production."
-      cdnResourceGroup:
-        required: false
-        type: string
-        description: "CDN Resource Group."
-      cdnProfile:
-        required: false
-        type: string
-        description: "CDN Profile."
-      cdnEndpoint:
-        required: false
-        type: string
-        description: "CDN Endpoint."
-      resourceType:
-        required: false
-        type: string
-        description: "Resource Type. Can be either 'frontdoor' or 'cdn'."
-        default: ${{ vars.CDN_RESOURCE_TYPE || 'frontdoor' }}
       bunnyCdnDomain:
         required: false
         type: string
@@ -36,61 +19,8 @@ on:
         required: false
 
 jobs:
-  purge-azure-cdn:
-    name: Purge Azure CDN Cache
-    if: inputs.resourceType == 'frontdoor' || inputs.resourceType == 'cdn'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Login via Az module
-        uses: azure/login@v2
-        with:
-          creds: "${{ secrets.azureCredentials }}"
-          enable-AzPSSession: true
-
-      - name: Purge Azure CDN cache
-        uses: azure/powershell@v2
-        with:
-          azPSVersion: "latest"
-          inlineScript: |
-            if (-not "${{ inputs.cdnResourceGroup }}") {
-              Write-Error "CDN Resource Group is required. Please provide the CDN Resource Group name when calling the workflow."
-              exit 1
-            }
-            else {
-              $ResourceGroup="${{ inputs.cdnResourceGroup }}"
-            }
-
-            if (-not "${{ inputs.cdnProfile }}") {
-              Write-Error "CDN Profile is required. Please provide the CDN Profile name when calling the workflow."
-              exit 1
-            }
-            else {
-              $ProfileName="${{ inputs.cdnProfile }}"
-            }
-
-            if (-not "${{ inputs.cdnEndpoint }}") {
-              if ("${{ github.event.repository.name }}" -match "*_game") {
-                $EndpointName = (az afd endpoint list --profile-name "$ProfileName" --resource-group "$ResourceGroup" --query "[?tags.\"repository-name\" == '${{ github.event.repository.name }}'].name" -o tsv)
-              }
-              else {
-                Write-Error "CDN Endpoint is required. Please provide the CDN Endpoint name when calling the workflow."
-                exit 1
-              }
-            }
-            else {
-              $EndpointName="${{ inputs.cdnEndpoint }}"
-            }
-
-            if ("${{ inputs.resourceType }}" -eq 'frontdoor') {
-              Clear-AzFrontDoorCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPath '/*'
-            }
-            else {
-              Clear-AzCdnEndpointContent -EndpointName $EndpointName -ProfileName $ProfileName -ResourceGroupName $ResourceGroup -ContentPath '/*'
-            }
-
   purge-bunny-cdn:
     name: Purge Bunny CDN Cache
-    if: inputs.resourceType == 'bunny'
     runs-on: ubuntu-latest
     steps:
       - name: Purge Bunny CDN cache

@@ -80,12 +80,13 @@ jobs:
         run: dotnet nuget push "*.nupkg" --api-key "${{ secrets.GITHUB_TOKEN }}" --source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --skip-duplicate
 
       - name: Push ${{ steps.project-name.outputs.projectName }} Packages
-        if: ${{ inputs.libraries }}
+        if: ${{ inputs.libraries != '' }}
         run: |
-          if [[ "${{ contains(inputs.libraries, '[') }}" == "true" ]]; then
-            LIBRARIES=(${{ join(fromJson(inputs.libraries), ' ') }})
+          LIBRARIES_RAW="${{ inputs.libraries }}"
+          if [[ "${LIBRARIES_RAW}" == *"["* ]]; then
+            mapfile -t LIBRARIES < <(jq -r '.[]' <<<"$LIBRARIES_RAW")
           else
-            LIBRARIES=(${{ inputs.libraries }})
+            read -ra LIBRARIES <<< "${{ inputs.libraries }}"
           fi
           for LIBRARY in "${LIBRARIES[@]}"; do
             cd "${{ github.workspace }}/${{ steps.project-name.outputs.projectName }}/${LIBRARY}/bin/Release/"
