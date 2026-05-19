@@ -40,7 +40,7 @@ on:
       AZURE_APP_CONCURRENCY_LIMIT:
         required: false
         type: string
-        description: "Maximum number of running instances"
+        description: "Maximum number of instances running concurrently"
         default: ${{ vars.AZURE_FUNCTIONAPP_CONCURRENCY_LIMIT }}
     secrets:
       AZURE_CREDENTIALS:
