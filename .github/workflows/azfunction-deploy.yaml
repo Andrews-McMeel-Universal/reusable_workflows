@@ -32,6 +32,16 @@ on:
         type: string
         description: "The webhook URL for the deployment status"
         default: ${{ vars.MSTEAMS_DEPLOYMENT_WEBHOOK }}
+      AZURE_APP_MAX_INSTANCES:
+        required: false
+        type: string
+        description: "Maximum number of running instances"
+        default: ${{ vars.AZURE_FUNCTIONAPP_MAX_INSTANCES || '20' }}
+      AZURE_APP_CONCURRENCY_LIMIT:
+        required: false
+        type: string
+        description: "Maximum number of instances running concurrently"
+        default: ${{ vars.AZURE_FUNCTIONAPP_CONCURRENCY_LIMIT }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -170,6 +180,28 @@ jobs:
           slot-name: ${{ inputs.environment }}
           package: "${{ inputs.AZURE_APP_PACKAGE_PATH }}/output"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+
+      - name: Configure Azure Function App Scaling
+        if: inputs.AZURE_APP_MAX_INSTANCES != '20'
+        uses: azure/cli@v2
+        env:
+          AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
+          AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
+          AZURE_APP_MAX_INSTANCES: ${{ inputs.AZURE_APP_MAX_INSTANCES }}
+        with:
+          inlineScript: |
+            az functionapp scale config set -n ${AZURE_APP_NAME} -g ${AZURE_APP_RESOURCEGROUP} --maximum-instance-count ${AZURE_APP_MAX_INSTANCES}
+
+      - name: Configure Azure Function App Concurrency Limits
+        if: inputs.AZURE_APP_CONCURRENCY_LIMIT != ''
+        uses: azure/cli@v2
+        env:
+          AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
+          AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
+          AZURE_APP_CONCURRENCY_LIMIT: ${{ inputs.AZURE_APP_CONCURRENCY_LIMIT }}
+        with:
+          inlineScript: |
+            az functionapp scale config set -n ${AZURE_APP_NAME} -g ${AZURE_APP_RESOURCEGROUP} --trigger-settings perInstanceConcurrency=${AZURE_APP_CONCURRENCY_LIMIT}
 
       - name: Enable identity for Azure Function App
         uses: azure/cli@v2
