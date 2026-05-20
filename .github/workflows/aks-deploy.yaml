@@ -138,6 +138,8 @@ on:
         required: false
       bunnyCdnApiKey:
         required: false
+      JIRA_TOKEN:
+        required: false
 
 jobs:
   build:
