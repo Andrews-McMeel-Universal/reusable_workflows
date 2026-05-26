@@ -48,11 +48,11 @@ jobs:
             SERVICE_URL="${ENVIRONMENT}.${SERVICE_URL}"
           fi
           VERSIONS=("v1" "v2" "v3" "v4" "v5")
-          for VERSION in ${VERSIONS[@]}; do
+          for VERSION in "${VERSIONS[@]}"; do
             SWAGGER_URL="https://${SERVICE_URL}/swagger/${VERSION}/swagger.json"
             RESPONSE=$(curl -o /dev/null -s -w "%{http_code}\n" "${SWAGGER_URL}")
             if [[ "$RESPONSE" -ne 200 ]]; then
-              echo "Swagger version not available. Skipping version: $VERSION"
+              echo "Swagger version not available. Skipping version: ${VERSION}"
               continue
             fi
             yarn openapi-typescript "${SWAGGER_URL}" -o ./src/types/schemas/dpAdminSchema.${ENVIRONMENT}.${VERSION}.d.ts
