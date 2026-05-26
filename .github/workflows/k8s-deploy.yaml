@@ -140,6 +140,8 @@ on:
         required: false
       bunnyCdnApiKey:
         required: false
+      JIRA_TOKEN:
+        required: false
 
 jobs:
   build:
@@ -1026,6 +1028,21 @@ jobs:
           echo "- **Version**: ${APP_VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "- **Key Vault Name**: ${ENVIRONMENT_KEY_VAULT}" >> $GITHUB_STEP_SUMMARY
           echo "- **FQDN**: ${INGRESS}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check if JIRA_TOKEN is set
+        run: |
+          if [[ -n "${{ secrets.JIRA_TOKEN }}" ]]; then
+            echo "JIRA_TOKEN_EXISTS=true" >> $GITHUB_ENV
+          fi
+
+      - name: Link release in Jira tickets
+        if: ${{ env.JIRA_TOKEN_EXISTS == 'true' }}
+        uses: Andrews-McMeel-Universal/link-jira-versions@latest
+        with:
+          JIRA_AUTOMATIONS_EMAIL: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
+          JIRA_AUTOMATIONS_DOMAIN: ${{ vars.JIRA_AUTOMATIONS_DOMAIN }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
