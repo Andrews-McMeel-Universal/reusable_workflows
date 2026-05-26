@@ -88,6 +88,7 @@ jobs:
 
       - name: Link release in Jira tickets
         if: ${{ env.JIRA_TOKEN_EXISTS == 'true' }}
+        continue-on-error: true
         uses: Andrews-McMeel-Universal/link-jira-versions@latest
         with:
           JIRA_AUTOMATIONS_EMAIL: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
