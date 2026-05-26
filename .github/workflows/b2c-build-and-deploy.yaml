@@ -28,6 +28,8 @@ on:
         required: true
       azureB2CClientSecret:
         required: true
+      JIRA_TOKEN:
+        required: false
 
 jobs:
   build:
@@ -77,6 +79,20 @@ jobs:
             $DistPath = Join-Path (Get-Location) "dist"
             ./deployments/scripts/Deploy-B2C-Auth.ps1 -StorageAccountName "amuauthassets" -StorageAccountKey "${{ secrets.storageAccountKey }}" -ContainerName $ContainerName -DistPath $DistPath
           azPSVersion: "latest"
+
+      - name: Check if JIRA_TOKEN is set
+        run: |
+          if [[ -n "${{ secrets.JIRA_TOKEN }}" ]]; then
+            echo "JIRA_TOKEN_EXISTS=true" >> $GITHUB_ENV
+          fi
+
+      - name: Link release in Jira tickets
+        if: ${{ env.JIRA_TOKEN_EXISTS == 'true' }}
+        uses: Andrews-McMeel-Universal/link-jira-versions@latest
+        with:
+          JIRA_AUTOMATIONS_EMAIL: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
+          JIRA_AUTOMATIONS_DOMAIN: ${{ vars.JIRA_AUTOMATIONS_DOMAIN }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
