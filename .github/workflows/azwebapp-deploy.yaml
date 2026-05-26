@@ -296,6 +296,7 @@ jobs:
           az "${AZ_ARGS[@]}"
 
       - name: Check if JIRA_TOKEN is set
+        shell: bash
         run: |
           if [[ -n "${{ secrets.JIRA_TOKEN }}" ]]; then
             echo "JIRA_TOKEN_EXISTS=true" >> $GITHUB_ENV
