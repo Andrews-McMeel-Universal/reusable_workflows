@@ -15,6 +15,10 @@ on:
         required: false
         type: string
         default: ${{ vars.TYPESCRIPT_SERVICE_DOMAIN }}
+      lintFormatter:
+        required: false
+        type: string
+        default: ${{ vars.APPLICATION_CI_LINT_FORMATTER || 'false' }}
     secrets:
       PAT_ACTION_CI:
         required: false
@@ -53,6 +57,10 @@ jobs:
             fi
             yarn openapi-typescript "${SWAGGER_URL}" -o ./src/types/schemas/dpAdminSchema.${ENVIRONMENT}.${VERSION}.d.ts
           done
+
+      - name: Run prettier
+        if: ${{ inputs.lintFormatter == 'true' }}
+        run: yarn format
 
       - name: Generate TypeScript Build ID
         id: build_id
