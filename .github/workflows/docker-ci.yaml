@@ -13,6 +13,11 @@ on:
         description: Path to health check endpoint
         type: string
         default: ${{ vars.APPLICATION_CI_HEALTHCHECK_PATH || '/' }}
+      dockerFilePath:
+        required: false
+        type: string
+        description: "Relative path to Dockerfile."
+        default: ${{ vars.DOCKER_FILE_PATH || '.' }}
     secrets:
       azureCredentials:
         required: false
@@ -60,6 +65,7 @@ jobs:
       - name: Docker Build
         uses: docker/build-push-action@v5
         with:
+          context: ${{ inputs.dockerFilePath }}
           tags: docker-ci:latest
           push: false
           load: true

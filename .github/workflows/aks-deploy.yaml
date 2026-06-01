@@ -20,7 +20,7 @@ on:
         required: false
         type: string
         description: "Relative path to Dockerfile."
-        default: "."
+        default: ${{ vars.DOCKER_FILE_PATH || '.' }}
       maximumReplicas:
         required: false
         type: string
