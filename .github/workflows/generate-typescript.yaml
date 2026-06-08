@@ -15,6 +15,10 @@ on:
         required: false
         type: string
         default: ${{ vars.TYPESCRIPT_SERVICE_DOMAIN }}
+      typescriptSchemaPrefix:
+        required: false
+        type: string
+        default: ${{ vars.TYPESCRIPT_SCHEMA_PREFIX }}
       lintFormatter:
         required: false
         type: string
@@ -55,7 +59,7 @@ jobs:
               echo "Swagger version not available. Skipping version: ${VERSION}"
               continue
             fi
-            yarn openapi-typescript "${SWAGGER_URL}" -o ./src/types/schemas/dpAdminSchema.${ENVIRONMENT}.${VERSION}.d.ts
+            yarn openapi-typescript "${SWAGGER_URL}" -o ./src/types/schemas/${{ inputs.typescriptSchemaPrefix }}Schema.${ENVIRONMENT}.${VERSION}.d.ts
           done
 
       - name: Run prettier
