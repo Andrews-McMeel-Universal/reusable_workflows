@@ -59,7 +59,7 @@ jobs:
               echo "Swagger version not available. Skipping version: ${VERSION}"
               continue
             fi
-            yarn openapi-typescript "${SWAGGER_URL}" -o ./src/types/schemas/${{ inputs.typescriptSchemaPrefix }}AdminSchema.${ENVIRONMENT}.${VERSION}.d.ts
+            yarn openapi-typescript "${SWAGGER_URL}" -o ./src/types/schemas/${{ inputs.typescriptSchemaPrefix }}Schema.${ENVIRONMENT}.${VERSION}.d.ts
           done
 
       - name: Run prettier
