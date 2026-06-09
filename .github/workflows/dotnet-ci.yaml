@@ -17,6 +17,11 @@ on:
         type: string
         description: ".NET SDK Version"
         default: ${{ vars.DOTNET_VERSION }}
+      configureAmuNugetSource:
+        required: false
+        type: string
+        description: "Configure AMU GitHub Packages Nuget Source"
+        default: ${{ vars.CONFIGURE_AMU_NUGET_SOURCE || 'true' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -57,6 +62,7 @@ jobs:
           dotnet-version: ${{ steps.dotnet-version.outputs.DOTNET_VERSION }}
 
       - name: Add AMU GitHub Packages nuget source
+        if: ${{ inputs.configureAmuNugetSource != 'false' }}
         run: |
           dotnet nuget add source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --name "AMU GitHub Packages" --username "amu_deploy@amuniversal.com" --password "${{ secrets.PAT_ACTION_CI }}" --store-password-in-clear-text
 
