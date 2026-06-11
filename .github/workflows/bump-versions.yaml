@@ -114,11 +114,20 @@ jobs:
           echo "release=$release" >> $env:GITHUB_ENV
           echo "Bumping version to $release"
 
-      - name: Update version in package.json
+      - name: Update version without comma in package.json
         if: steps.packagejsonfile.outputs.files_exists == 'true'
         uses: jacobtomlinson/gha-find-replace@v3
         with:
-          find: '"version": .*'
+          find: '"version": .*"$'
+          replace: '"version": "${{ inputs.version || env.release }}"'
+          regex: true
+          include: "**package.json"
+
+      - name: Update version with comma in package.json
+        if: steps.packagejsonfile.outputs.files_exists == 'true'
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: '"version": .*",$'
           replace: '"version": "${{ inputs.version || env.release }}",'
           regex: true
           include: "**package.json"
