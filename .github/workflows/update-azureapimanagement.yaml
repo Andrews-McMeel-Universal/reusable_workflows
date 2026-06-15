@@ -32,6 +32,11 @@ on:
         type: string
         description: "The webhook URL for the deployment status"
         default: ${{ vars.MSTEAMS_DEPLOYMENT_WEBHOOK }}
+      apiVersionHeaders:
+        required: false
+        type: string
+        description: "Use version headers instead of version paths"
+        default: ${{ vars.API_VERSION_HEADERS || 'false' }}
     secrets:
       azurePassword:
         required: false
@@ -92,6 +97,7 @@ jobs:
       - name: Update Azure API Management
         shell: pwsh
         env:
+          apiVersionHeaders: ${{ inputs.apiVersionHeaders }}
           ApiProductId: ${{ inputs.productId }}
           apiSuffix: ${{ inputs.apiSuffix }}
           repositoryName: ${{ github.event.repository.name }}
@@ -177,11 +183,31 @@ jobs:
 
                   # Retrieve and update the API object
                   $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
-                  $Api.ServiceURL = "$ServiceURL/v${version}"
+                  if ($env:apiVersionHeaders -eq 'false') {
+                    $Api.ServiceURL = "$ServiceURL/v${version}"
+                  }
+                  else {
+                    $Api.ServiceURL = "$ServiceURL"
+                  }
                   $Api.SubscriptionRequired = $ApiSubscriptionRequired
 
                   # Associate the versioned API with a product
                   Set-AzApiManagementApi -InputObject $Api
+                  if ($env:apiVersionHeaders -eq 'true') {
+                      $PolicyXML = [xml](Get-AzApiManagementPolicy -Context $Context -ApiId "$versionedApiId")
+                      if ($PolicyXML.policies.inbound."set-header".OuterXml -match "api-version.*<value>$version") {
+                          $PolicyXML.policies.inbound.SelectSingleNode("set-header").ParentNode.RemoveChild($PolicyXML.policies.inbound.SelectSingleNode("set-header"))
+                      }
+                      $xmlElement = $PolicyXML.CreateElement("set-header")
+                      $xmlElement.SetAttribute("name","api-version")
+                      $xmlElement.SetAttribute("exists-action","append")
+
+                      $PolicyXML.policies.inbound.AppendChild($xmlElement)
+                      $valueElement = $PolicyXML.CreateElement("value")
+                      $valueElement.InnerText = "$version"
+                      $PolicyXML.policies.inbound."set-header".AppendChild($valueElement)
+                      Set-AzApiManagementPolicy -Context $Context -ApiId "$versionedApiId" -Policy $PolicyXML.OuterXML
+                  }
                   Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
                   if ($env:ApiProductId -ne "AZ-WebServices") {
                       Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $env:ApiProductId
