@@ -42,6 +42,11 @@ on:
         type: string
         description: "Maximum number of instances running concurrently"
         default: ${{ vars.AZURE_FUNCTIONAPP_CONCURRENCY_LIMIT }}
+      configureAmuNugetSource:
+        required: false
+        type: string
+        description: "Configure AMU GitHub Packages Nuget Source"
+        default: ${{ vars.CONFIGURE_AMU_NUGET_SOURCE || 'true' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -97,7 +102,7 @@ jobs:
           dotnet-version: ${{ inputs.DOTNET_VERSION || steps.dotnet-version.outputs.DOTNET_VERSION }}
 
       - name: Add AMU GitHub Packages nuget source
-        if: ${{ env.PAT_ACTION_CI }}
+        if: ${{ env.PAT_ACTION_CI && inputs.configureAmuNugetSource != 'false' }}
         run: |
           dotnet nuget add source "https://nuget.pkg.github.com/andrews-mcmeel-universal/index.json" --name "AMU GitHub Packages" --username "amu_deploy@amuniversal.com" --password "${{ secrets.PAT_ACTION_CI }}" --store-password-in-clear-text
 
