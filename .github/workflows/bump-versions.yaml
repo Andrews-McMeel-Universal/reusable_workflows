@@ -118,7 +118,7 @@ jobs:
         if: steps.packagejsonfile.outputs.files_exists == 'true'
         uses: jacobtomlinson/gha-find-replace@v3
         with:
-          find: '"version": .*"$'
+          find: '"version": .*"'
           replace: '"version": "${{ inputs.version || env.release }}"'
           regex: true
           include: "**package.json"
@@ -127,7 +127,7 @@ jobs:
         if: steps.packagejsonfile.outputs.files_exists == 'true'
         uses: jacobtomlinson/gha-find-replace@v3
         with:
-          find: '"version": .*",$'
+          find: '"version": .*",'
           replace: '"version": "${{ inputs.version || env.release }}",'
           regex: true
           include: "**package.json"
