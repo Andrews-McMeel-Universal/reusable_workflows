@@ -179,14 +179,19 @@ jobs:
                   $SwaggerContent | Out-File -FilePath $SwaggerFileName -Encoding utf8
 
                   # Import the versioned API
-                  Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerFileName -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
+                  if (($env:apiVersionHeaders -eq 'true') -and ($version -eq "1")) {
+                      # Default to "Original" API version
+                      Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerFileName -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersionSetId $ApiVersionSet.Id
+                  }
+                  else {
+                      # Create new vX version for each version found
+                      Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerFileName -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
+                  }
 
                   # Retrieve and update the API object
                   $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
-                  if ($env:apiVersionHeaders -eq 'false') {
-                    $Api.ServiceURL = "$ServiceURL/v${version}"
-                  }
-                  else {
+                  $Api.ServiceURL = "$ServiceURL/v${version}"
+                  if ($env:apiVersionHeaders -eq 'true') {
                     $Api.ServiceURL = "$ServiceURL"
                   }
                   $Api.SubscriptionRequired = $ApiSubscriptionRequired
@@ -204,7 +209,7 @@ jobs:
 
                       $PolicyXML.policies.inbound.AppendChild($xmlElement)
                       $valueElement = $PolicyXML.CreateElement("value")
-                      $valueElement.InnerText = "$version"
+                      $valueElement.InnerText = "${version}.0"
                       $PolicyXML.policies.inbound."set-header".AppendChild($valueElement)
                       Set-AzApiManagementPolicy -Context $Context -ApiId "$versionedApiId" -Policy $PolicyXML.OuterXML
                   }
