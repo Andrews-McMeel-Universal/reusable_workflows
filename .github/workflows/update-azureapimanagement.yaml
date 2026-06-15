@@ -103,6 +103,7 @@ jobs:
           repositoryName: ${{ github.event.repository.name }}
           environment: ${{ inputs.environment }}
           serviceFqdn: ${{ steps.getappinfo.outputs.applicationIngressFqdn }}
+          defaultAPIPolicy: https://amucloudapps.blob.core.windows.net/apim/default-azure-apim-policy-schema.xml
         run: |
           # Set API Management variables
           $ApiSubscriptionRequired = $True
@@ -200,6 +201,9 @@ jobs:
                   Set-AzApiManagementApi -InputObject $Api
                   if ($env:apiVersionHeaders -eq 'true') {
                       $PolicyXML = [xml](Get-AzApiManagementPolicy -Context $Context -ApiId "$versionedApiId")
+                      if (!$PolicyXML) {
+                          $PolicyXML = (Invoke-WebRequest -Uri $env:defaultAPIPolicy -UseBasicParsing -ErrorAction Stop).Content
+                      )
                       if ($PolicyXML.policies.inbound."set-header".OuterXml -match "api-version.*<value>$version") {
                           $PolicyXML.policies.inbound.SelectSingleNode("set-header").ParentNode.RemoveChild($PolicyXML.policies.inbound.SelectSingleNode("set-header"))
                       }
