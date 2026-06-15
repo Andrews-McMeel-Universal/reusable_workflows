@@ -101,7 +101,7 @@ jobs:
         with:
           github-token: ${{ github.token }} # this will use the runner's token.
           ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
-          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Failed ${{ inputs.environment }} Deployment"
+          notification-summary: "${{ github.event.release.tag_name != '' && format('[{0}] ', github.event.release.tag_name)}}Failed deploying B2C policy updates to ${{ inputs.environment }}"
           notification-color: 17a2b8
           timezone: America/Chicago
           verbose-logging: true
@@ -112,7 +112,7 @@ jobs:
         with:
           github-token: ${{ github.token }} # this will use the runner's token.
           ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
-          notification-summary: "${{ github.event.release.tag_name != '' && format('{0} ', github.event.release.tag_name) || ' ' }}Successful ${{ inputs.environment }} Deployment"
+          notification-summary: "${{ github.event.release.tag_name != '' && format('[{0}] ', github.event.release.tag_name)}}Successfully deployed B2C policy updates to ${{ inputs.environment }}"
           notification-color: 28a745
           timezone: America/Chicago
           verbose-logging: true
