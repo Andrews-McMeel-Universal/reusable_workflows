@@ -203,7 +203,7 @@ jobs:
                       $PolicyXML = [xml](Get-AzApiManagementPolicy -Context $Context -ApiId "$versionedApiId")
                       if (!$PolicyXML) {
                           $PolicyXML = (Invoke-WebRequest -Uri $env:defaultAPIPolicy -UseBasicParsing -ErrorAction Stop).Content
-                      )
+                      }
                       if ($PolicyXML.policies.inbound."set-header".OuterXml -match "api-version.*<value>$version") {
                           $PolicyXML.policies.inbound.SelectSingleNode("set-header").ParentNode.RemoveChild($PolicyXML.policies.inbound.SelectSingleNode("set-header"))
                       }
