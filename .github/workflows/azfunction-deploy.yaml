@@ -320,7 +320,7 @@ jobs:
                 --slot "${ENVIRONMENT}")
             fi
 
-            echo "$ENV_VARS_OUTPUT" | sed '$ d' | while IFS='=' read -r key value; do
+            echo "$ENV_VARS_OUTPUT" | while IFS='=' read -r key value; do
               echo "Processing variable: $key=$value"
               VARIABLE_LC=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr "_" "-")
 
