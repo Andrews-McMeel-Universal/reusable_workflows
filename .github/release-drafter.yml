@@ -15,10 +15,6 @@ categories:
       - 'tests'
       - 'dependencies'
       - 'documentation'
-  - title: 🔐 DevOps
-    labels:
-      - 'sync'
-      - 'devops'
 exclude-labels:
   - 'skip-changelog'
 change-template: '- $TITLE by @$AUTHOR in #$NUMBER'
@@ -74,7 +70,6 @@ autolabeler:
     files:
       - ".github/"
       - "deployments/"
-      - "*.ps1"
       - "Secrets-example.json"
       - "docker-compose.yml"
       - "Dockerfile"
