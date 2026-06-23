@@ -66,7 +66,7 @@ jobs:
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
@@ -166,7 +166,7 @@ jobs:
     needs: [vars]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
@@ -226,7 +226,7 @@ jobs:
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Use cache-next-install action
         if: ${{ inputs.YARN_INSTALL == 'false' }}
@@ -273,7 +273,7 @@ jobs:
 
       - name: Azure Login
         if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.jest-report.outputs.jest-report-exists == 'true' }}
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
@@ -354,7 +354,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Use cache-next-install action
         if: ${{ inputs.YARN_INSTALL == 'false' }}
@@ -399,7 +399,7 @@ jobs:
 
       - name: Azure Login
         if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 

@@ -53,7 +53,7 @@ jobs:
     runs-on: azure
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install PowerShell modules
         shell: pwsh
@@ -64,7 +64,7 @@ jobs:
           Install-Module -Name $installModules -Force
 
       - name: Login via Az module
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true

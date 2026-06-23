@@ -138,7 +138,7 @@ jobs:
       url: ${{ steps.hostname.outputs.hostname }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -221,9 +221,9 @@ jobs:
           docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
 
       - name: Login to Azure Container Registry
-        uses: azure/docker-login@v2
+        uses: docker/login-action@v4
         with:
-          login-server: ${{ secrets.registryHostName }}
+          registry: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
@@ -286,7 +286,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -347,9 +347,9 @@ jobs:
           docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
 
       - name: Login to Azure Container Registry
-        uses: azure/docker-login@v2
+        uses: docker/login-action@v4
         with:
-          login-server: ${{ secrets.registryHostName }}
+          registry: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
@@ -357,7 +357,7 @@ jobs:
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
 
       - name: Login via Az module
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: "${{ secrets.azureCredentials }}"
 
