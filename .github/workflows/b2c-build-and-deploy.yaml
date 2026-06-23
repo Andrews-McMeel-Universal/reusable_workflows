@@ -67,7 +67,7 @@ jobs:
           clientSecret: ${{ env.AZURE_B2C_CLIENT_SECRET }}
 
       - name: Upload Auth Assets
-        uses: azure/powershell@v2
+        uses: azure/powershell@v3
         with:
           inlineScript: |
             if ("${{ inputs.environment }}" -match "production") {
