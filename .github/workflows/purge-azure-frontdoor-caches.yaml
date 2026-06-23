@@ -25,13 +25,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Login via Az module
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
 
       - name: Purge Azure Front Door cache
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         with:
           inlineScript: |
             if [[ -z "${{ inputs.fdResourceGroup }}" ]]; then

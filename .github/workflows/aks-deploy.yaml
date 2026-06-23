@@ -147,7 +147,7 @@ jobs:
     runs-on: ${{ inputs.githubRunner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkoutRef }}
           submodules: ${{ inputs.checkoutSubmodules }}
@@ -207,7 +207,7 @@ jobs:
 
       - name: Login via Az module
         if: inputs.haIngress == 'true'
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: "${{ secrets.azureCredentials }}"
 
@@ -368,15 +368,15 @@ jobs:
           echo 'EOF' >> $GITHUB_ENV
 
       - name: Login to Azure Container Registry
-        uses: azure/docker-login@v2
+        uses: docker/login-action@v4
         with:
-          login-server: ${{ secrets.registryHostName }}
+          registry: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
           password: ${{ secrets.registryPassword }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ secrets.registryHostName }}/${{ github.event.repository.name }}
           tags: |
@@ -409,10 +409,10 @@ jobs:
           fi
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ inputs.dockerFilePath }}
           push: true
@@ -451,7 +451,7 @@ jobs:
       url: https://${{ needs.build.outputs.ingress }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkoutRef }}
 
@@ -742,7 +742,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v3
+        uses: azure/k8s-bake@v4
         with:
           renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
@@ -774,7 +774,7 @@ jobs:
           echo "AKS_RESOURCE_GROUP=${AKS_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
 
       - name: Set target AKS cluster
-        uses: azure/aks-set-context@v4
+        uses: azure/aks-set-context@v5
         with:
           cluster-name: ${{ secrets.azureClusterName }}
           resource-group: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
@@ -835,13 +835,16 @@ jobs:
           kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
 
       - name: Create K8s Image Pull Secret
-        uses: azure/k8s-create-secret@v5
-        with:
-          container-registry-url: ${{ secrets.registryHostName }}
-          container-registry-username: ${{ secrets.registryUserName  }}
-          container-registry-password: ${{ secrets.registryPassword  }}
-          secret-name: "${{ needs.build.outputs.appName }}-pull-secret"
-          namespace: ${{ steps.namespace.outputs.namespace }}
+        shell: bash
+        env:
+          APP_NAME: ${{ needs.build.outputs.appName }}
+        run: |
+          # Update .env Kubernetes secret
+
+          if kubectl get secret "${APP_NAME}-pull-secret" > /dev/null 2>&1; then
+              kubectl delete secret "${APP_NAME}-pull-secret"
+          fi
+          kubectl create secret docker-registry "${APP_NAME}-pull-secret" --docker-server="${{ secrets.registryHostName }}" --docker-username="${{ secrets.registryUserName }}" --docker-password="${{ secrets.registryPassword }}"
 
       - name: Get previous image tag used in deployment
         id: get-previous-image
@@ -862,7 +865,7 @@ jobs:
 
       - name: Deploy to Azure Kubernetes Service
         timeout-minutes: ${{ inputs.deploymentTimeout }}
-        uses: azure/k8s-deploy@v5
+        uses: azure/k8s-deploy@v6
         with:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}

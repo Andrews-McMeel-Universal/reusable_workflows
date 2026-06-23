@@ -83,7 +83,7 @@ jobs:
       PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkoutRef }}
 
@@ -97,7 +97,7 @@ jobs:
           echo "DOTNET_VERSION=${DOTNET_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Setup application platform
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ inputs.DOTNET_VERSION || steps.dotnet-version.outputs.DOTNET_VERSION }}
 
@@ -113,12 +113,12 @@ jobs:
           popd
 
       - name: Login via Az module
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
       - name: Whitelist Boley IPs
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
@@ -151,7 +151,7 @@ jobs:
           echo "ipv4=$(curl https://ipecho.net/plain ; echo)" >> $GITHUB_OUTPUT
 
       - name: Whitelist GitHub Runner IP
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
@@ -190,7 +190,7 @@ jobs:
 
       - name: Configure Azure Function App Scaling
         if: inputs.AZURE_APP_MAX_INSTANCES != '20'
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
@@ -201,7 +201,7 @@ jobs:
 
       - name: Configure Azure Function App Concurrency Limits
         if: inputs.AZURE_APP_CONCURRENCY_LIMIT != ''
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
@@ -211,7 +211,7 @@ jobs:
             az functionapp scale config set -n ${AZURE_APP_NAME} -g ${AZURE_APP_RESOURCEGROUP} --trigger-settings perInstanceConcurrency=${AZURE_APP_CONCURRENCY_LIMIT}
 
       - name: Enable identity for Azure Function App
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
@@ -231,7 +231,7 @@ jobs:
 
       - name: Get Azure Function App Managed Identity
         id: identity
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
           AZURE_APP_NAME: ${{ inputs.AZURE_APP_NAME }}
@@ -252,7 +252,7 @@ jobs:
             echo "appIdentity=${IDENTITY}" >> $GITHUB_ENV
 
       - name: Retrieve key vault name
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           REPOSITORY_NAME: ${{ github.event.repository.name }}
@@ -273,7 +273,7 @@ jobs:
             echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_ENV
 
       - name: Assign Azure Function App System Managed Identity to Key Vault
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           AZURE_KEYVAULT_NAME: ${{ env.keyVaultName }}
           AZURE_IDENTITY: ${{ env.appIdentity }}
@@ -303,7 +303,7 @@ jobs:
           ENV_VARS_OUTPUT: ${{ steps.get-envs.outputs.environmentVariables }}
           ENVIRONMENT: ${{ inputs.environment }}
           AZURE_KEYVAULT_NAME: ${{ env.keyVaultName }}
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         with:
           inlineScript: |
             set -eu
@@ -374,7 +374,7 @@ jobs:
 
       - name: Remove GitHub Runner IP from Whitelist
         if: always()
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}
@@ -399,7 +399,7 @@ jobs:
             fi
 
       - name: Restart Azure Function App
-        uses: azure/cli@v2
+        uses: azure/cli@v3
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           AZURE_APP_RESOURCEGROUP: ${{ inputs.AZURE_APP_RESOURCEGROUP }}

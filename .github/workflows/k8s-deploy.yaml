@@ -149,7 +149,7 @@ jobs:
     runs-on: ${{ inputs.githubRunner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkoutRef }}
           submodules: ${{ inputs.checkoutSubmodules }}
@@ -209,7 +209,7 @@ jobs:
 
       - name: Login via Az module
         if: inputs.haIngress == 'true'
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: "${{ secrets.azureCredentials }}"
 
@@ -379,7 +379,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ secrets.registryHostName }}/${{ env.repositoryOwner }}/${{ github.event.repository.name }}
           tags: |
@@ -393,10 +393,10 @@ jobs:
             latest=false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ inputs.dockerFilePath }}
           push: true
@@ -436,7 +436,7 @@ jobs:
       url: https://${{ needs.build.outputs.ingress }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkoutRef }}
 
@@ -722,7 +722,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@v3
+        uses: azure/k8s-bake@v4
         with:
           renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
@@ -830,7 +830,7 @@ jobs:
 
       - name: Deploy to Kubernetes cluster
         timeout-minutes: ${{ inputs.deploymentTimeout }}
-        uses: azure/k8s-deploy@v5
+        uses: azure/k8s-deploy@v6
         with:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
