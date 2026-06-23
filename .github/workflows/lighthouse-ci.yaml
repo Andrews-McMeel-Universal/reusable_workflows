@@ -206,7 +206,7 @@ jobs:
       - name: Check if Lighthouse report PR comment exists
         if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
         id: github-comment
-        uses: peter-evans/find-comment@v3
+        uses: peter-evans/find-comment@v4
         with:
           issue-number: ${{ github.event.number }}
           body-includes: This PR's Lighthouse Reports
