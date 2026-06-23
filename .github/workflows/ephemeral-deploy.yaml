@@ -488,7 +488,7 @@ jobs:
           az ad app update --id "${{ env.B2C_CLIENT_ID }}"  --web-redirect-uris "${REDIRECT_URIS[@]}"
 
       - name: Delete deployment environment
-        uses: strumwolf/delete-deployment-environment@v3
+        uses: strumwolf/delete-deployment-environment@v4
         with:
           token: ${{ secrets.githubPAT }}
           environment: ${{ needs.prepare.outputs.jiraTicketId }}
