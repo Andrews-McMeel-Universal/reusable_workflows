@@ -7,7 +7,7 @@ on:
         required: false
         description: Environment to run CI checks in
         type: string
-        default: development
+        default: ${{ vars.APPLICATION_CI_ENVIRONMENT || 'development' }}
       healthCheckPath:
         required: false
         description: Path to health check endpoint
