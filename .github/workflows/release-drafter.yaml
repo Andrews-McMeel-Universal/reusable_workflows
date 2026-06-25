@@ -20,6 +20,9 @@ jobs:
     name: Update Release Draft
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
       - name: Check release drafter config version
         run: |
           if grep 'when' .github/release-drafter.yml >/dev/null; then
