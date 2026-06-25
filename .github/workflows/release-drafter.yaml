@@ -20,7 +20,21 @@ jobs:
     name: Update Release Draft
     runs-on: ubuntu-latest
     steps:
-      - name: Draft Release Notes
+      - name: Check release drafter config version
+        run: |
+          if grep 'when' .github/release-drafter.yml >/dev/null; then
+            LATEST_RELEASE_DRAFTER_SCHEMA=true
+            echo "latestReleaseDrafterSchema=${LATEST_RELEASE_DRAFTER_SCHEMA}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Draft Release Notes v6
+        if: env.latestReleaseDrafterSchema != 'true'
+        uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
+
+      - name: Draft Release Notes v7
+        if: env.latestReleaseDrafterSchema == 'true'
         uses: release-drafter/release-drafter@v7
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
