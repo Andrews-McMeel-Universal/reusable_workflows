@@ -180,13 +180,30 @@ jobs:
                   $SwaggerContent | Out-File -FilePath $SwaggerFileName -Encoding utf8
 
                   # Import the versioned API
-                  if (($env:apiVersionHeaders -eq 'true') -and ($version -eq "1")) {
-                      # Default to "Original" API version
-                      Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerFileName -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersionSetId $ApiVersionSet.Id
+                  $apiImportParams = @{
+                      Context             = $Context
+                      SpecificationPath   = $SwaggerFileName
+                      SpecificationFormat = "OpenApi"
+                      Path                = $ApiId
+                      ApiId               = $versionedApiId
+                      ApiVersionSetId     = $ApiVersionSet.Id
                   }
-                  else {
-                      # Create new vX version for each version found
-                      Import-AzApiManagementApi -Context $Context -SpecificationPath $SwaggerFileName -SpecificationFormat OpenApi -Path $ApiId -ApiId "$versionedApiId" -ApiVersion "v$version" -ApiVersionSetId $ApiVersionSet.Id
+
+                  # Only include ApiVersion when needed
+                  if (!(($env:apiVersionHeaders -eq 'true') -and ($version -eq "1"))) {
+                      $apiImportParams.ApiVersion = "v$version"
+                  }
+
+                  # Retry until successful
+                  while ($true) {
+                      Import-AzApiManagementApi @apiImportParams
+
+                      if ($LASTEXITCODE -eq 0) {
+                          break
+                      }
+
+                      Write-Host "API Import Failed. Waiting 30 seconds before trying again..."
+                      Start-Sleep -Seconds 30
                   }
 
                   # Retrieve and update the API object
