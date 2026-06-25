@@ -2,23 +2,53 @@ name-template: '$RESOLVED_VERSION'
 tag-template: '$RESOLVED_VERSION'
 categories:
   - title: 🚀 Features
-    labels:
-      - 'feature'
-      - 'epic'
-      - 'story'
+    when:
+      labels:
+        - 'feature'
+        - 'epic'
+        - 'story'
   - title: 🐛 Fixes
-    labels:
+    when:
+      labels:
       - 'bug'
   - title: 🔨 Maintenance
-    labels: 
+    when:
+      labels:
       - 'tools'
       - 'tests'
       - 'dependencies'
       - 'documentation'
-exclude-labels:
-  - 'skip-changelog'
+  - type: 'pre-exclude'
+    when:
+      label: 'skip-changelog'
+  - type: 'version-resolver'
+    semver-increment: 'major'
+    when:
+      labels:
+      - 'major'
+      - 'epic'
+      - 'feature'
+  - type: 'version-resolver'
+    semver-increment: 'minor'
+    when:
+      labels:
+      - 'minor'
+      - 'story'
+      - 'maintenance'
+      - 'research'
+  - type: 'version-resolver'
+    semver-increment: 'patch'
+    when:
+      labels:
+      - 'patch'
+      - 'bug'
+      - 'sync'
+  - type: 'version-resolver'
+    semver-increment: 'patch'
 change-template: '- $TITLE by @$AUTHOR in #$NUMBER'
-change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
+change-title-escapes: '\<*_&'
+filter-by-commitish: true
+commitish: main
 exclude-contributors:
   - 'dependabot[bot]'
   - 'amutechtest'
@@ -29,69 +59,52 @@ autolabeler:
       - '**/*.md'
   - label: 'dependencies'
     files:
-      - "{yarn,Gemfile}.lock"
-      - "package*.json"
-      - "Gemfile"
-      - ".ruby-{version,gemset}"
-      - "**/*.csproj"
-      - "**/pnpm-lock.yaml"
-      - ".yarn/"
-      - ".{npm,nvm}rc"
+      - '{yarn,Gemfile}.lock'
+      - 'package*.json'
+      - 'Gemfile'
+      - '.ruby-{version,gemset}'
+      - '**/*.csproj'
+      - '**/pnpm-lock.yaml'
+      - '.yarn/'
+      - '.{npm,nvm}rc'
   - label: 'front-end'
     files:
-      - "**/*.{js,js.html,jsx,ts,tsx,html,css,less,scss,sass,otf,eot,ttf,woff*,erb}"
-      - "public/"
-      - "src/"
-      - "wp-content/"
-      - "package.json"
-      - "!/.vscode"
-      - "!/.devcontainer"
-      - "!**/*.test.js"
+      - '**/*.{js,js.html,jsx,ts,tsx,html,css,less,scss,sass,otf,eot,ttf,woff*,erb}'
+      - 'public/'
+      - 'src/'
+      - 'wp-content/'
+      - 'package.json'
+      - '!/.vscode'
+      - '!/.devcontainer'
+      - '!**/*.test.js'
   - label: 'back-end'
     files:
-      - "**/*.{cs,sln,csproj,ru}"
-      - "appsettings.*json"
-      - "CodeCoverage.runsettings"
+      - '**/*.{cs,sln,csproj,ru}'
+      - 'appsettings.*json'
+      - 'CodeCoverage.runsettings'
   - label: 'tools'
     files:
-      - "/.vscode"
-      - "/.devcontainer"
-      - "stylelint.config.js"
-      - ".{prettierrc,size-limit,eslintrc}.js"
-      - ".{yarnrc,solargraph,postcssrc,erb-lint,rubocop}.yml"
-      - ".{prettierrc,eslintrc,stylelintrc}.json"
-      - "playwright/**"
-      - ".spec.*"
-      - "*.test.js"
-      - "{jest,playwright}.*.js"
-      - ".storybook/"
-      - ".browserlistrc"
+      - '/.vscode'
+      - '/.devcontainer'
+      - 'stylelint.config.js'
+      - '.{prettierrc,size-limit,eslintrc}.js'
+      - '.{yarnrc,solargraph,postcssrc,erb-lint,rubocop}.yml'
+      - '.{prettierrc,eslintrc,stylelintrc}.json'
+      - 'playwright/**'
+      - '.spec.*'
+      - '*.test.js'
+      - '{jest,playwright}.*.js'
+      - '.storybook/'
+      - '.browserlistrc'
   - label: 'devops'
     files:
-      - ".github/"
-      - "deployments/"
-      - "Secrets-example.json"
-      - "docker-compose.yml"
-      - "Dockerfile"
+      - '.github/'
+      - 'deployments/'
+      - '*.ps1'
+      - 'Secrets-example.json'
+      - 'docker-compose.yml'
+      - 'Dockerfile'
 include-pre-releases: true
-version-resolver:
-  major:
-    labels:
-      - 'major'
-      - 'epic'
-      - 'feature'
-  minor:
-    labels:
-      - 'minor'
-      - 'story'
-      - 'maintenance'
-      - 'research'
-  patch:
-    labels:
-      - 'patch'
-      - 'bug'
-      - 'sync'
-  default: patch
 template: |
   ## What's Changed
 
