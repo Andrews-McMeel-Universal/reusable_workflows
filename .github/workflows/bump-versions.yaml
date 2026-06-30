@@ -94,7 +94,7 @@ jobs:
           echo "Bumping version to $release"
 
       - name: Update version without comma in package.json
-        if: steps.packagejsonfile.outputs.files_exists == 'true'
+        if: env.packageJsonExists == 'true'
         uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e
         with:
           find: '"version": .*"'
@@ -103,7 +103,7 @@ jobs:
           include: "**package.json"
 
       - name: Update version with comma in package.json
-        if: steps.packagejsonfile.outputs.files_exists == 'true'
+        if: env.packageJsonExists == 'true'
         uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e
         with:
           find: '"version": .*",'
