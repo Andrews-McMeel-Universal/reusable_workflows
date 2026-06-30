@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
@@ -125,7 +125,7 @@ jobs:
 
       - name: Commit Changes
         if: ${{ ! inputs.libraryName && steps.check-version-bump.outputs.version-bump-exists == 'false' }}
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
@@ -133,7 +133,7 @@ jobs:
 
       - name: Commit Changes
         if: ${{ inputs.libraryName && steps.check-version-bump.outputs.version-bump-exists == 'false' }}
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com

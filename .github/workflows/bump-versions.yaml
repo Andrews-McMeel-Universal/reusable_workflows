@@ -7,11 +7,6 @@ on:
         required: false
         type: string
         description: Type of release
-      environmentCharts:
-        required: false
-        type: string
-        description: Set to true if the repository has separate Helm chart directories for each environment
-        default: 'false'
       version:
         required: false
         type: string
@@ -22,92 +17,76 @@ on:
 
 jobs:
   bump-version:
-    name: Bump Version - ${{ inputs.version || inputs.releaseType }}
+    name: Bump ${{ inputs.version || inputs.releaseType }} Version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Get latest release
         if: ${{ ! inputs.version }}
         id: latestrelease
         continue-on-error: true
-        uses: gregziegan/fetch-latest-release@v2.0.0
+        uses: gregziegan/fetch-latest-release@a36ee8ee464da77ba3e499ed6b75e3530e10f9bc
 
-      - name: Check if environment charts exist
-        id: environment-charts
+      - name: Set app variables
         shell: pwsh
+        env:
+          chartsPath: ${{ env.chartsPath }}
         run: |
+          # Set app variables
+
           if (Test-Path -Path "./deployments/production-charts") {
-              echo "environmentCharts=true"
-              echo "environmentCharts=true" >> $env:GITHUB_ENV
+              echo "chartsPath=./deployments/production-charts"
+              echo "chartsPath=./deployments/production-charts" >> $env:GITHUB_ENV
           }
           else {
-              echo "environmentCharts=false"
-              echo "environmentCharts=false" >> $env:GITHUB_ENV
+              echo "chartsPath=./deployments/charts"
+              echo "chartsPath=./deployments/charts" >> $env:GITHUB_ENV
           }
+          
+          # Load Helm chart values
+          $basePath = Get-Location
+          $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
+          $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
-      - name: Check if charts directory exists
-        id: charts-directory
-        shell: pwsh
-        run: |
-          if (Test-Path -Path "./deployments/charts") {
-              echo "charts=true"
-              echo "charts=true" >> $env:GITHUB_ENV
+          # Set app version
+          $appVersion = $chartConfig.appVersion
+          Write-Output "appVersion=$appVersion"
+          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
+
+          # Check if package.json exists
+          if (Test-Path -Path "./package.json") {
+              echo "packageJsonExists=true"
+              echo "packageJsonExists=true" >> $env:GITHUB_ENV
           }
-          else {
-              echo "charts=false"
-              echo "charts=false" >> $env:GITHUB_ENV
-          }
-
-      - name: Get Chart.yaml appVersion
-        if: ${{ env.charts == 'true' && env.environmentCharts == 'false' && ! inputs.version }}
-        id: chartyaml
-        uses: rmeneely/get-yaml-value@v1
-        with:
-          infile: deployments/charts/Chart.yaml
-          varlist: appVersion
-
-      - name: Get Environment Chart.yaml appVersion
-        if: ${{ env.charts == 'true' && env.environmentCharts == 'true' && ! inputs.version }}
-        id: environmentchartyaml
-        uses: rmeneely/get-yaml-value@v1
-        with:
-          infile: deployments/production-charts/Chart.yaml
-          varlist: appVersion
-
-      - name: Check if package.json exists
-        id: packagejsonfile
-        uses: andstor/file-existence-action@v3
-        with:
-          files: "package.json"
 
       - name: Get package.json version
-        if: ${{ steps.packagejsonfile.outputs.files_exists == 'true' && ! inputs.version }}
-        id: packagejson
-        uses: notiz-dev/github-action-json-property@v0.2.0
-        with:
-          path: "package.json"
-          prop_path: "version"
+        if: ${{ env.packageJsonExists == 'true' && ! inputs.version }}
+        run: |
+          PACKAGE_VERSION=$(find . -name 'package.json' -d 1 -exec grep -h 'version' {} + | awk -F ':' '{print $2}' | tr -d '", ')
+          echo "packageVersion=${PACKAGE_VERSION}" >> $GITHUB_ENV
 
       - name: Gets next semantic release
         if: ${{ ! inputs.version }}
         shell: pwsh
+        env:
+          releaseType: ${{ inputs.releaseType }}
         run: |
-          [Version]$a = "${{ steps.packagejson.outputs.prop || '0.0.0' }}"
-          [Version]$b = "${{ steps.environmentchartyaml.outputs.values || steps.chartyaml.outputs.values || '0.0.0' }}"
+          [Version]$a = "${{ env.packageVersion || '0.0.0' }}"
+          [Version]$b = "${{ env.appVersion || '0.0.0' }}"
           [Version]$c = "${{ steps.latestrelease.outputs.tag_name || '0.0.0' }}"
 
           $versions = [array]($a,$b,$c)
           $v = [version]($versions | Sort-Object -Descending | Select-Object -First 1)
 
-          if ( "${{ inputs.releaseType }}" -match "major") {
+          if ( "$env:releaseType" -match "major") {
             $release = [version]::New($v.Major+1,0,0)
           }
-          elseif ( "${{ inputs.releaseType }}" -match "minor" ) {
+          elseif ( "$env:releaseType" -match "minor" ) {
             $release = [version]::New($v.Major,$v.Minor+1,0)
           }
-          elseif ( "${{ inputs.releaseType }}" -match "patch" ) {
+          elseif ( "$env:releaseType" -match "patch" ) {
             $release = [version]::New($v.Major,$v.Minor,$v.Build+1)
           }
 
@@ -116,7 +95,7 @@ jobs:
 
       - name: Update version without comma in package.json
         if: steps.packagejsonfile.outputs.files_exists == 'true'
-        uses: jacobtomlinson/gha-find-replace@v3
+        uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e
         with:
           find: '"version": .*"'
           replace: '"version": "${{ inputs.version || env.release }}"'
@@ -125,7 +104,7 @@ jobs:
 
       - name: Update version with comma in package.json
         if: steps.packagejsonfile.outputs.files_exists == 'true'
-        uses: jacobtomlinson/gha-find-replace@v3
+        uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e
         with:
           find: '"version": .*",'
           replace: '"version": "${{ inputs.version || env.release }}",'
@@ -133,7 +112,7 @@ jobs:
           include: "**package.json"
 
       - name: Update version in Chart.yaml
-        uses: jacobtomlinson/gha-find-replace@v3
+        uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e
         with:
           find: "appVersion: .*"
           replace: "appVersion: ${{ inputs.version || env.release }}"
@@ -142,7 +121,7 @@ jobs:
 
       - name: Create Pull Request
         id: cpr
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1v8
         with:
           commit-message: "⬆️ Version bump: ${{ inputs.version || env.release }}"
           branch: maintenance/bump-version/${{ inputs.version || env.release }}
@@ -157,7 +136,7 @@ jobs:
             ${{ inputs.releaseType }}
 
       - name: Auto Approve Version Update PR
-        uses: hmarr/auto-approve-action@v4.0.0
+        uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363
         with:
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
           github-token: ${{ secrets.PAT_ACTION_CI }}

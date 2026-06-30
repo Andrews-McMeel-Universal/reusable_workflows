@@ -81,13 +81,13 @@ jobs:
       - name: Check if missing Jira issue key comment exists
         if: ${{ steps.jira-ticket.outputs.ticket-found != 'false' }}
         id: comment
-        uses: peter-evans/find-comment@v4
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad
         with:
           issue-number: ${{ github.event.number }}
           body-includes: A JIRA Issue ID is missing from your branch name!
           direction: last
 
-      - uses: jira-tools/action-jira-linter@v1.0.1
+      - uses: jira-tools/action-jira-linter@bd5a5cb246a3673d3defacd67c08a0eab9562954
         if: ${{ ! steps.comment.outputs.comment-body && steps.jira-ticket.outputs.ticket-found != 'false' }}
         name: Jira Lint
         with:

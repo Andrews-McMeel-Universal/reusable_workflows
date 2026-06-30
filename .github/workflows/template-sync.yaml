@@ -34,12 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch or tag
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
 
       - name: Sync with Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}
-        uses: AndreasAugustin/actions-template-sync@v2
+        uses: AndreasAugustin/actions-template-sync@8a0f668b83c32a0f673353086d74f12b8853d4f5
         with:
           source_gh_token: ${{ secrets.PAT_ACTION_CI }}
           source_repo_path: Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}

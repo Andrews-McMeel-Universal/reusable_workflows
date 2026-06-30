@@ -33,7 +33,7 @@ jobs:
     runs-on: azure
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
@@ -71,7 +71,7 @@ jobs:
         run: echo "BUILD_ID=$(date +%s)" >> $GITHUB_ENV
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1v8
         with:
           commit-message: "updated typescript definitions for the `${{ inputs.environment }}` environment"
           branch: maintenance/typescript/${{ inputs.environment }}-types-${{ env.BUILD_ID }}

@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
           ref: ${{ github.head_ref }}
@@ -54,20 +54,17 @@ jobs:
           echo "prettierPlugins=$PRETTIER_PLUGINS" >> $GITHUB_OUTPUT
           echo "Prettier plugins: $PRETTIER_PLUGINS"
 
-      - name: Check if .prettierrc.js file exists
-        id: prettier-config-js
-        uses: andstor/file-existence-action@v3
-        with:
-          files: ".prettierrc.js"
-
-      - name: Check if .prettierrc.json file exists
-        id: prettier-config-json
-        uses: andstor/file-existence-action@v3
-        with:
-          files: ".prettierrc.json"
+      - name: Check which prettier configs are available
+        run: |
+          if [[ -f ".prettierrc.js" ]]; then
+              echo "prettierConfigJsExists=true" >> $env:GITHUB_ENV
+          fi
+          if [[ -f ".prettierrc.json" ]]; then
+              echo "prettierConfigJsonExists=true" >> $env:GITHUB_ENV
+          fi
 
       - name: Run prettier with .prettierrc.js configuration
-        if: ${{ steps.prettier-config-js.outputs.files_exists == 'true' }}
+        if: ${{ env.prettierConfigJsExists == 'true' }}
         uses: Andrews-McMeel-Universal/prettier_action@v4
         with:
           prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.js ${{ steps.prettier-plugins.outputs.prettierPlugins }}
@@ -81,7 +78,7 @@ jobs:
           github_token: ${{ secrets.PAT_ACTION_CI }}
 
       - name: Run prettier with .prettierrc.json configuration
-        if: ${{ steps.prettier-config-json.outputs.files_exists == 'true' }}
+        if: ${{ env.prettierConfigJsonExists == 'true' }}
         uses: Andrews-McMeel-Universal/prettier_action@v4
         with:
           prettier_options: --write . --ignore-path ./.prettierignore --config ./.prettierrc.json ${{ steps.prettier-plugins.outputs.prettierPlugins }}
@@ -95,7 +92,7 @@ jobs:
           github_token: ${{ secrets.PAT_ACTION_CI }}
 
       - name: Run prettier without any configuration files
-        if: ${{ steps.prettier-config-js.outputs.files_exists != 'true' && steps.prettier-config-json.outputs.files_exists != 'true' }}
+        if: ${{ env.prettierConfigJsExists != 'true' && env.prettierConfigJsonExists != 'true' }}
         uses: Andrews-McMeel-Universal/prettier_action@v4
         with:
           prettier_options: --write . --ignore-path ./.prettierignore ${{ steps.prettier-plugins.outputs.prettierPlugins }}
@@ -113,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Download actionlint
         id: get_actionlint
