@@ -53,7 +53,7 @@ jobs:
     runs-on: azure
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Install PowerShell modules
         shell: pwsh
@@ -64,7 +64,7 @@ jobs:
           Install-Module -Name $installModules -Force
 
       - name: Login via Az module
-        uses: azure/login@v3
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43
         with:
           creds: "${{ secrets.azureCredentials }}"
           enable-AzPSSession: true
@@ -193,18 +193,7 @@ jobs:
                   if (!(($env:apiVersionHeaders -eq 'true') -and ($version -eq "1"))) {
                       $apiImportParams.ApiVersion = "v$version"
                   }
-
-                  # Retry until successful
-                  while ($true) {
-                      Import-AzApiManagementApi @apiImportParams
-
-                      if ($LASTEXITCODE -eq 0) {
-                          break
-                      }
-
-                      Write-Host "API Import Failed. Waiting 30 seconds before trying again..."
-                      Start-Sleep -Seconds 30
-                  }
+                  Import-AzApiManagementApi @apiImportParams
 
                   # Retrieve and update the API object
                   $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
@@ -254,7 +243,7 @@ jobs:
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
-        uses: jdcargile/ms-teams-notification@v1.4
+        uses: jdcargile/ms-teams-notification@28e5ca976c053d54e2b852f3f38da312f35a24fc
         with:
           github-token: ${{ github.token }}
           ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
@@ -265,7 +254,7 @@ jobs:
 
       - name: Send Succeeded Deployment report to Teams
         if: success() && (inputs.environment != 'development')
-        uses: jdcargile/ms-teams-notification@v1.4
+        uses: jdcargile/ms-teams-notification@28e5ca976c053d54e2b852f3f38da312f35a24fc
         with:
           github-token: ${{ github.token }}
           ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
