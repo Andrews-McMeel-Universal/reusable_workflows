@@ -25,9 +25,9 @@ jobs:
 
       - name: Get latest release
         if: ${{ ! inputs.version }}
-        id: latestrelease
-        continue-on-error: true
-        uses: gregziegan/fetch-latest-release@a36ee8ee464da77ba3e499ed6b75e3530e10f9bc
+        run: |
+          LATEST_RELEASE=$(curl -H "Authorization: Basic $AUTH" -sL https://api.github.com/repos/Andrews-McMeel-Universal/gocomics_ui/releases/latest | grep "tag_name" | awk -F ':' '{print $2}' | tr -d '", ')
+          echo "latestRelease=${LATEST_RELEASE}" >> $GITHUB_ENV
 
       - name: Set app variables
         shell: pwsh
@@ -75,7 +75,7 @@ jobs:
         run: |
           [Version]$a = "${{ env.packageVersion || '0.0.0' }}"
           [Version]$b = "${{ env.appVersion || '0.0.0' }}"
-          [Version]$c = "${{ steps.latestrelease.outputs.tag_name || '0.0.0' }}"
+          [Version]$c = "${{ env.latestRelease || '0.0.0' }}"
 
           $versions = [array]($a,$b,$c)
           $v = [version]($versions | Sort-Object -Descending | Select-Object -First 1)
@@ -93,31 +93,10 @@ jobs:
           echo "release=$release" >> $env:GITHUB_ENV
           echo "Bumping version to $release"
 
-      - name: Update version without comma in package.json
-        if: env.packageJsonExists == 'true'
-        uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e
-        with:
-          find: '"version": .*"'
-          replace: '"version": "${{ inputs.version || env.release }}"'
-          regex: true
-          include: "**package.json"
-
-      - name: Update version with comma in package.json
-        if: env.packageJsonExists == 'true'
-        uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e
-        with:
-          find: '"version": .*",'
-          replace: '"version": "${{ inputs.version || env.release }}",'
-          regex: true
-          include: "**package.json"
-
-      - name: Update version in Chart.yaml
-        uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e
-        with:
-          find: "appVersion: .*"
-          replace: "appVersion: ${{ inputs.version || env.release }}"
-          regex: true
-          include: "**Chart.yaml"
+      - name: Update versions numbers in files
+        run: |
+          find . -iname "package.json" -not -path "./node_modules/*" -exec sed -i -E 's|(^.*"version": ").*(".*$)|\1${{ inputs.version || env.release }}\2|' {} \;
+          find . -iname "Chart.yaml" -exec sed -i -E 's|(^appVersion: ).*($)|\1${{ inputs.version || env.release }}\2|' {} \;
 
       - name: Create Pull Request
         id: cpr
