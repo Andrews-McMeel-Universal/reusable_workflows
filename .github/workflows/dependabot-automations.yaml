@@ -21,18 +21,18 @@ jobs:
     if: ${{ github.actor == 'dependabot[bot]' && inputs.autoApprove != 'false' || github.actor == 'dependabot[bot]' && inputs.autoMerge != 'false' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       # The approval step will fail if there's no metadata.
       - name: Retrieve dependabot metadata
         id: dependabot-metadata
-        uses: dependabot/fetch-metadata@v3
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Approve PR
         if: ${{ contains(fromJson(inputs.autoApprove), steps.dependabot-metadata.outputs.update-type) }}
-        uses: hmarr/auto-approve-action@v4.0.0
+        uses: hmarr/auto-approve-action@f0939ea97e9205ef24d872e76833fa908a770363
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 

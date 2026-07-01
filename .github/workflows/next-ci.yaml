@@ -66,7 +66,7 @@ jobs:
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
@@ -166,7 +166,7 @@ jobs:
     needs: [vars]
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           token: ${{ secrets.PAT_ACTION_CI }}
           fetch-depth: 0
@@ -195,7 +195,7 @@ jobs:
 
       - name: Push Linting Fixes
         if: ${{ inputs.LINT_JS == 'true' || inputs.LINT_SCSS == 'true' || inputs.LINT_FORMATTER == 'true' }}
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
@@ -226,7 +226,7 @@ jobs:
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Use cache-next-install action
         if: ${{ inputs.YARN_INSTALL == 'false' }}
@@ -273,7 +273,7 @@ jobs:
 
       - name: Azure Login
         if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.jest-report.outputs.jest-report-exists == 'true' }}
-        uses: azure/login@v3
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
@@ -332,7 +332,7 @@ jobs:
 
       - name: Login to Jira
         if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.jest-report.outputs.jest-report-exists == 'true' }}
-        uses: atlassian/gajira-login@v3
+        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c
         env:
           JIRA_BASE_URL: https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net
           JIRA_USER_EMAIL: ${{ inputs.JIRA_AUTOMATIONS_EMAIL }}
@@ -340,7 +340,7 @@ jobs:
 
       - name: Link Jest Report in Jira ticket
         if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.jest-report.outputs.jest-report-exists == 'true' }}
-        uses: atlassian/gajira-comment@v3
+        uses: atlassian/gajira-comment@76589d6b6d0b94b1ca6b01171c01a6affb5d6701
         with:
           issue: ${{ needs.vars.outputs.jira-ticket-id }}
           comment: |
@@ -354,7 +354,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Use cache-next-install action
         if: ${{ inputs.YARN_INSTALL == 'false' }}
@@ -390,7 +390,7 @@ jobs:
       - name: Run Playwright tests
         run: yarn test:integration:ci
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
           name: playwright-report
@@ -399,7 +399,7 @@ jobs:
 
       - name: Azure Login
         if: ${{ needs.vars.outputs.jira-ticket-id != '' }}
-        uses: azure/login@v3
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
 
@@ -458,7 +458,7 @@ jobs:
 
       - name: Login to Jira
         if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' }}
-        uses: atlassian/gajira-login@v3
+        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c
         env:
           JIRA_BASE_URL: https://${{ inputs.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net
           JIRA_USER_EMAIL: ${{ inputs.JIRA_AUTOMATIONS_EMAIL }}
@@ -466,7 +466,7 @@ jobs:
 
       - name: Link Playwright Report in Jira ticket
         if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' }}
-        uses: atlassian/gajira-comment@v3
+        uses: atlassian/gajira-comment@76589d6b6d0b94b1ca6b01171c01a6affb5d6701
         with:
           issue: ${{ needs.vars.outputs.jira-ticket-id }}
           comment: |

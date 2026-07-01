@@ -138,7 +138,7 @@ jobs:
       url: ${{ steps.hostname.outputs.hostname }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -221,7 +221,7 @@ jobs:
           docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
 
       - name: Login to Azure Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
         with:
           registry: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
@@ -231,7 +231,7 @@ jobs:
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
 
       - name: Deploy Azure Container App
-        uses: azure/container-apps-deploy-action@v2
+        uses: azure/container-apps-deploy-action@8dff69dac3367c32ceb2690d8f13adbeab462703
         timeout-minutes: 20
         with:
           registryUrl: ${{ secrets.registryHostName }}
@@ -286,7 +286,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -347,7 +347,7 @@ jobs:
           docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
 
       - name: Login to Azure Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
         with:
           registry: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
@@ -357,13 +357,13 @@ jobs:
         run: docker push -a "${{ secrets.registryHostName }}/${{ github.event.repository.name }}"
 
       - name: Login via Az module
-        uses: azure/login@v3
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43
         with:
           creds: "${{ secrets.azureCredentials }}"
 
       - name: Deploy Azure Container App with updated Next.js variables
         timeout-minutes: 20
-        uses: azure/container-apps-deploy-action@v2
+        uses: azure/container-apps-deploy-action@8dff69dac3367c32ceb2690d8f13adbeab462703
         with:
           registryUrl: ${{ secrets.registryHostName }}
           registryUsername: ${{ secrets.registryUserName }}
@@ -445,7 +445,7 @@ jobs:
 
       - name: Login to Jira
         if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
-        uses: atlassian/gajira-login@v3
+        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c
         env:
           JIRA_BASE_URL: https://amuniversal.atlassian.net
           JIRA_USER_EMAIL: amu_deploy@amuniversal.com
@@ -453,7 +453,7 @@ jobs:
 
       - name: Link ephemeral deployment in Jira ticket
         if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
-        uses: atlassian/gajira-comment@v3
+        uses: atlassian/gajira-comment@76589d6b6d0b94b1ca6b01171c01a6affb5d6701
         with:
           issue: ${{ needs.prepare.outputs.jiraTicketId }}
           comment: |
@@ -488,7 +488,7 @@ jobs:
           az ad app update --id "${{ env.B2C_CLIENT_ID }}"  --web-redirect-uris "${REDIRECT_URIS[@]}"
 
       - name: Delete deployment environment
-        uses: strumwolf/delete-deployment-environment@v4
+        uses: strumwolf/delete-deployment-environment@035f6d27c8b8951729f4d71b2d3d6a7975139476
         with:
           token: ${{ secrets.githubPAT }}
           environment: ${{ needs.prepare.outputs.jiraTicketId }}

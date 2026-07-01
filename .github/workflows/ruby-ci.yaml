@@ -63,7 +63,7 @@ jobs:
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           submodules: ${{ inputs.GIT_CHECKOUT_SUBMODULES }}
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
@@ -75,7 +75,7 @@ jobs:
           environment: ${{ inputs.environment }}
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         if: ${{ inputs.INSTALL_NODE == 'true' }}
         with:
           node-version: ${{ inputs.NODE_VERSION }}
@@ -84,7 +84,7 @@ jobs:
         run: sudo apt-get update -y && sudo apt-get install -y ${{ inputs.APT_PACKAGES }}
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@0dafeac902942906541bc140009cdbf32665b601
         with:
           bundler-cache: true
 
