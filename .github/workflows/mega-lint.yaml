@@ -49,7 +49,7 @@ jobs:
 
       - name: Set up Node from NVM
         if: ${{ inputs.NODE_ENV }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version-file: ".nvmrc"
           cache: "yarn"
