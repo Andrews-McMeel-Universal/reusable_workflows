@@ -755,7 +755,7 @@ jobs:
           echo "K8S_RESOURCE_GROUP=${K8S_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
 
       - name: Set target K8s cluster
-        uses: azure/k8s-set-context@v4
+        uses: azure/k8s-set-context@v5
         with:
           context: ${{ secrets.k8sClusterName }}
           method: kubeconfig
