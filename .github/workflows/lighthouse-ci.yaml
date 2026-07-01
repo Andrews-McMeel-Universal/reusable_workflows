@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Retrieve Jira Ticket Key
         id: retrieve-jira-ticket
@@ -90,7 +90,7 @@ jobs:
 
       - name: Audit URLs using Lighthouse
         id: lighthouse
-        uses: treosh/lighthouse-ci-action@v12
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18
         with:
           urls: |
             ${{ env.TESTING_ENDPOINTS }}
@@ -100,7 +100,7 @@ jobs:
 
       - name: Azure Login
         if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' }}
-        uses: azure/login@v3
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
           enable-AzPSSession: true
@@ -188,7 +188,7 @@ jobs:
 
       - name: Login to Jira
         if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
-        uses: atlassian/gajira-login@v3
+        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c
         env:
           JIRA_BASE_URL: https://${{ vars.JIRA_AUTOMATIONS_DOMAIN }}.atlassian.net
           JIRA_USER_EMAIL: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
@@ -196,7 +196,7 @@ jobs:
 
       - name: Link Lighthouse Reports in Jira ticket
         if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
-        uses: atlassian/gajira-comment@v3
+        uses: atlassian/gajira-comment@76589d6b6d0b94b1ca6b01171c01a6affb5d6701
         with:
           issue: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id }}
           comment: |
@@ -206,7 +206,7 @@ jobs:
       - name: Check if Lighthouse report PR comment exists
         if: ${{ steps.retrieve-jira-ticket.outputs.jira-ticket-id != '' && steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
         id: github-comment
-        uses: peter-evans/find-comment@v4
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad
         with:
           issue-number: ${{ github.event.number }}
           body-includes: This PR's Lighthouse Reports
@@ -214,7 +214,7 @@ jobs:
 
       - name: Create GitHub PR comment with Lighthouse Report links
         if: ${{ steps.lighthouse-reports.outputs.lighthouse-report-exists == 'true' }}
-        uses: peter-evans/create-or-update-comment@v5
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-id: ${{ steps.github-comment.outputs.comment-id }}

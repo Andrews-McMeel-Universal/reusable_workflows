@@ -52,12 +52,12 @@ jobs:
       PAT_ACTION_CI: ${{ secrets.PAT_ACTION_CI }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Setup application platform
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
         with:
           dotnet-version: ${{ inputs.DOTNET_VERSION }}
 
@@ -107,13 +107,13 @@ jobs:
           done < <(find . -type f -name '*Job.csproj' -print0)
 
       - name: Login via Az module
-        uses: azure/login@v3
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43
         with:
           creds: "${{ secrets.AZURE_CREDENTIALS }}"
           enable-AzPSSession: true
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@02a81bead70021f5284939794bcec79c271ab383
         with:
           app-name: ${{ inputs.AZURE_APP_NAME }}
           slot-name: ${{ inputs.environment }}
@@ -305,7 +305,7 @@ jobs:
       - name: Link release in Jira tickets
         if: ${{ env.JIRA_TOKEN_EXISTS == 'true' }}
         continue-on-error: true
-        uses: Andrews-McMeel-Universal/link-jira-versions@latest
+        uses: Andrews-McMeel-Universal/link-jira-versions@v1
         with:
           JIRA_AUTOMATIONS_EMAIL: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
           JIRA_AUTOMATIONS_DOMAIN: ${{ vars.JIRA_AUTOMATIONS_DOMAIN }}
@@ -313,7 +313,7 @@ jobs:
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
-        uses: jdcargile/ms-teams-notification@v1.4
+        uses: jdcargile/ms-teams-notification@28e5ca976c053d54e2b852f3f38da312f35a24fc
         with:
           github-token: ${{ github.token }} # this will use the runner's token.
           ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
@@ -324,7 +324,7 @@ jobs:
 
       - name: Send Succeeded Deployment report to Teams
         if: success() && (inputs.environment != 'development')
-        uses: jdcargile/ms-teams-notification@v1.4
+        uses: jdcargile/ms-teams-notification@28e5ca976c053d54e2b852f3f38da312f35a24fc
         with:
           github-token: ${{ github.token }} # this will use the runner's token.
           ms-teams-webhook-uri: ${{ inputs.deploymentWebhook }}
