@@ -40,23 +40,23 @@ jobs:
 
       - name: Set app variables
         shell: pwsh
-        env:
-          chartsPath: ${{ env.chartsPath }}
         run: |
           # Set app variables
 
           if (Test-Path -Path "./deployments/production-charts") {
+              $chartsPath="./deployments/production-charts"
               echo "chartsPath=./deployments/production-charts"
               echo "chartsPath=./deployments/production-charts" >> $env:GITHUB_ENV
           }
           else {
+              $chartsPath="./deployments/charts"
               echo "chartsPath=./deployments/charts"
               echo "chartsPath=./deployments/charts" >> $env:GITHUB_ENV
           }
           
           # Load Helm chart values
           $basePath = Get-Location
-          $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
+          $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
           # Set app version
