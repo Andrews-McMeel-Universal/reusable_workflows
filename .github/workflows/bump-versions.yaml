@@ -26,7 +26,7 @@ jobs:
       - name: Get latest release
         if: ${{ ! inputs.version }}
         run: |
-          LATEST_RELEASE=$(curl -H "Authorization: Basic $AUTH" -sL https://api.github.com/repos/Andrews-McMeel-Universal/gocomics_ui/releases/latest | grep "tag_name" | awk -F ':' '{print $2}' | tr -d '", ')
+          LATEST_RELEASE=$(curl -sL "${{ github.api_url }}/repos/${{ github.repository }}/releases/latest" -H "Authorization: token ${{ github.token }}" | grep "tag_name" | awk -F ':' '{print $2}' | tr -d '", ')
           echo "latestRelease=${LATEST_RELEASE}" >> $GITHUB_ENV
 
       - name: Set app variables
