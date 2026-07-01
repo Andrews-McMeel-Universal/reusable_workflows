@@ -29,6 +29,15 @@ jobs:
           LATEST_RELEASE=$(curl -sL "${{ github.api_url }}/repos/${{ github.repository }}/releases/latest" -H "Authorization: token ${{ github.token }}" | grep "tag_name" | awk -F ':' '{print $2}' | tr -d '", ')
           echo "latestRelease=${LATEST_RELEASE}" >> $GITHUB_ENV
 
+      - name: Install PowerShell modules
+        shell: pwsh
+        run: |
+          # Install PowerShell modules
+          $installModules = @(
+            "powershell-yaml"
+          )
+          Install-Module -Name $installModules -Force
+
       - name: Set app variables
         shell: pwsh
         env:
