@@ -195,7 +195,7 @@ jobs:
 
       - name: Push Linting Fixes
         if: ${{ inputs.LINT_JS == 'true' || inputs.LINT_SCSS == 'true' || inputs.LINT_FORMATTER == 'true' }}
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com

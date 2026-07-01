@@ -125,7 +125,7 @@ jobs:
 
       - name: Commit Changes
         if: ${{ ! inputs.libraryName && steps.check-version-bump.outputs.version-bump-exists == 'false' }}
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
@@ -133,7 +133,7 @@ jobs:
 
       - name: Commit Changes
         if: ${{ inputs.libraryName && steps.check-version-bump.outputs.version-bump-exists == 'false' }}
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_user_name: amutechtest
           commit_user_email: amu_deploy@amuniversal.com
