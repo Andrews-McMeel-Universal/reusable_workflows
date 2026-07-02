@@ -20,6 +20,7 @@ on:
 env:
   githubPrBranch: ${{ github.head_ref }}
   githubPrTitle: ${{ github.event.pull_request.title }}
+  fail-on-error: ${{ inputs.fail-on-error || vars.JIRA_LINT_FAIL_ON_ERROR || 'false' }}
 
 jobs:
   jira-lint:
@@ -29,6 +30,8 @@ jobs:
     steps:
       - name: Retrieve Jira issue key from PR
         id: jira-ticket
+        env:
+          fail-on-error: ${{ inputs.fail-on-error == 'false' || env.fail-on-error == 'false' }}
         run: |
           extract_jira_id() {
             input="$1"
@@ -48,7 +51,7 @@ jobs:
 
           if [ -z "$JIRA_TICKET_ID" ]; then
             echo "::error::A Jira issue key is missing from your branch name, pull request title, and pull request description. Please confirm it is linked properly in the pull request."
-            if [ "${{ inputs.fail-on-error }}" == "true" ]; then
+            if [ "$env:failOnError" == "true" ]; then
               exit 1
             fi
           fi
@@ -58,9 +61,9 @@ jobs:
           echo "ticket-found=true" >> $GITHUB_OUTPUT
 
           if [ -z "${JIRA_TICKET_ID}" ]; then
-            if [ "${{ inputs.fail-on-error }}" = "true" ]; then
+            if [ "$env:failOnError" = "true" ]; then
                 echo "::error::A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
-                if [ "${{ inputs.fail-on-error }}" == "true" ]; then
+                if [ "$env:failOnError" == "true" ]; then
                   exit 1
                 fi
             else
@@ -89,7 +92,7 @@ jobs:
 
       - uses: jira-tools/action-jira-linter@bd5a5cb246a3673d3defacd67c08a0eab9562954
         if: ${{ ! steps.comment.outputs.comment-body && steps.jira-ticket.outputs.ticket-found != 'false' }}
-        continue-on-error: ${{ inputs.fail-on-error == 'false' }}
+        continue-on-error: ${{ inputs.fail-on-error == 'false' || env.fail-on-error == 'false' }}
         name: Jira Lint
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
