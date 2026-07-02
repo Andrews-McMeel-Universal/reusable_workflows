@@ -31,7 +31,7 @@ jobs:
       - name: Retrieve Jira issue key from PR
         id: jira-ticket
         env:
-          failOnError: ${{ inputs.fail-on-error || env.fail-on-error }}
+          FAIL_ON_ERROR: ${{ inputs.fail-on-error || env.fail-on-error }}
         run: |
           extract_jira_id() {
             input="$1"
@@ -51,7 +51,7 @@ jobs:
 
           if [ -z "$JIRA_TICKET_ID" ]; then
             echo "::error::A Jira issue key is missing from your branch name, pull request title, and pull request description. Please confirm it is linked properly in the pull request."
-            if [ "$env:failOnError" == "true" ]; then
+            if [ "${FAIL_ON_ERROR}" == "true" ]; then
               exit 1
             fi
           fi
@@ -61,9 +61,9 @@ jobs:
           echo "ticket-found=true" >> $GITHUB_OUTPUT
 
           if [ -z "${JIRA_TICKET_ID}" ]; then
-            if [ "$env:failOnError" = "true" ]; then
+            if [ "${FAIL_ON_ERROR}" == "true" ]; then
                 echo "::error::A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
-                if [ "$env:failOnError" == "true" ]; then
+                if [ "${FAIL_ON_ERROR}" == "true" ]; then
                   exit 1
                 fi
             else
