@@ -21,6 +21,7 @@ env:
   githubPrBranch: ${{ github.head_ref }}
   githubPrTitle: ${{ github.event.pull_request.title }}
   fail-on-error: ${{ inputs.fail-on-error || vars.JIRA_LINT_FAIL_ON_ERROR || 'false' }}
+  skip-comments: ${{ inputs.skip-comments || vars.JIRA_LINT_SKIP_COMMENTS || 'true' }}
 
 jobs:
   jira-lint:
@@ -101,5 +102,5 @@ jobs:
             Resolved
             In QA (Ephemeral)
           skip-branches: "^(main|development|staging|production|dev)$"
-          fail-on-error: ${{ inputs.fail-on-error }}
-          skip-comments: ${{ inputs.skip-comments }}
+          fail-on-error: ${{ inputs.fail-on-error == 'false' || env.fail-on-error == 'false' }}
+          skip-comments: ${{ inputs.skip-comments == 'true' || env.skip-comments == 'true' }}
