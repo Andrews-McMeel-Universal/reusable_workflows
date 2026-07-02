@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve Jira issue key from PR
-        id: jira-ticket
+        id: jira-issue
         env:
           FAIL_ON_ERROR: ${{ inputs.fail-on-error || env.fail-on-error }}
         run: |
@@ -47,42 +47,28 @@ jobs:
           ${{ env.githubPrTitle }}
           EOF
 
-          for var in ${PR_BRANCH} ${PR_TITLE}; do JIRA_TICKET_ID=$(extract_jira_id "$var" | grep -E ".") && break ; done
+          for var in ${PR_BRANCH} ${PR_TITLE}; do JIRA_ISSUE_KEY=$(extract_jira_id "$var" | grep -E ".") && break; done
 
-          if [ -z "$JIRA_TICKET_ID" ]; then
-            echo "::error::A Jira issue key is missing from your branch name, pull request title, and pull request description. Please confirm it is linked properly in the pull request."
-            if [ "${FAIL_ON_ERROR}" == "true" ]; then
-              exit 1
-            fi
-          fi
+          echo "Jira Issue Key Found in Branch Name: ${PR_BRANCH}"
+          echo "Jira Issue Key Found in PR Title: ${PR_TITLE}"
+          echo "Using Jira Issue Key: ${JIRA_ISSUE_KEY}"
 
-          echo "Jira ticket: ${JIRA_TICKET_ID}"
-          echo "ticket-found=true"
-          echo "ticket-found=true" >> $GITHUB_OUTPUT
-
-          if [ -z "${JIRA_TICKET_ID}" ]; then
+          if [ -z "$JIRA_ISSUE_KEY" ]; then
             if [ "${FAIL_ON_ERROR}" == "true" ]; then
                 echo "::error::A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
-                if [ "${FAIL_ON_ERROR}" == "true" ]; then
-                  exit 1
-                fi
+                exit 1
             else
                 echo "::warning::A Jira issue key is missing from your branch name and pull request title. Please confirm it is linked properly in the pull request."
-                echo "ticket-found=false" >> $GITHUB_OUTPUT
             fi
+            echo "issue-found=false"
+            echo "issue-found=false" >> $GITHUB_OUTPUT
           else
-            echo "ticket-found=true"
-            echo "ticket-found=true" >> $GITHUB_OUTPUT
-            echo "jira-ticket-id=${JIRA_TICKET_ID}" 
-            echo "jira-ticket-id=${JIRA_TICKET_ID}" >> $GITHUB_OUTPUT
-            echo "jira-ticket-id-branch=${PR_BRANCH}"
-            echo "jira-ticket-id-branch=${PR_BRANCH}" >> $GITHUB_OUTPUT
-            echo "jira-ticket-id-title=${PR_TITLE}"
-            echo "jira-ticket-id-title=${PR_TITLE}" >> $GITHUB_OUTPUT
+            echo "issue-found=true"
+            echo "issue-found=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Check if missing Jira issue key comment exists
-        if: ${{ steps.jira-ticket.outputs.ticket-found != 'false' }}
+        if: ${{ steps.jira-issue.outputs.issue-found == 'true' }}
         id: comment
         uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad
         with:
@@ -91,7 +77,7 @@ jobs:
           direction: last
 
       - uses: jira-tools/action-jira-linter@bd5a5cb246a3673d3defacd67c08a0eab9562954
-        if: ${{ ! steps.comment.outputs.comment-body && steps.jira-ticket.outputs.ticket-found != 'false' }}
+        if: ${{ ! steps.comment.outputs.comment-body && steps.jira-issue.outputs.issue-found == 'true' }}
         continue-on-error: ${{ inputs.fail-on-error == 'false' || env.fail-on-error == 'false' }}
         name: Jira Lint
         with:
