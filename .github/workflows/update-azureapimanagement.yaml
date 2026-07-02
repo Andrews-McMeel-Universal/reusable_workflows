@@ -193,7 +193,25 @@ jobs:
                   if (!(($env:apiVersionHeaders -eq 'true') -and ($version -eq "1"))) {
                       $apiImportParams.ApiVersion = "v$version"
                   }
-                  Import-AzApiManagementApi @apiImportParams
+                  # Retry until successful
+                  $counter = 0
+                  while ($true) {
+                      Import-AzApiManagementApi @apiImportParams
+
+                      if ($? -eq $True) {
+                          break
+                      }
+
+                      if ($counter -lt 10) {
+                          $counter = $counter + 1
+                          Write-Host "API Import Failed. Waiting 15 seconds before trying again..."
+                          Start-Sleep -Seconds 15
+                      }
+                      else {
+                          Write-Error "API Import failed after 10 retries. Terminating the workflow run..."
+                          exit 1
+                      }
+                  }
 
                   # Retrieve and update the API object
                   $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
