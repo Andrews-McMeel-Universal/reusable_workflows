@@ -31,7 +31,7 @@ jobs:
       - name: Retrieve Jira issue key from PR
         id: jira-ticket
         env:
-          fail-on-error: ${{ inputs.fail-on-error == 'false' || env.fail-on-error == 'false' }}
+          fail-on-error: ${{ inputs.fail-on-error || env.fail-on-error }}
         run: |
           extract_jira_id() {
             input="$1"
