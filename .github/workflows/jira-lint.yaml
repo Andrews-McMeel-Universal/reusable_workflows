@@ -102,5 +102,5 @@ jobs:
             Resolved
             In QA (Ephemeral)
           skip-branches: "^(main|development|staging|production|dev)$"
-          fail-on-error: ${{ inputs.fail-on-error == 'false' || env.fail-on-error == 'false' }}
+          fail-on-error: ${{ inputs.fail-on-error == 'true' || env.fail-on-error == 'true' }}
           skip-comments: ${{ inputs.skip-comments == 'true' || env.skip-comments == 'true' }}
