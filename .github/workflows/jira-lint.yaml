@@ -89,7 +89,7 @@ jobs:
 
       - uses: jira-tools/action-jira-linter@bd5a5cb246a3673d3defacd67c08a0eab9562954
         if: ${{ ! steps.comment.outputs.comment-body && steps.jira-ticket.outputs.ticket-found != 'false' }}
-        continue-on-error: ${{ inputs.fail-on-error }}
+        continue-on-error: ${{ inputs.fail-on-error == 'false' }}
         name: Jira Lint
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
