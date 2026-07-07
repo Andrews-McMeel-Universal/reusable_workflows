@@ -57,10 +57,10 @@ jobs:
       - name: Check which prettier configs are available
         run: |
           if [[ -f ".prettierrc.js" ]]; then
-              echo "prettierConfigJsExists=true" >> $env:GITHUB_ENV
+              echo "prettierConfigJsExists=true" >> $GITHUB_ENV
           fi
           if [[ -f ".prettierrc.json" ]]; then
-              echo "prettierConfigJsonExists=true" >> $env:GITHUB_ENV
+              echo "prettierConfigJsonExists=true" >> $GITHUB_ENV
           fi
 
       - name: Run prettier with .prettierrc.js configuration
