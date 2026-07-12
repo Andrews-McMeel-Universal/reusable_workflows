@@ -115,6 +115,11 @@ on:
         type: string
         description: "Enable updating Bunny CDN pull zone origin after deployment"
         default: ${{ vars.UPDATE_BUNNY_CDN_ORIGIN || 'false' }}
+      ingressController:
+        required: false
+        type: string
+        description: "Ingress Controller Type. Can be nginx or haproxy"
+        default: ${{ vars.KUBERNETES_INGRESS_CONTROLLER || 'nginx' }}
     secrets:
       azureClusterName:
         required: true
@@ -481,6 +486,7 @@ jobs:
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
+          ingressController: ${{ inputs.ingressController }}
         run: |
           # Create values override file
 
@@ -519,7 +525,12 @@ jobs:
               }
 
               # Set variable for whitelist in app config
-              $appConfigWhitelist = $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+              if ($env:ingressController -eq "nginx") {
+                $appConfigWhitelist = $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+              }
+              elseif ($env:ingressController -eq "haproxy") {
+                $appConfigWhitelist = $item.annotations."ingress.kubernetes.io/allow-list"
+              }
 
               # Set ingress whitelist if not set
               $ipRegex = '^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){2}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/(3[0-2]|[12]?[0-9]))?$'
@@ -549,9 +560,16 @@ jobs:
                   $ingressWhitelist = "0.0.0.0/0"
 
                   Write-Output "Adding basic auth to $($item.name)"
-                  $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
-                  $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
-                  $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
+                  if ($env:ingressController -eq "nginx") {
+                      $item.annotations."nginx.ingress.kubernetes.io/auth-type"="basic"
+                      $item.annotations."nginx.ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
+                      $item.annotations."nginx.ingress.kubernetes.io/auth-realm"="Authentication Required"
+                  }
+                  elseif ($env:ingressController -eq "haproxy") {
+                      $item.annotations."ingress.kubernetes.io/auth-type"="basic-auth"
+                      $item.annotations."ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
+                      $item.annotations."ingress.kubernetes.io/auth-realm"="Authentication Required"
+                  }
               }
               else {
                   Write-Output "Ingress whitelist not set for $($item.name)"
@@ -582,16 +600,38 @@ jobs:
               if ($item.name -notmatch "admin") {
                   # Add ingressWhitelist to ingress
                   Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
-                  $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
+                  if ($env:ingressController -eq "nginx") {
+                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $ingressWhitelist
+                  }
+                  elseif ($env:ingressController -eq "haproxy") {
+                      $item.annotations."ingress.kubernetes.io/allow-list" = $ingressWhitelist
+                  }
               }
               elseif ($item.name -match "admin") {
                   if ($env:adminIngressWhitelist -ne "") {
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $env:adminIngressWhitelist
+                      if ($env:ingressController -eq "nginx") {
+                          $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = $env:adminIngressWhitelist
+                      }
+                      elseif ($env:ingressController -eq "haproxy") {
+                          $item.annotations."ingress.kubernetes.io/allow-list" = $env:adminIngressWhitelist
+                      }
                   }
                   else {
-                      $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = "207.67.20.252"
+                      if ($env:ingressController -eq "nginx") {
+                          $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range" = "207.67.20.252"
+                      }
+                      elseif ($env:ingressController -eq "haproxy") {
+                          $item.annotations."ingress.kubernetes.io/allow-list" = "207.67.20.252"
+                      }
                   }
-                  Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range")"
+
+                  if ($env:ingressController -eq "nginx") {
+                      $ingressWhitelist = $item.annotations."nginx.ingress.kubernetes.io/whitelist-source-range"
+                  }
+                  elseif ($env:ingressController -eq "haproxy") {
+                      $ingressWhitelist = $item.annotations."ingress.kubernetes.io/allow-list"
+                  }
+                  Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
               }
 
               # Add datacenter location to ingress if HA hostname is enabled
@@ -632,7 +672,12 @@ jobs:
 
               # Add ingressClassName and cluster issuer
               $clusterIssuer = "letsencrypt-${env:environment}"
-              $ingressClassName = "nginx-${env:environment}"
+              if ($env:ingressController -eq "nginx") {
+                  $ingressClassName = "nginx-${env:environment}"
+              }
+              elseif ($env:ingressController -eq "haproxy") {
+                  $ingressClassName = "haproxy-${env:environment}"
+              }
               if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production" -and $environmentIngress -eq 'true') {
                   $ingressClassName = "${ingressClassName}-${env:blueGreenInactiveDeployment}"
                   $clusterIssuer = "${clusterIssuer}-${env:blueGreenInactiveDeployment}"
@@ -645,15 +690,29 @@ jobs:
                   # Add WWW to ingress
                   if (($item.redirectToWWW -eq $true) -and ($env:environment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
                       # Add www redirect ingress
+                      if ($env:ingressController -eq "nginx") {
+                          $redirectPath = "/(.*)"
+                          $redirectAnnotations = @{
+                              "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
+                              "cert-manager.io/cluster-issuer"              = $clusterIssuer
+                          }
+                      }
+                      elseif ($env:ingressController -eq "haproxy") {
+                          $redirectPath = "/"
+                          $redirectAnnotations = @{
+                              "haproxy.org/request-redirect"      = "www.$($item.host)"
+                              "haproxy.org/request-redirect-code" = "301"
+                              "cert-manager.io/cluster-issuer"    = $clusterIssuer
+                          }
+                      }
+
+                      # Add www redirect ingress
                       $updatedIngress += [PSCustomObject]@{
                           name = "wwwredirect"
                           host = $item.host
-                          path = "/(.*)"
+                          path = $redirectPath
                           ingressClassName = $ingressClassName
-                          annotations = @{
-                              "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
-                              "cert-manager.io/cluster-issuer" = $clusterIssuer
-                          }
+                          annotations = $redirectAnnotations
                       }
 
                       Write-Output "Adding www to $($item.name) host"
@@ -671,7 +730,12 @@ jobs:
               }
 
               # Add whitelist annotation
-              $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$env:adminIngressWhitelist"
+              if ($env:ingressController -eq "nginx") {
+                  $item.annotations."nginx.ingress.kubernetes.io/limit-whitelist" = "$env:adminIngressWhitelist"
+              }
+              elseif ($env:ingressController -eq "haproxy") {
+                  $item.annotations."ingress.kubernetes.io/rate-limit-whitelist" = "$env:adminIngressWhitelist"
+              }
 
               # Add updated ingress to list
               $updatedIngress += [PSCustomObject]@{
@@ -818,6 +882,7 @@ jobs:
         shell: bash
         env:
           APP_NAME: ${{ needs.build.outputs.appName }}
+          INGRESS_CONTROLLER: ${{ inputs.ingressController }}
         run: |
           # Update basic web authentication Kubernetes secret
           WEB_AUTHENTICATION_USERNAME="${{ secrets.webAuthenticationUsername }}"
@@ -831,8 +896,12 @@ jobs:
           if kubectl get secret "${APP_NAME}-basic-auth" > /dev/null 2>&1; then
               kubectl delete secret "${APP_NAME}-basic-auth"
           fi
-          printf '%s:%s\n' "$WEB_AUTHENTICATION_USERNAME" "$(openssl passwd -5 "$WEB_AUTHENTICATION_PASSWORD")" > auth
-          kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
+          if [[ "${INGRESS_CONTROLLER}" == "nginx" ]]; then
+              printf '%s:%s\n' "$WEB_AUTHENTICATION_USERNAME" "$(openssl passwd -5 "$WEB_AUTHENTICATION_PASSWORD")" > auth
+              kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
+          elif [[ "${INGRESS_CONTROLLER}" == "haproxy" ]]; then
+              kubectl create secret generic "${APP_NAME}-basic-auth" --from-literal="${WEB_AUTHENTICATION_USERNAME}=$(openssl passwd -1 $WEB_AUTHENTICATION_PASSWORD)"
+          fi
 
       - name: Create K8s Image Pull Secret
         shell: bash
