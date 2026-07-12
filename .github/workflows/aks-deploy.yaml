@@ -900,7 +900,7 @@ jobs:
               printf '%s:%s\n' "$WEB_AUTHENTICATION_USERNAME" "$(openssl passwd -5 "$WEB_AUTHENTICATION_PASSWORD")" > auth
               kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
           elif [[ "${INGRESS_CONTROLLER}" == "haproxy" ]]; then
-              kubectl create secret generic "${APP_NAME}-basic-auth" --from-literal=$WEB_AUTHENTICATION_USERNAME=$(openssl passwd -1 $WEB_AUTHENTICATION_PASSWORD)
+              kubectl create secret generic "${APP_NAME}-basic-auth" --from-literal="${WEB_AUTHENTICATION_USERNAME}=$(openssl passwd -1 $WEB_AUTHENTICATION_PASSWORD)"
           fi
 
       - name: Create K8s Image Pull Secret
