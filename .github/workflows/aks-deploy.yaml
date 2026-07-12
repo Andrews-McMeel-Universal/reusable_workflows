@@ -882,6 +882,7 @@ jobs:
         shell: bash
         env:
           APP_NAME: ${{ needs.build.outputs.appName }}
+          INGRESS_CONTROLLER: ${{ inputs.ingressController }}
         run: |
           # Update basic web authentication Kubernetes secret
           WEB_AUTHENTICATION_USERNAME="${{ secrets.webAuthenticationUsername }}"
@@ -895,8 +896,12 @@ jobs:
           if kubectl get secret "${APP_NAME}-basic-auth" > /dev/null 2>&1; then
               kubectl delete secret "${APP_NAME}-basic-auth"
           fi
-          printf '%s:%s\n' "$WEB_AUTHENTICATION_USERNAME" "$(openssl passwd -5 "$WEB_AUTHENTICATION_PASSWORD")" > auth
-          kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
+          if [[ "${INGRESS_CONTROLLER}" == "nginx" ]]; then
+              printf '%s:%s\n' "$WEB_AUTHENTICATION_USERNAME" "$(openssl passwd -5 "$WEB_AUTHENTICATION_PASSWORD")" > auth
+              kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
+          elif [[ "${INGRESS_CONTROLLER}" == "haproxy" ]]; then
+              kubectl create secret generic "${APP_NAME}-basic-auth" --from-literal=$WEB_AUTHENTICATION_USERNAME=$(openssl passwd -1 $WEB_AUTHENTICATION_PASSWORD)
+          fi
 
       - name: Create K8s Image Pull Secret
         shell: bash
