@@ -56,8 +56,8 @@ jobs:
           }
 
           # Load Helm chart values
-          $basePath = Get-Location
           if ($chartsPath) {
+            $basePath = Get-Location
             $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
             $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
