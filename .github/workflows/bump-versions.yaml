@@ -43,26 +43,29 @@ jobs:
         run: |
           # Set app variables
 
+          # Check if Helm charts exist
           if (Test-Path -Path "./deployments/production-charts") {
               $chartsPath="./deployments/production-charts"
               echo "chartsPath=./deployments/production-charts"
               echo "chartsPath=./deployments/production-charts" >> $env:GITHUB_ENV
           }
-          else {
+          elseif (Test-Path -Path "./deployments/charts") {
               $chartsPath="./deployments/charts"
               echo "chartsPath=./deployments/charts"
               echo "chartsPath=./deployments/charts" >> $env:GITHUB_ENV
           }
-          
+
           # Load Helm chart values
           $basePath = Get-Location
-          $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
-          $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
+          if ($chartsPath) {
+            $chartYamlPath = Join-Path $basePath $chartsPath "Chart.yaml"
+            $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
 
-          # Set app version
-          $appVersion = $chartConfig.appVersion
-          Write-Output "appVersion=$appVersion"
-          Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
+            # Set app version
+            $appVersion = $chartConfig.appVersion
+            Write-Output "appVersion=$appVersion"
+            Write-Output "appVersion=$appVersion" >> $env:GITHUB_ENV
+          }
 
           # Check if package.json exists
           if (Test-Path -Path "./package.json") {
