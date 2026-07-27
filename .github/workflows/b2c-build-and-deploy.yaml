@@ -54,6 +54,7 @@ jobs:
 
       - name: Build Policies
         run: |
+          yarn generate
           yarn build
 
       - name: Upload TrustFrameworkBase Policy
