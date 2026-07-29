@@ -18,6 +18,11 @@ on:
         type: string
         description: "Relative path to Dockerfile."
         default: ${{ vars.DOCKER_FILE_PATH || '.' }}
+      githubRunner:
+        required: false
+        type: string
+        description: "The type of runner to use"
+        default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'ubuntu-latest' }}
     secrets:
       azureCredentials:
         required: false
@@ -26,7 +31,7 @@ jobs:
   build:
     name: Build app
     if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.githubRunner }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
