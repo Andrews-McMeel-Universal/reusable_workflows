@@ -221,7 +221,7 @@ jobs:
           docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
 
       - name: Login to Azure Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
@@ -347,7 +347,7 @@ jobs:
           docker tag "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}" "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ needs.prepare.outputs.jiraTicketId }}-${{ steps.build-image.outputs.imageChecksum }}"
 
       - name: Login to Azure Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ${{ secrets.registryHostName }}
           username: ${{ secrets.registryUserName }}
