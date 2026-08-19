@@ -58,9 +58,9 @@ on:
         default: ${{ vars.KUBERNETES_SERVICE_INGRESS_WHITELIST }}
       environmentNamespace:
         required: false
-        type: boolean
+        type: string
         description: "Use environment as Kubernetes namespace"
-        default: true
+        default: "true"
       checkoutRef:
         required: false
         type: string
@@ -945,7 +945,7 @@ jobs:
           }
 
       - name: Create Sentry release
-        if: env.NEXT_PUBLIC_SENTRY_DSN && inputs.publishSentryRelease == 'true'
+        if: env.NEXT_PUBLIC_SENTRY_DSN && inputs.publishSentryRelease == 'true' && inputs.environment != 'development'
         uses: getsentry/action-release@ff07929a6537bac57790c3451cf4d364aca38528
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.sentryAuthToken }}
