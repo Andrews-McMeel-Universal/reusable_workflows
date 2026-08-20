@@ -11,7 +11,7 @@ on:
         required: false
         type: string
         description: "Relative Path to Open API Specification."
-        default: "/swagger/v1/swagger.json"
+        default: ${{ vars.API_SCHEMA_PATH || '/swagger/vx/swagger.json' }}
       repositoryName:
         required: false
         type: string
@@ -108,161 +108,233 @@ jobs:
           repositoryName: ${{ github.event.repository.name }}
           environment: ${{ inputs.environment }}
           serviceFqdn: ${{ steps.getappinfo.outputs.applicationIngressFqdn }}
+          apiSpecificationPath: ${{ inputs.apiSpecificationPath }}
           defaultAPIPolicy: https://amucloudapps.blob.core.windows.net/apim/default-azure-apim-policy-schema.xml
         run: |
-          # Set API Management variables
-          $ApiSubscriptionRequired = $True
+          #requires -Modules Az.Accounts, Az.Resources, Az.ApiManagement
 
-          # Generate API ID by appending "-api" to the repository name and replacing underscores with hyphens
-          $ApiSuffix = if ("$env:apiSuffix" -eq "true") { "-api" } else { "" }
-          $ApiId = ("${env:repositoryName}${ApiSuffix}").Replace("_","-")
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = "Stop"
 
-          # Retrieve the resource group and service name based on the environment tag
-          $ResourceGroup = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="$env:environment"}).ResourceGroupName
-          $ServiceName = (Get-AzResource -ResourceType Microsoft.ApiManagement/service -Tag @{"environment"="$env:environment"}).Name
+          $ApiVersions = 1..3
 
-          # Get the fully qualified domain name (FQDN) of the service from previous steps
-          $ServiceURL = "https://$env:serviceFqdn"
+          # Generate API ID by appending "-api" to the repository name and replacing invalid characters
+          $ApiSuffix = if ($env:apiSuffix -eq "true") { "-api" } else { "" }
+          $ApiId = ("${env:repositoryName}${ApiSuffix}").Replace("/", "-").Replace("\", "-").Replace("_", "-")
+          $ApiId = $ApiId -replace '[*#&+:<>?]', "-"
+
+          $ApimResources = @(Get-AzResource -ResourceType "Microsoft.ApiManagement/service" -Tag @{ environment = $env:environment })
+          if ($ApimResources.Count -ne 1) {
+              throw "Expected exactly one API Management service with environment tag '$env:environment', found $($ApimResources.Count)."
+          }
+          $ResourceGroup = $ApimResources[0].ResourceGroupName
+          $ServiceName = $ApimResources[0].Name
+
+          $ServiceURL = ("https://{0}" -f $env:serviceFqdn).TrimEnd("/")
+          $APISchemaPathTemplate = $env:apiSpecificationPath
+          $APISchemaPathFile = Split-Path -Path $APISchemaPathTemplate -Leaf
+          $VersionDiscoveryEnabled = $APISchemaPathTemplate -match "vx"
 
           # Create a context object for API management operations
           $Context = New-AzApiManagementContext -ResourceGroupName $ResourceGroup -ServiceName $ServiceName
 
-          # Retrieve the API Version Set
-          $apiVersionSet = Get-AzApiManagementApiVersionSet -Context $Context | Where-Object { $_.DisplayName -eq $ApiId }
-          if (-not $apiVersionSet) {
-              $apiVersionSet = New-AzApiManagementApiVersionSet -Context $Context -Name $ApiId -Scheme Segment -Description "$ApiId API"
-          }
+          function Get-APISpecWithRetry {
+              param(
+                  [Parameter(Mandatory)]
+                  [string]$APISchemaUrl,
+                  [int]$MaxAttempts = 3,
+                  [int]$DelaySeconds = 10
+              )
 
-          # Check if the original API exists
-          Get-AzApiManagementApi -Context $Context -ApiId $ApiId -ErrorAction SilentlyContinue | Where-Object { -not $_.ApiVersionSetId } | ForEach-Object {
-              $_.ApiVersionSetId = $apiVersionSet.Id
-              Set-AzApiManagementApi -InputObject $_
-              $OriginalVersion = $True
-          }
-
-          $SwaggerDiscoverySuccessful = $false
-          $SwaggerFileName = "swagger.json"
-
-          # Update API versions
-          $ApiVersions = 1..3
-          foreach ($version in $ApiVersions) {
-              # Construct the Swagger URL for each version
-              $SwaggerURL = "https://$env:serviceFqdn/swagger/v$version/swagger.json"
-              $attempt = 0
-              $maxRetries = 3
-              $delaySeconds = 10
-              $success = $false
-
-              $SwaggerResponse = $null
-              while ($attempt -lt $maxRetries -and -not $success) {
+              for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
                   try {
-                      $attempt++
-                      # Pull down Swagger JSON
-                      $SwaggerResponse = Invoke-WebRequest -Uri $SwaggerURL -UseBasicParsing -ErrorAction Stop
-                      $success = $true
+                      $Response = Invoke-WebRequest -Uri $APISchemaUrl -ErrorAction Stop
+                      if ([string]::IsNullOrWhiteSpace($Response.Content)) {
+                          throw "Endpoint returned an empty response."
+                      }
+                      $null = $Response.Content | ConvertFrom-Json -ErrorAction Stop
+                      Write-Host "Successfully retrieved API spec from $APISchemaUrl on attempt $Attempt."
+                      return [string]$Response.Content
                   }
                   catch {
-                      Write-Output "Attempt $attempt for API version V${version} failed: $($_.Exception.Message)"
-                      if ($attempt -lt $maxRetries) {
-                          Write-Output "Retrying in $delaySeconds seconds..."
-                          Start-Sleep -Seconds $delaySeconds
+                      Write-Warning "Attempt $Attempt/$MaxAttempts failed for $APISchemaUrl : $($_.Exception.Message)"
+                      if ($Attempt -lt $MaxAttempts) {
+                          Start-Sleep -Seconds $DelaySeconds
                       }
                   }
               }
+              return $null
+          }
 
-              # Check if the versioned API exists
-              if ($success -and $SwaggerResponse.StatusCode -eq 200) {
-                  $SwaggerDiscoverySuccessful = $true
+          function Import-API {
+              param(
+                  [Parameter(Mandatory)]
+                  [string]$SpecificationPath,
+                  [Parameter(Mandatory)]
+                  [string]$ApiId,
+                  [Parameter(Mandatory)]
+                  [string]$ApiPath,
+                  [string]$ApiVersion,
+                  [Parameter(Mandatory)]
+                  [object]$Context,
+                  [string]$ApiVersionSetId,
+                  [int]$MaxAttempts = 5
+              )
 
-                  # Get Swagger JSON content
-                  Write-Output "Importing API version V${version}: $SwaggerURL"
-                  $SwaggerContent = $SwaggerResponse.Content -replace "/v${version}", ""
+              $ApiImportParams = @{
+                  Context             = $Context
+                  SpecificationPath   = $SpecificationPath
+                  SpecificationFormat = "OpenApi"
+                  Path                = $ApiPath
+                  ApiId               = $ApiId
+              }
 
-                  # Generate a unique API ID for each version
-                  $versionedApiId = "$ApiId-v$version"
+              if (-not [string]::IsNullOrWhiteSpace($ApiVersionSetId)) {
+                  $ApiImportParams.ApiVersionSetId = $ApiVersionSetId
+                  $ApiImportParams.ApiVersion = $ApiVersion
+              }
 
-                  # Save Swagger JSON to file
-                  $SwaggerContent | Out-File -FilePath $SwaggerFileName -Encoding utf8
-
-                  # Import the versioned API
-                  $apiImportParams = @{
-                      Context             = $Context
-                      SpecificationPath   = $SwaggerFileName
-                      SpecificationFormat = "OpenApi"
-                      Path                = $ApiId
-                      ApiId               = $versionedApiId
-                      ApiVersionSetId     = $ApiVersionSet.Id
+              for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
+                  try {
+                      Import-AzApiManagementApi @ApiImportParams -ErrorAction Stop | Out-Null
+                      Write-Host "Successfully imported $ApiId."
+                      return
                   }
-
-                  # Only include ApiVersion when needed
-                  if (!(($env:apiVersionHeaders -eq 'true') -and ($version -eq "1"))) {
-                      $apiImportParams.ApiVersion = "v$version"
-                  }
-                  # Retry until successful
-                  $counter = 0
-                  while ($true) {
-                      Import-AzApiManagementApi @apiImportParams
-
-                      if ($? -eq $True) {
-                          break
+                  catch {
+                      if ($Attempt -ge $MaxAttempts) {
+                          throw "API import failed after $MaxAttempts attempts: $($_.Exception.Message)"
                       }
-
-                      if ($counter -lt 10) {
-                          $counter = $counter + 1
-                          Write-Host "API Import Failed. Waiting 15 seconds before trying again..."
-                          Start-Sleep -Seconds 15
-                      }
-                      else {
-                          Write-Error "API Import failed after 10 retries. Terminating the workflow run..."
-                          exit 1
-                      }
-                  }
-
-                  # Retrieve and update the API object
-                  $Api = Get-AzApiManagementApi -Context $Context -ApiId "$versionedApiId"
-                  $Api.ServiceURL = "$ServiceURL/v${version}"
-                  if ($env:apiVersionHeaders -eq 'true') {
-                    $Api.ServiceURL = "$ServiceURL"
-                  }
-                  $Api.SubscriptionRequired = $ApiSubscriptionRequired
-
-                  # Associate the versioned API with a product
-                  Set-AzApiManagementApi -InputObject $Api
-                  if ($env:apiVersionHeaders -eq 'true') {
-                      $PolicyXML = [xml](Get-AzApiManagementPolicy -Context $Context -ApiId "$versionedApiId")
-                      if (!$PolicyXML) {
-                          $PolicyXML = [xml](Invoke-WebRequest -Uri $env:defaultAPIPolicy -UseBasicParsing -ErrorAction Stop).Content
-                      }
-                      if ($PolicyXML.policies.inbound."set-header".OuterXml -match "api-version.*<value>$version") {
-                          $PolicyXML.policies.inbound.SelectSingleNode("set-header").ParentNode.RemoveChild($PolicyXML.policies.inbound.SelectSingleNode("set-header"))
-                      }
-                      $xmlElement = $PolicyXML.CreateElement("set-header")
-                      $xmlElement.SetAttribute("name","api-version")
-                      $xmlElement.SetAttribute("exists-action","append")
-
-                      $PolicyXML.policies.inbound.AppendChild($xmlElement)
-                      $valueElement = $PolicyXML.CreateElement("value")
-                      $valueElement.InnerText = "${version}.0"
-                      $PolicyXML.policies.inbound."set-header".AppendChild($valueElement)
-                      Set-AzApiManagementPolicy -Context $Context -ApiId "$versionedApiId" -Policy $PolicyXML.OuterXML
-                  }
-                  Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
-                  if ($env:ApiProductId -ne "AZ-WebServices") {
-                      Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $env:ApiProductId
-                  }
-
-                  # Remove the original API spec
-                  if ($OriginalVersion) {
-                      Remove-AzApiManagementApi -Context $Context -ApiId $ApiId
+                      Write-Warning "API import attempt $Attempt/$MaxAttempts failed: $($_.Exception.Message)"
+                      Write-Host "Waiting 15 seconds before retrying..."
+                      Start-Sleep -Seconds 15
                   }
               }
           }
 
-          # Error out if no Swagger JSON was reachable
-          if (-not $SwaggerDiscoverySuccessful) {
-              Write-Error "ERROR: No Swagger JSON was reachable for any version."
-              exit 1
+          function Update-API {
+              param(
+                  [Parameter(Mandatory)]
+                  [string]$ApiId,
+                  [int]$Version,
+                  [Parameter(Mandatory)]
+                  [string]$ServiceURL,
+                  [Parameter(Mandatory)]
+                  [object]$Context
+              )
+
+              $BackendURL = $ServiceURL
+              if ($Version) {
+                  $BackendURL += "/v$Version"
+              }
+
+              Write-Host "Setting backend for $ApiId to $BackendURL"
+              Set-AzApiManagementApi -Context $Context -ApiId $ApiId -ServiceUrl $BackendURL -SubscriptionRequired -ErrorAction Stop | Out-Null
+
+              $ProductIds = @("AZ-WebServices")
+              if (-not [string]::IsNullOrWhiteSpace($env:ApiProductId) -and $env:ApiProductId -ne "AZ-WebServices") {
+                  $ProductIds += $env:ApiProductId
+              }
+              foreach ($ProductId in ($ProductIds | Select-Object -Unique)) {
+                  Add-AzApiManagementApiToProduct -Context $Context -ApiId $ApiId -ProductId $ProductId -ErrorAction Stop | Out-Null
+              }
           }
+
+          $DiscoveredAPIs = @()
+          if ($VersionDiscoveryEnabled) {
+              foreach ($Version in $ApiVersions) {
+                  $SchemaPath = $APISchemaPathTemplate.Replace("vx", "v$Version")
+                  if (-not $SchemaPath.StartsWith("/")) {
+                      $SchemaPath = "/$SchemaPath"
+                  }
+                  $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
+                  Write-Host "Checking API version v$Version at $APISchemaUrl"
+                  $Contents = Get-APISpecWithRetry -APISchemaUrl $APISchemaUrl
+                  if ($null -eq $Contents) {
+                      Write-Warning "API version v$Version was not reachable. Skipping."
+                      continue
+                  }
+                  $DiscoveredAPIs += [pscustomobject]@{
+                      Version  = $Version
+                      Url      = $APISchemaUrl
+                      Contents = $Contents
+                  }
+              }
+          }
+          else {
+              $SchemaPath = $APISchemaPathTemplate
+              if (-not $SchemaPath.StartsWith("/")) {
+                  $SchemaPath = "/$SchemaPath"
+              }
+              $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
+              Write-Host "Checking API at $APISchemaUrl"
+              $Contents = Get-APISpecWithRetry -APISchemaUrl $APISchemaUrl
+
+              if ($null -ne $Contents) {
+                  $DiscoveredAPIs += [pscustomobject]@{
+                      Version  = $null
+                      Url      = $APISchemaUrl
+                      Contents = $Contents
+                  }
+              }
+          }
+
+          if ($DiscoveredAPIs.Count -eq 0) {
+              throw "No API specifications were reachable. Nothing was imported."
+          }
+
+          if ($VersionDiscoveryEnabled) {
+              Write-Host "Discovered $($DiscoveredAPIs.Count) API version(s): $($DiscoveredAPIs.Version -join ', ')"
+          }
+          else {
+              Write-Host "Discovered non-versioned API."
+          }
+
+          $UseVersionSet = $DiscoveredAPIs.Count -gt 1
+          $ApiVersionSetId = $null
+
+          if ($UseVersionSet) {
+              $MatchingVersionSets = @(Get-AzApiManagementApiVersionSet -Context $Context | Where-Object { $_.DisplayName -eq $ApiId })
+              if ($MatchingVersionSets.Count -gt 1) {
+                  throw "Multiple API version sets have display name '$ApiId'."
+              }
+              if ($MatchingVersionSets.Count -eq 1) {
+                  $ApiVersionSet = $MatchingVersionSets[0]
+              }
+              else {
+                  Write-Host "Creating API version set '$ApiId'."
+                  $ApiVersionSet = New-AzApiManagementApiVersionSet -Context $Context -ApiVersionSetId $ApiId -Name $ApiId -Scheme Segment -Description "$ApiId API"
+              }
+              $ApiVersionSetId = $ApiVersionSet.ApiVersionSetId
+          }
+          $OriginalApi = Get-AzApiManagementApi -Context $Context -ApiId $ApiId -ErrorAction SilentlyContinue
+
+          foreach ($DiscoveredApi in $DiscoveredAPIs) {
+              $Version = $DiscoveredApi.Version
+
+              if ($UseVersionSet) {
+                  $VersionedApiId = "$ApiId-v$Version"
+                  $APISchemaContents = $DiscoveredApi.Contents -replace "/v${Version}", ""
+                  $ApiVersionName = "v$Version"
+              }
+              else {
+                  $VersionedApiId = $ApiId
+                  $APISchemaContents = $DiscoveredApi.Contents
+                  $ApiVersionName = $null
+              }
+
+              $APISchemaContents | Out-File -FilePath $APISchemaPathFile -Encoding utf8
+
+              Write-Host "Importing API from $($DiscoveredApi.Url)"
+              Import-API -ApiId $VersionedApiId -ApiPath $ApiId -ApiVersion $ApiVersionName -SpecificationPath $APISchemaPathFile -Context $Context -ApiVersionSetId $ApiVersionSetId
+              Update-API -ApiId $VersionedApiId -Version $Version -ServiceURL $ServiceURL -Context $Context
+          }
+
+          if ($UseVersionSet -and $null -ne $OriginalApi) {
+              Write-Host "Removing legacy API '$ApiId' now that versioned APIs exist."
+              Remove-AzApiManagementApi -Context $Context -ApiId $ApiId -Confirm:$false -ErrorAction Stop
+          }
+
+          Write-Host "API Management import completed successfully."
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
