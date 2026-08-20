@@ -109,6 +109,7 @@ jobs:
           environment: ${{ inputs.environment }}
           serviceFqdn: ${{ steps.getappinfo.outputs.applicationIngressFqdn }}
           apiSpecificationPath: ${{ inputs.apiSpecificationPath }}
+          customGitHubRunner: ${{ inputs.githubRunner }}
           defaultAPIPolicy: https://amucloudapps.blob.core.windows.net/apim/default-azure-apim-policy-schema.xml
         run: |
           #requires -Modules Az.Accounts, Az.Resources, Az.ApiManagement
@@ -246,7 +247,12 @@ jobs:
                   if (-not $SchemaPath.StartsWith("/")) {
                       $SchemaPath = "/$SchemaPath"
                   }
-                  $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
+                  if ($env:customGitHubRunner -eq "boley") {
+                      $APISchemaUrl = "http://$($env:serviceFqdn)$SchemaPath"
+                  }
+                  else {
+                      $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
+                  }
                   Write-Host "Checking API version v$Version at $APISchemaUrl"
                   $Contents = Get-APISpecWithRetry -APISchemaUrl $APISchemaUrl
                   if ($null -eq $Contents) {
@@ -265,7 +271,12 @@ jobs:
               if (-not $SchemaPath.StartsWith("/")) {
                   $SchemaPath = "/$SchemaPath"
               }
-              $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
+              if ($env:customGitHubRunner -eq "boley") {
+                  $APISchemaUrl = "http://$($env:serviceFqdn)$SchemaPath"
+              }
+              else {
+                  $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
+              }
               Write-Host "Checking API at $APISchemaUrl"
               $Contents = Get-APISpecWithRetry -APISchemaUrl $APISchemaUrl
 
@@ -281,17 +292,14 @@ jobs:
           if ($DiscoveredAPIs.Count -eq 0) {
               throw "No API specifications were reachable. Nothing was imported."
           }
-
           if ($VersionDiscoveryEnabled) {
               Write-Host "Discovered $($DiscoveredAPIs.Count) API version(s): $($DiscoveredAPIs.Version -join ', ')"
           }
           else {
               Write-Host "Discovered non-versioned API."
           }
-
           $UseVersionSet = $DiscoveredAPIs.Count -gt 1
           $ApiVersionSetId = $null
-
           if ($UseVersionSet) {
               $MatchingVersionSets = @(Get-AzApiManagementApiVersionSet -Context $Context | Where-Object { $_.DisplayName -eq $ApiId })
               if ($MatchingVersionSets.Count -gt 1) {
