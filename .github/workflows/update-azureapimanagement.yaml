@@ -98,6 +98,7 @@ jobs:
 
           # Set the application information as output variables
           echo "applicationIngressFqdn=$($appInfo.IngressFqdn)" >> $env:GITHUB_OUTPUT
+          echo "applicationName=$($appInfo.ApplicationName)" >> $env:GITHUB_OUTPUT
 
       - name: Update Azure API Management
         shell: pwsh
@@ -111,6 +112,7 @@ jobs:
           apiSpecificationPath: ${{ inputs.apiSpecificationPath }}
           customGitHubRunner: ${{ inputs.githubRunner }}
           defaultAPIPolicy: https://amucloudapps.blob.core.windows.net/apim/default-azure-apim-policy-schema.xml
+          applicationName: ${{ steps.getappinfo.outputs.applicationName }}
         run: |
           #requires -Modules Az.Accounts, Az.Resources, Az.ApiManagement
 
@@ -248,7 +250,7 @@ jobs:
                       $SchemaPath = "/$SchemaPath"
                   }
                   if ($env:customGitHubRunner -eq "boley") {
-                      $APISchemaUrl = "http://$($env:serviceFqdn)$SchemaPath"
+                      $APISchemaUrl = "http://$($env:applicationName).${env:environment}.svc.cluster.local$SchemaPath"
                   }
                   else {
                       $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
@@ -272,7 +274,7 @@ jobs:
                   $SchemaPath = "/$SchemaPath"
               }
               if ($env:customGitHubRunner -eq "boley") {
-                  $APISchemaUrl = "http://$($env:serviceFqdn)$SchemaPath"
+                  $APISchemaUrl = "http://$($env:applicationName).${env:environment}.svc.cluster.local$SchemaPath"
               }
               else {
                   $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
