@@ -370,6 +370,17 @@ jobs:
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
 
+      - name: Add SENTRY_RELEASE to .env file if SENTRY_AUTH_TOKEN is set
+        if: ${{ steps.check-sentry-token.outputs.sentryAuthTokenExists == 'true' }}
+        shell: bash
+        env:
+          SENTRY_RELEASE: ${{ github.event.release.tag_name || github.sha }}
+        run: |
+          # Add SENTRY_RELEASE to .env file if SENTRY_AUTH_TOKEN is set
+
+          echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> $GITHUB_ENV
+          echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> .env
+
       - name: Insert new line after build arguments
         id: insert-new-line
         shell: bash
