@@ -57,7 +57,7 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Setup application platform
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           dotnet-version: ${{ inputs.DOTNET_VERSION }}
 
