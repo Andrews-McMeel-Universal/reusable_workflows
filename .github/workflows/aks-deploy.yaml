@@ -385,8 +385,17 @@ jobs:
           echo "Found Key Vault: ${KEYVAULT_NAME}"
           echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_OUTPUT
 
+      - name: Check if SENTRY_AUTH_TOKEN is set
+        id: check-sentry-token
+        run: |
+          if [[ -n "${{ secrets.sentryAuthToken }}" ]]; then
+            echo "sentryAuthTokenExists=true" >> $GITHUB_OUTPUT
+          else
+            echo "sentryAuthTokenExists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Update Sentry Release key vault secret
-        if: inputs.publishSentryRelease == 'true' && env.SENTRY_AUTH_TOKEN
+        if: inputs.publishSentryRelease == 'true' && steps.check-sentry-token.outputs.sentryAuthTokenExists == 'true'
         id: sentry-release
         shell: bash
         env:
