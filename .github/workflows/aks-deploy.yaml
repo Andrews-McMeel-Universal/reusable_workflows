@@ -366,7 +366,7 @@ jobs:
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
-          environmentKeyVault: ${{ inputs.environmentKeyVault}}
+          environmentKeyVault: ${{ inputs.environmentKeyVault }}
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
 
