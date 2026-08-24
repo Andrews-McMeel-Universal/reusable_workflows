@@ -351,40 +351,6 @@ jobs:
           Write-Output "wwwIngress=$wwwIngress"
           Write-Output "wwwIngress=$wwwIngress" >> $env:GITHUB_ENV
 
-      - name: Retrieve Key Vault Name
-        id: keyvault
-        shell: bash
-        env:
-          REPOSITORY_NAME: ${{ github.event.repository.name }}
-          ENVIRONMENT: ${{ inputs.environment }}
-          KEYVAULT_NAME: ${{ inputs.environmentKeyVault }}
-        run: |
-          set -euo pipefail
-
-          if [[ "${ENVIRONMENT}" == "" ]] && [[ "${KEYVAULT_NAME}" = "-${ENVIRONMENT}" ]]; then
-              echo "::warning::The 'environmentKeyVault' input appears to be incorrectly set. If you intend to auto-discover the Key Vault based on tags, please leave this input blank. If you wish to specify a Key Vault name directly, please provide the correct name."
-              echo "::error::Environment input is required when 'environmentKeyVault' is not provided."
-              exit 1
-          elif [[ "${KEYVAULT_NAME}" = "-${ENVIRONMENT}" ]]; then
-              echo "::warning::The 'environmentKeyVault' input appears to be incorrectly set. If you intend to auto-discover the Key Vault based on tags, please leave this input blank. If you wish to specify a Key Vault name directly, please provide the correct name."
-              echo "::warning::Defaulting to auto-discovery of Key Vault based on tags."
-              echo "keyVaultName=" >> $GITHUB_OUTPUT
-          elif [[ -n "${KEYVAULT_NAME}" ]] && [[ "${KEYVAULT_NAME}" != "" ]]; then
-              echo "The 'environmentKeyVault' input is provided. Auto-discovery of Key Vault based on tags will be skipped."
-              echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_OUTPUT
-          fi
-
-          echo -e "Searching for key vault with tags: \"repository-name=${REPOSITORY_NAME};environment=${ENVIRONMENT}\""
-          KEYVAULT_NAME=$(az keyvault list --query "[?tags.\"repository-name\" == '${REPOSITORY_NAME}' && tags.environment == '${ENVIRONMENT}'].name" --output tsv)
-
-          if [ -z "${KEYVAULT_NAME}" ]; then
-              echo "No Key Vault found with the specified tags. Please confirm a Key Vault exists with the correct tags."
-              exit 1
-          fi
-
-          echo "Found Key Vault: ${KEYVAULT_NAME}"
-          echo "keyVaultName=${KEYVAULT_NAME}" >> $GITHUB_OUTPUT
-
       - name: Check if SENTRY_AUTH_TOKEN is set
         id: check-sentry-token
         run: |
@@ -394,37 +360,30 @@ jobs:
             echo "sentryAuthTokenExists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Update Sentry Release key vault secret
-        if: inputs.publishSentryRelease == 'true' && steps.check-sentry-token.outputs.sentryAuthTokenExists == 'true'
-        id: sentry-release
-        shell: bash
-        env:
-          KEYVAULT_NAME: ${{ steps.keyvault.outputs.keyVaultName }}
-          SENTRY_RELEASE: ${{ github.event.release.tag_name || github.sha }}
-        run: |
-          # Update Sentry release in Key Vault
-          echo "Updating Sentry release in Key Vault: ${KEYVAULT_NAME}"
-          az keyvault secret set --vault-name "${KEYVAULT_NAME}" --name "sentry-release" --value "${SENTRY_RELEASE}" --content-type "BuildArg Env"
-          echo "sentryRelease=${SENTRY_RELEASE}" >> $GITHUB_OUTPUT
-
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
-          environmentKeyVault: ${{ steps.keyvault.outputs.keyVaultName }}
+          environmentKeyVault: ${{ inputs.environmentKeyVault}}
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
 
       - name: Insert new line after build arguments
         id: insert-new-line
         shell: bash
+        env:
+          SENTRY_RELEASE: ${{ github.event.release.tag_name || github.sha }}
+          SENTRY_AUTH_TOKEN_EXISTS: ${{ steps.check-sentry-token.outputs.sentryAuthTokenExists }}
         run: |
           # Insert new line after build arguments
 
           buildArguments=$(echo "${{ steps.get-envs.outputs.buildArguments }}" | sed 's/^ ; //g' | sed 's/; /\n/g')
           echo 'buildArguments<<EOF' >> $GITHUB_ENV
           echo "$buildArguments" >> $GITHUB_ENV
+          if [[ "${SENTRY_AUTH_TOKEN_EXISTS}" == 'true' ]]; then
+            echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> $GITHUB_ENV
+          fi
           echo 'EOF' >> $GITHUB_ENV
 
       - name: Login to Azure Container Registry
@@ -502,6 +461,7 @@ jobs:
       blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
       datacenterLocation: ${{ env.datacenterLocation }}
       keyVaultName: ${{ steps.get-envs.outputs.keyVaultName }}
+      sentryAuthTokenExists: ${{ steps.check-sentry-token.outputs.sentryAuthTokenExists }}
 
   deploy:
     name: AKS Deploy
@@ -883,6 +843,17 @@ jobs:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ needs.build.outputs.keyVaultName || inputs.environmentKeyVault }}
+
+      - name: Add SENTRY_RELEASE to .env file if SENTRY_AUTH_TOKEN is set
+        if: ${{ needs.build.outputs.sentryAuthTokenExists == 'true' }}
+        shell: bash
+        env:
+          SENTRY_RELEASE: ${{ github.event.release.tag_name || github.sha }}
+        run: |
+          # Add SENTRY_RELEASE to .env file if SENTRY_AUTH_TOKEN is set
+
+          echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> $GITHUB_ENV
+          echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> .env
 
       - name: Get AKS cluster resource group
         id: aks-resource-group
