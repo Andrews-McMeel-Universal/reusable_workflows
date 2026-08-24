@@ -365,6 +365,7 @@ jobs:
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
+          environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault}}
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
