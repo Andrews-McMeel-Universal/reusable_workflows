@@ -339,7 +339,7 @@ jobs:
               }
           }
 
-          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:haIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
+          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production")) {
               $wwwIngress = "true"
           }
 
@@ -513,6 +513,7 @@ jobs:
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
           ingressController: ${{ inputs.ingressController }}
+          wwwIngress: ${{ needs.build.outputs.wwwIngress }}
         run: |
           # Create values override file
 
