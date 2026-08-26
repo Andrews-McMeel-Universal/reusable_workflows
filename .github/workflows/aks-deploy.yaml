@@ -341,7 +341,6 @@ jobs:
 
           if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:haIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
               $wwwIngress = "true"
-              $ingress = "www.$ingress"
           }
 
           Write-Output "domainName=$domainName"
@@ -508,7 +507,6 @@ jobs:
           serviceIngressWhitelist: ${{ inputs.serviceIngressWhitelist }}
           datacenterLocation: ${{ needs.build.outputs.datacenterLocation }}
           domainName: ${{ needs.build.outputs.domainName }}
-          wwwIngress: ${{ needs.build.outputs.wwwIngress }}
           ingress: ${{ needs.build.outputs.ingress }}
           ingressWhitelist: ${{ inputs.ingressWhitelist }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
@@ -750,12 +748,6 @@ jobs:
                   # Set ingress host to primary domain variable
                   $dnsPrimaryDomain = $item.host -replace "$env:domainName", '' -replace "\.$", ""
               }
-              else {
-                if (($env:wwwIngress -eq "true") -and ($item.redirectToWWW -ne $false) -and ("$env:ingress" -match $item.host) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
-                    Write-Output "Adding www to $($item.name) host"
-                    $item.host = "www.$($item.host)"
-                }
-              }
 
               # Add whitelist annotation
               if ($env:ingressController -eq "nginx") {
@@ -781,6 +773,11 @@ jobs:
               }
               $domains += $item.host -replace "$env:domainName", '' -replace "\.$", ""
               Write-Output "Adding $($item.host) to domains list"
+
+              if (($env:wwwIngress -eq "true") -and ($env:environment -eq "production")) {
+                  Write-Output "Adding www.$($item.host) to domains list"
+                  $domains += "www.$($item.host)" -replace "$env:domainName", '' -replace "\.$", ""
+              }
           }
 
           # Ensure ingress is an array
