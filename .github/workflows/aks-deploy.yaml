@@ -740,7 +740,8 @@ jobs:
                       $subDomain = "${subDomain}."
                   }
                   else {
-                  $subDomain = ""
+                      $subDomain = ""
+                  }
                   $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.$subDomain$($env:domainName)"
               }
               $updatedIngress += $ingress
