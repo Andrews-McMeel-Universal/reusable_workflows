@@ -735,7 +735,13 @@ jobs:
                   annotations = $item.annotations
               }
               if ($wwwIngress -eq $true -and $env:environment -eq "production") {
-                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.$($env:domainName)"
+                  # Add secondary host for www subdomain in production environment
+                  if ($subDomain -ne "") {
+                      $subDomain = "${subDomain}."
+                  }
+                  else {
+                  $subDomain = ""
+                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.$subDomain$($env:domainName)"
               }
               $updatedIngress += $ingress
 
