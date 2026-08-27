@@ -739,7 +739,7 @@ jobs:
                   if ($subDomain -ne "") {
                       $subDomain = "${subDomain}."
                   }
-                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.$subDomain"
+                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.$subDomain$domainName"
               }
               $updatedIngress += $ingress
 
@@ -751,7 +751,7 @@ jobs:
               $domains += $item.host -replace "$env:domainName", '' -replace "\.$", ""
               Write-Output "Adding $($item.host) to domains list"
 
-              if (($env:wwwIngress -eq "true") -and ($env:environment -eq "production")) {
+              if ($env:wwwIngress -eq "true" -and $env:environment -eq "production") {
                   Write-Output "Adding www.$($item.host) to domains list"
                   $domains += "www.$subDomain" -replace "$env:domainName", '' -replace "\.$", ""
               }
