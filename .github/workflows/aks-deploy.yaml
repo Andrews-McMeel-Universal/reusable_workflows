@@ -750,11 +750,6 @@ jobs:
               }
               $domains += $item.host -replace "$env:domainName", '' -replace "\.$", ""
               Write-Output "Adding $($item.host) to domains list"
-
-              if ($env:wwwIngress -eq "true" -and $env:environment -eq "production") {
-                  Write-Output "Adding www.$($item.host) to domains list"
-                  $domains += "www.$subDomain" -replace "$env:domainName", '' -replace "\.$", ""
-              }
           }
 
           # Ensure ingress is an array
