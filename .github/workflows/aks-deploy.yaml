@@ -99,7 +99,7 @@ on:
         required: false
         type: string
         description: "Use organization's remote Helm templates"
-        default: ${{ vars.REMOTE_HELM_TEMPLATES }}
+        default: ${{ vars.REMOTE_HELM_TEMPLATES || 'true' }}
       blueGreenDeployment:
         required: false
         type: string
@@ -339,9 +339,8 @@ jobs:
               }
           }
 
-          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:haIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
+          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production")) {
               $wwwIngress = "true"
-              $ingress = "www.$ingress"
           }
 
           Write-Output "domainName=$domainName"
@@ -508,13 +507,13 @@ jobs:
           serviceIngressWhitelist: ${{ inputs.serviceIngressWhitelist }}
           datacenterLocation: ${{ needs.build.outputs.datacenterLocation }}
           domainName: ${{ needs.build.outputs.domainName }}
-          wwwIngress: ${{ needs.build.outputs.wwwIngress }}
           ingress: ${{ needs.build.outputs.ingress }}
           ingressWhitelist: ${{ inputs.ingressWhitelist }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
           ingressController: ${{ inputs.ingressController }}
+          wwwIngress: ${{ needs.build.outputs.wwwIngress }}
         run: |
           # Create values override file
 
@@ -713,48 +712,10 @@ jobs:
               $item.ingressClassName = "$ingressClassName"
               $item.annotations."cert-manager.io/cluster-issuer" = "$clusterIssuer"
 
-              # Handle www redirect and primary domain
+              # Get primary domain
               if ($item.name -eq "ingress") {
-                  # Add WWW to ingress
-                  if (($item.redirectToWWW -eq $true) -and ($env:environment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
-                      # Add www redirect ingress
-                      if ($env:ingressController -eq "nginx") {
-                          $redirectPath = "/(.*)"
-                          $redirectAnnotations = @{
-                              "nginx.ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
-                              "cert-manager.io/cluster-issuer"              = $clusterIssuer
-                          }
-                      }
-                      elseif ($env:ingressController -eq "haproxy") {
-                          $redirectPath = "/"
-                          $redirectAnnotations = @{
-                              "haproxy.org/request-redirect"      = "www.$($item.host)"
-                              "haproxy.org/request-redirect-code" = "301"
-                              "cert-manager.io/cluster-issuer"    = $clusterIssuer
-                          }
-                      }
-
-                      # Add www redirect ingress
-                      $updatedIngress += [PSCustomObject]@{
-                          name = "wwwredirect"
-                          host = $item.host
-                          path = $redirectPath
-                          ingressClassName = $ingressClassName
-                          annotations = $redirectAnnotations
-                      }
-
-                      Write-Output "Adding www to $($item.name) host"
-                      $item.host = "www.$($item.host)"
-                  }
-
                   # Set ingress host to primary domain variable
                   $dnsPrimaryDomain = $item.host -replace "$env:domainName", '' -replace "\.$", ""
-              }
-              else {
-                if (($env:wwwIngress -eq "true") -and ($item.redirectToWWW -ne $false) -and ("$env:ingress" -match $item.host) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
-                    Write-Output "Adding www to $($item.name) host"
-                    $item.host = "www.$($item.host)"
-                }
               }
 
               # Add whitelist annotation
@@ -766,13 +727,21 @@ jobs:
               }
 
               # Add updated ingress to list
-              $updatedIngress += [PSCustomObject]@{
+              $ingress = [PSCustomObject]@{
                   name = $item.name
                   host = $item.host
                   path = $item.path
                   ingressClassName = $item.ingressClassName
                   annotations = $item.annotations
               }
+              if ($env:wwwIngress -eq $true -and $env:environment -eq "production") {
+                  # Add secondary host for www subdomain in production environment
+                  if ($subDomain -ne "") {
+                      $subDomain = "${subDomain}."
+                  }
+                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.$subDomain$domainName"
+              }
+              $updatedIngress += $ingress
 
               # Add hostnames to domains variable
               if ($item.host -replace "$env:domainName", '' -replace "\.$", "" -eq "" -or $item.host -replace "$env:domainName", '' -replace "\.$", "" -eq " " -or $item.host -replace "$env:domainName", '' -replace "\.$", "" -eq $null) {
