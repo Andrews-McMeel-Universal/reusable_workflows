@@ -803,7 +803,7 @@ jobs:
 
       - name: Bake Helm Templates
         id: bake
-        uses: azure/k8s-bake@0191a5ae5126cfe61885d9bd46511caa8e9a9550
+        uses: azure/k8s-bake@bf8bfd33b007edea820fe80983239bca24012239
         with:
           renderEngine: "helm"
           helmChart: ${{ inputs.chartsPath }}
