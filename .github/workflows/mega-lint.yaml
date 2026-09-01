@@ -117,7 +117,7 @@ jobs:
       # Run the MegaLinter Github Action
       - name: MegaLinter
         id: ml
-        uses: oxsecurity/megalinter/flavors/dotnet@ef3e84b8b836d76db562d0f3ed7da61e8fd538bc
+        uses: oxsecurity/megalinter/flavors/dotnet@15e5b45552097e318c93de385779ce3b1084052c
         env:
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' }}
           GITHUB_TOKEN: ${{ secrets.PAT_ACTION_CI }}
