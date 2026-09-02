@@ -273,12 +273,7 @@ jobs:
               if (-not $SchemaPath.StartsWith("/")) {
                   $SchemaPath = "/$SchemaPath"
               }
-              if ($env:customGitHubRunner -eq "boley") {
-                  $APISchemaUrl = "http://$($env:applicationName).${env:environment}.svc.cluster.local$SchemaPath"
-              }
-              else {
-                  $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
-              }
+              $APISchemaUrl = "https://$($env:serviceFqdn)$SchemaPath"
               Write-Host "Checking API at $APISchemaUrl"
               $Contents = Get-APISpecWithRetry -APISchemaUrl $APISchemaUrl
 
