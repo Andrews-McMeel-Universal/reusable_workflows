@@ -507,7 +507,6 @@ jobs:
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
-          ingressController: ${{ inputs.ingressController }}
           wwwIngress: ${{ needs.build.outputs.wwwIngress }}
         run: |
           # Create values override file
@@ -843,7 +842,6 @@ jobs:
         shell: bash
         env:
           APP_NAME: ${{ needs.build.outputs.appName }}
-          INGRESS_CONTROLLER: ${{ inputs.ingressController }}
         run: |
           # Update basic web authentication Kubernetes secret
           WEB_AUTHENTICATION_USERNAME="${{ secrets.webAuthenticationUsername }}"
