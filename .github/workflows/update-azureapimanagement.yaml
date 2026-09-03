@@ -248,7 +248,7 @@ jobs:
                   }
                   Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
                   if ($env:ApiProductId -ne "AZ-WebServices") {
-                      Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId $env:ApiProductId
+                      Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "$env:ApiProductId"
                   }
 
                   # Remove the original API spec
