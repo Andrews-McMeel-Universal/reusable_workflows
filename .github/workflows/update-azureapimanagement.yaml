@@ -246,7 +246,7 @@ jobs:
                       Set-AzApiManagementPolicy -Context $Context -ApiId "$versionedApiId" -Policy $PolicyXML.OuterXML
                   }
                   Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
-                  if ($env:ApiProductId -ne "AZ-WebServices") {
+                  if ("${{ inputs.productId }}" -ne "AZ-WebServices") {
                       Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "${{ inputs.productId }}"
                   }
 
