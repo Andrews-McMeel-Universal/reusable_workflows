@@ -830,7 +830,7 @@ jobs:
 
       - name: Deploy to Kubernetes cluster
         timeout-minutes: ${{ inputs.deploymentTimeout }}
-        uses: azure/k8s-deploy@c7ebd0d5f39477a23f1b5dea0f52e6db04adf28e
+        uses: azure/k8s-deploy@51ca02a8b7225fbd0924aac359c5b336a5f1e5b4
         with:
           namespace: ${{ steps.namespace.outputs.namespace }}
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
