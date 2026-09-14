@@ -103,7 +103,6 @@ jobs:
         shell: pwsh
         env:
           apiVersionHeaders: ${{ inputs.apiVersionHeaders }}
-          ApiProductId: ${{ inputs.productId }}
           apiSuffix: ${{ inputs.apiSuffix }}
           repositoryName: ${{ github.event.repository.name }}
           environment: ${{ inputs.environment }}
@@ -248,7 +247,7 @@ jobs:
                   }
                   Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "AZ-WebServices"
                   if ($env:ApiProductId -ne "AZ-WebServices") {
-                      Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "$env:ApiProductId"
+                      Add-AzApiManagementApiToProduct -Context $Context -ApiId "$versionedApiId" -ProductId "${{ inputs.productId }}"
                   }
 
                   # Remove the original API spec
