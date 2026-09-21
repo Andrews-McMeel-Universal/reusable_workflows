@@ -861,13 +861,18 @@ jobs:
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
           INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
           DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation }}
+          EXTERNAL_INGRESS: ${{ inputs.externalIngress }}
         run: |
           # Create or Update Public DNS Record
 
           # Set K8s cluster ingress
           K8S_CLUSTER_NAME="${{ secrets.k8sClusterName }}"
           if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
-            INGRESS="${ENVIRONMENT}.${K8S_CLUSTER_NAME}"
+            if [[ "${EXTERNAL_INGRESS}" == "true" ]] && [[ "${ENVIRONMENT}" == "production" ]]; then
+              INGRESS="${ENVIRONMENT}-external.${K8S_CLUSTER_NAME}"
+            else
+              INGRESS="${ENVIRONMENT}.${K8S_CLUSTER_NAME}"
+            fi
           else
             INGRESS="${K8S_CLUSTER_NAME}"
           fi
