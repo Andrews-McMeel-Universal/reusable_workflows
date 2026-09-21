@@ -115,6 +115,11 @@ on:
         type: string
         description: "Enable updating Bunny CDN pull zone origin after deployment"
         default: ${{ vars.UPDATE_BUNNY_CDN_ORIGIN || 'false' }}
+      externalIngress:
+        required: false
+        type: string
+        description: "Enable external ingress for the environment"
+        default: ${{ vars.K8S_EXTERNAL_INGRESS || 'false' }}
     secrets:
       k8sClusterName:
         required: true
@@ -466,6 +471,7 @@ jobs:
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
+          externalIngress: ${{ inputs.externalIngress }}
         run: |
           # Create values override file
 
@@ -618,6 +624,10 @@ jobs:
               # Add ingressClassName and cluster issuer
               $clusterIssuer = "letsencrypt-${env:environment}"
               $ingressClassName = "haproxy-${env:environment}"
+              if ($env:externalIngress -eq "true" -and $env:environment -eq "production") {
+                  $clusterIssuer = "letsencrypt-external-${env:environment}"
+                  $ingressClassName = "haproxy-${env:environment}-external"
+              }
               if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production" -and $environmentIngress -eq 'true') {
                   $ingressClassName = "${ingressClassName}-${env:blueGreenInactiveDeployment}"
                   $clusterIssuer = "${clusterIssuer}-${env:blueGreenInactiveDeployment}"
@@ -851,13 +861,18 @@ jobs:
           INGRESS_DOMAIN_NAME: ${{ needs.build.outputs.domainName }}
           INGRESS_DOMAINS: ${{ steps.values-override.outputs.domains }}
           DATACENTER_LOCATION: ${{ needs.build.outputs.datacenterLocation }}
+          EXTERNAL_INGRESS: ${{ inputs.externalIngress }}
         run: |
           # Create or Update Public DNS Record
 
           # Set K8s cluster ingress
           K8S_CLUSTER_NAME="${{ secrets.k8sClusterName }}"
           if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
-            INGRESS="${ENVIRONMENT}.${K8S_CLUSTER_NAME}"
+            if [[ "${EXTERNAL_INGRESS}" == "true" ]] && [[ "${ENVIRONMENT}" == "production" ]]; then
+              INGRESS="${ENVIRONMENT}-external.${K8S_CLUSTER_NAME}"
+            else
+              INGRESS="${ENVIRONMENT}.${K8S_CLUSTER_NAME}"
+            fi
           else
             INGRESS="${K8S_CLUSTER_NAME}"
           fi
