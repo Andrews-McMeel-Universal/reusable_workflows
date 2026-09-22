@@ -124,7 +124,7 @@ on:
       k8sClusterName:
         required: true
       k8sKubeConfig:
-        required: true
+        required: false
       azureCredentials:
         required: true
       registryUserName:
@@ -755,21 +755,24 @@ jobs:
           environment: ${{ inputs.environment }}
           environmentKeyVault: ${{ inputs.environmentKeyVault }}
 
-      - name: Get K8s cluster resource group
-        id: k8s-resource-group
+      - name: Retrieve K8s cluster configuration
+        id: k8s-config
         shell: bash
+        env:
+          K8S_CLUSTER_NAME: ${{ secrets.k8sClusterName }}
         run: |
-          # Get K8s cluster resource group
-
-          K8S_RESOURCE_GROUP="boleyhvcluster"
-          echo "K8S_RESOURCE_GROUP=${K8S_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
+          # Retrieve K8s cluster configuration
+          KUBE_CONFIG=$(az keyvault secret show --vault-name "${K8S_CLUSTER_NAME}" -n "kubernetes-kube-config" --query "value" -o tsv)
+          echo 'KUBE_CONFIG<<EOF' >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$KUBE_CONFIG" >> "$GITHUB_OUTPUT"
+          echo 'EOF' >> "$GITHUB_OUTPUT"
 
       - name: Set target K8s cluster
         uses: azure/k8s-set-context@8698eba2499e9012f0d5085f8798077cce4bc526
         with:
           context: ${{ secrets.k8sClusterName }}
           method: kubeconfig
-          kubeconfig: ${{ secrets.k8sKubeConfig }}
+          kubeconfig: ${{ steps.k8s-config.outputs.KUBE_CONFIG }}
 
       - name: Switch Kubernetes Namespace
         id: namespace
@@ -992,7 +995,7 @@ jobs:
           domainName: ${{ needs.build.outputs.domainName }}
           ingress: ${{ needs.build.outputs.ingress }}
           k8sIngress: ${{ steps.dns.outputs.k8sIngress }}
-          k8sResourceGroup: ${{ steps.k8s-resource-group.outputs.K8S_RESOURCE_GROUP }}
+          k8sResourceGroup: boleyhvcluster
           date: ${{ steps.date.outputs.date }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
