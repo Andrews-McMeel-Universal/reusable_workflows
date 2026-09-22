@@ -763,7 +763,9 @@ jobs:
         run: |
           # Retrieve K8s cluster configuration
           KUBE_CONFIG=$(az keyvault secret show --vault-name "${K8S_CLUSTER_NAME}" -n "kubernetes-kube-config" --query "value" -o tsv)
-          echo "KUBE_CONFIG=${KUBE_CONFIG}" >> $GITHUB_OUTPUT
+          echo 'KUBE_CONFIG<<EOF' >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$KUBE_CONFIG" >> "$GITHUB_OUTPUT"
+          echo 'EOF' >> "$GITHUB_OUTPUT"
 
       - name: Set target K8s cluster
         uses: azure/k8s-set-context@8698eba2499e9012f0d5085f8798077cce4bc526
