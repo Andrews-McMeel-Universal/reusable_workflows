@@ -124,7 +124,7 @@ on:
       k8sClusterName:
         required: true
       k8sKubeConfig:
-        required: true
+        required: false
       azureCredentials:
         required: true
       registryUserName:
