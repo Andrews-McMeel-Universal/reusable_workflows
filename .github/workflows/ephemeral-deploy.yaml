@@ -445,7 +445,7 @@ jobs:
 
       - name: Login to Jira
         if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
-        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c
+        uses: atlassian/gajira-login@45fd029b9f1d6d8926c6f04175aa80c0e42c9026
         env:
           JIRA_BASE_URL: https://amuniversal.atlassian.net
           JIRA_USER_EMAIL: amu_deploy@amuniversal.com
