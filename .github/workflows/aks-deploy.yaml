@@ -615,7 +615,7 @@ jobs:
                   if ($env:adminIngressWhitelist -ne "") {
                       $item.annotations."ingress.kubernetes.io/allow-list" = $env:adminIngressWhitelist
                   }
-                  else {
+                  elseif ($item.privateIngress -ne $false -and $webAuthentication -ne "true") {
                       $item.annotations."ingress.kubernetes.io/allow-list" = "207.67.20.252"
                   }
 
