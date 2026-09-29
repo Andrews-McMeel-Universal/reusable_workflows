@@ -625,7 +625,7 @@ jobs:
               $clusterIssuer = "letsencrypt-${env:environment}"
               $ingressClassName = "haproxy-${env:environment}"
               if ($env:externalIngress -eq "true" -and $env:environment -eq "production") {
-                  $clusterIssuer = "letsencrypt-external-${env:environment}"
+                  $clusterIssuer = "letsencrypt-${env:environment}-external"
                   $ingressClassName = "haproxy-${env:environment}-external"
               }
               if ($env:blueGreenDeployment -eq "true" -and $env:environment -eq "production" -and $environmentIngress -eq 'true') {
