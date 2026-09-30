@@ -69,7 +69,7 @@ on:
       githubRunner:
         required: false
         type: string
-        description: "The type of runner to use"
+        description: "The runner label(s) to use. Can be a single label or a JSON array (e.g. boley or [\"self-hosted\",\"linux\",\"boley\"])"
         default: ${{ vars.CUSTOM_GITHUB_RUNNER || 'boley' }}
       deploymentWebhook:
         required: false
@@ -151,7 +151,7 @@ on:
 jobs:
   build:
     name: Build Docker Image
-    runs-on: ${{ inputs.githubRunner }}
+    runs-on: ${{ fromJSON(startsWith(inputs.githubRunner, '[') && inputs.githubRunner || format('["{0}"]', inputs.githubRunner)) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -435,7 +435,7 @@ jobs:
   deploy:
     name: K8s Deploy
     needs: [build]
-    runs-on: ${{ inputs.githubRunner }}
+    runs-on: ${{ fromJSON(startsWith(inputs.githubRunner, '[') && inputs.githubRunner || format('["{0}"]', inputs.githubRunner)) }}
     environment:
       name: ${{ inputs.environment }}
       url: https://${{ needs.build.outputs.ingress }}
