@@ -181,7 +181,7 @@ jobs:
             sleep 5
 
       - name: Deploy Azure Functions
-        uses: azure/functions-action@bc63708cc6539760eea18d8a7de4ce8ef5fdf593
+        uses: azure/functions-action@c5060b3b8bb1ebbcb531abd00c822ecbaa8ea656
         with:
           app-name: ${{ inputs.AZURE_APP_NAME }}
           slot-name: ${{ inputs.environment }}
