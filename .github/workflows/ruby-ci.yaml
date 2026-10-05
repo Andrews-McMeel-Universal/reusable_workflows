@@ -47,6 +47,11 @@ on:
         required: false
         type: string
         default: ${{ vars.APPLICATION_CI_YARN_INSTALL || 'false' }}
+      RSPEC_TESTS:
+        required: false
+        type: string
+        description: "Run RSpec tests"
+        default: ${{ vars.APPLICATION_CI_RSPEC_TESTS || 'false' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -99,6 +104,8 @@ jobs:
         run: bundle exec rake assets:precompile
 
       - name: Boot Rails server
+        env:
+          RSPEC_TESTS: ${{ inputs.RSPEC_TESTS }}
         run: |
           bundle exec rails s -b 0.0.0.0 -p 3000 &
           PID=$!
@@ -108,6 +115,9 @@ jobs:
             IFS=',' read -ra URLS <<< "${HEALTHCHECK_URL}"
           else
             URLS=("${HEALTHCHECK_URL}")
+          fi
+          if [[ "${RSPEC_TESTS}" == "true" ]]; then
+            bundle exec rspec
           fi
           for URL in "${URLS[@]}"; do
             echo "Checking healthcheck URL: ${URL}"
