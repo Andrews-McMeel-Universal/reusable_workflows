@@ -342,17 +342,10 @@ jobs:
               }
           }
 
-          $redirectToWWW = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).redirectToWWW
-          if ($redirectToWWW -eq "true" -and $env:appEnvironment -eq "production") {
-              $wwwIngress = "true"
-          }
-
           Write-Output "domainName=$domainName"
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
           Write-Output "ingress=$ingress"
           Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
-          Write-Output "wwwIngress=$wwwIngress"
-          Write-Output "wwwIngress=$wwwIngress" >> $env:GITHUB_ENV
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -428,7 +421,6 @@ jobs:
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
       repositoryOwner: ${{ env.repositoryOwner }}
-      wwwIngress: ${{ env.wwwIngress }}
       blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
       datacenterLocation: ${{ env.datacenterLocation }}
       keyVaultName: ${{ steps.get-envs.outputs.keyVaultName }}
@@ -655,7 +647,7 @@ jobs:
                   ingressClassName = $item.ingressClassName
                   annotations = $item.annotations
               }
-              if ($env:wwwIngress -eq "true" -and $env:environment -eq "production") {
+              if ($item.redirectToWWW -eq "true" -and $env:environment -eq "production") {
                   # Add secondary host for www subdomain in production environment
                   if ($subDomain -ne "") {
                       $subDomain = "${subDomain}."
