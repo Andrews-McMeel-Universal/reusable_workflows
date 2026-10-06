@@ -500,7 +500,6 @@ jobs:
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
-          wwwIngress: ${{ needs.build.outputs.wwwIngress }}
         run: |
           # Create values override file
 
@@ -679,14 +678,16 @@ jobs:
                   ingressClassName = $item.ingressClassName
                   annotations = $item.annotations
               }
+              # Add secondary host for www subdomain in production environment
+              if ($subDomain -ne "") {
+                  $subDomain = "${subDomain}."
+              }
               $redirectToWWW = $item.redirectToWWW
-              Write-Output "redirectToWWW for $($item.name): $redirectToWWW"
               if ($redirectToWWW -eq "true" -and $env:environment -eq "production") {
-                  # Add secondary host for www subdomain in production environment
-                  if ($subDomain -ne "") {
-                      $subDomain = "${subDomain}."
-                  }
                   $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.${subDomain}${domainName}"
+              }
+              elseif ($redirectToWWW -ne "true" -and $env:environment -eq "production" -and $environmentIngress -eq "true") {
+                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "${subDomain}${domainName}"
               }
               $updatedIngress += $ingress
 
