@@ -340,16 +340,10 @@ jobs:
               }
           }
 
-          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production")) {
-              $wwwIngress = "true"
-          }
-
           Write-Output "domainName=$domainName"
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
           Write-Output "ingress=$ingress"
           Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
-          Write-Output "wwwIngress=$wwwIngress"
-          Write-Output "wwwIngress=$wwwIngress" >> $env:GITHUB_ENV
 
       - name: Check if SENTRY_AUTH_TOKEN is set
         id: check-sentry-token
@@ -513,7 +507,6 @@ jobs:
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
-          wwwIngress: ${{ needs.build.outputs.wwwIngress }}
         run: |
           # Create values override file
 
@@ -692,12 +685,16 @@ jobs:
                   ingressClassName = $item.ingressClassName
                   annotations = $item.annotations
               }
-              if ($env:wwwIngress -eq $true -and $env:environment -eq "production") {
-                  # Add secondary host for www subdomain in production environment
-                  if ($subDomain -ne "") {
-                      $subDomain = "${subDomain}."
-                  }
-                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.$subDomain$domainName"
+              # Add secondary host for www subdomain in production environment
+              if ($subDomain -ne "") {
+                  $subDomain = "${subDomain}."
+              }
+              $redirectToWWW = $item.redirectToWWW
+              if ($redirectToWWW -eq "true" -and $env:environment -eq "production") {
+                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.${subDomain}${domainName}"
+              }
+              elseif ($redirectToWWW -ne "true" -and $env:environment -eq "production" -and $environmentIngress -eq "true") {
+                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "${subDomain}${domainName}"
               }
               $updatedIngress += $ingress
 
