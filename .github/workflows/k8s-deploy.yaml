@@ -431,6 +431,7 @@ jobs:
       wwwIngress: ${{ env.wwwIngress }}
       blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
       datacenterLocation: ${{ env.datacenterLocation }}
+      keyVaultName: ${{ steps.get-envs.outputs.keyVaultName }}
 
   deploy:
     name: K8s Deploy
@@ -540,7 +541,7 @@ jobs:
                   $ingressWhitelist = "0.0.0.0/0"
 
                   Write-Output "Adding basic auth to $($item.name)"
-                  $item.annotations."ingress.kubernetes.io/auth-type"="basic"
+                  $item.annotations."ingress.kubernetes.io/auth-type"="basic-auth"
                   $item.annotations."ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
                   $item.annotations."ingress.kubernetes.io/auth-realm"="Authentication Required"
               }
@@ -579,10 +580,12 @@ jobs:
                   if ($env:adminIngressWhitelist -ne "") {
                       $item.annotations."ingress.kubernetes.io/allow-list" = $env:adminIngressWhitelist
                   }
-                  else {
+                  elseif ($item.privateIngress -ne $false -and $webAuthentication -ne "true" -and $env:externalIngress -eq "true") {
                       $item.annotations."ingress.kubernetes.io/allow-list" = "207.67.20.252"
                   }
-                  Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."ingress.kubernetes.io/allow-list")"
+
+                  $ingressWhitelist = $item.annotations."ingress.kubernetes.io/allow-list"
+                  Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
               }
 
               # Set domain name and subdomain
@@ -635,7 +638,7 @@ jobs:
               $item.ingressClassName = "$ingressClassName"
               $item.annotations."cert-manager.io/cluster-issuer" = "$clusterIssuer"
 
-              # Set DNS primary domain
+              # Get primary domain
               if ($item.name -eq "ingress") {
                   # Add WWW to ingress
                   if (($item.redirectToWWW -eq $true) -and ($env:environment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {

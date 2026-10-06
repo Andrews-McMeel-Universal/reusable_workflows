@@ -10,7 +10,7 @@ on:
       environmentKeyVault:
         required: false
         type: string
-        description: "AKS Key vault."
+        description: "Azure Key vault."
       chartsPath:
         required: false
         type: string
@@ -58,9 +58,9 @@ on:
         default: ${{ vars.KUBERNETES_SERVICE_INGRESS_WHITELIST }}
       environmentNamespace:
         required: false
-        type: boolean
+        type: string
         description: "Use environment as Kubernetes namespace"
-        default: true
+        default: "true"
       checkoutRef:
         required: false
         type: string
@@ -211,19 +211,19 @@ jobs:
         with:
           creds: "${{ secrets.azureCredentials }}"
 
-      - name: Get AKS cluster info
-        id: aks-info
+      - name: Get K8s cluster info
+        id: k8s-info
         shell: bash
         run: |
-          # Get AKS cluster info
+          # Get K8s cluster info
 
           HA_INGRESS="${{ inputs.haIngress }}"
           if [ "$HA_INGRESS" = "true" ]; then
-            AKS_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
+            K8S_LOCATION=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].location" -o tsv | tr '[:upper:]' '[:lower:]' | sort -u)
           else
-            AKS_LOCATION="centralus"
+            K8S_LOCATION="centralus"
           fi
-          echo "datacenterLocation=${AKS_LOCATION}" >> $GITHUB_ENV
+          echo "datacenterLocation=${K8S_LOCATION}" >> $GITHUB_ENV
 
       - name: Extract Helm values
         id: setenvs
@@ -234,6 +234,7 @@ jobs:
           chartsPath: ${{ inputs.chartsPath }}
           datacenterLocation: ${{ env.datacenterLocation }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
+          repositoryOwner: ${{ github.repository_owner }}
           blueGreenDeployment: ${{ inputs.blueGreenDeployment }}
           blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
         run: |
@@ -258,6 +259,11 @@ jobs:
           $appConfig = Get-Content $valuesYamlPath | ConvertFrom-Yaml
           $chartYamlPath = Join-Path $basePath $env:chartsPath "Chart.yaml"
           $chartConfig = Get-Content $chartYamlPath | ConvertFrom-Yaml
+
+          # Convert repository owner to lowercase for image naming
+          $repositoryOwner = $env:repositoryOwner.ToLower()
+          Write-Output "repositoryOwner=$repositoryOwner"
+          Write-Output "repositoryOwner=$repositoryOwner" >> $env:GITHUB_ENV
 
           # Set app name
           $appName = $chartConfig.name
@@ -392,7 +398,7 @@ jobs:
           fi
           echo 'EOF' >> $GITHUB_ENV
 
-      - name: Login to Azure Container Registry
+      - name: Login to Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ${{ secrets.registryHostName }}
@@ -463,14 +469,14 @@ jobs:
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
-      wwwIngress: ${{ env.wwwIngress }}
+      repositoryOwner: ${{ env.repositoryOwner }}
       blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
       datacenterLocation: ${{ env.datacenterLocation }}
       keyVaultName: ${{ steps.get-envs.outputs.keyVaultName }}
       sentryAuthTokenExists: ${{ steps.check-sentry-token.outputs.sentryAuthTokenExists }}
 
   deploy:
-    name: AKS Deploy
+    name: K8s Deploy
     needs: [build]
     runs-on: ${{ inputs.githubRunner }}
     environment:
@@ -623,7 +629,7 @@ jobs:
                   Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
               }
 
-              # Add datacenter location to ingress if HA hostname is enabled
+              # Set domain name and subdomain
               $domainName = $env:domainName
               $subDomain = $item.host -replace "$domainName", '' -replace "\.$", ""
               if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
@@ -788,7 +794,7 @@ jobs:
           echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> $GITHUB_ENV
           echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> .env
 
-      - name: Get AKS cluster resource group
+      - name: Retrieve K8s cluster configuration
         id: aks-resource-group
         shell: bash
         run: |
@@ -797,7 +803,7 @@ jobs:
           AKS_RESOURCE_GROUP=$(az aks list --query "[?name == '${{ secrets.azureClusterName }}'].resourceGroup" -o tsv)
           echo "AKS_RESOURCE_GROUP=${AKS_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
 
-      - name: Set target AKS cluster
+      - name: Set target K8s cluster
         uses: azure/aks-set-context@60623acbdcbbdcf799ad50a1adf8703874339f8b
         with:
           cluster-name: ${{ secrets.azureClusterName }}
@@ -886,7 +892,7 @@ jobs:
           fi
           echo "previousImage=${PREVIOUS_IMAGE}" >> $GITHUB_OUTPUT
 
-      - name: Deploy to Azure Kubernetes Service
+      - name: Deploy to Kubernetes cluster
         timeout-minutes: ${{ inputs.deploymentTimeout }}
         uses: azure/k8s-deploy@c7ebd0d5f39477a23f1b5dea0f52e6db04adf28e
         with:
@@ -895,7 +901,7 @@ jobs:
           images: |
             "${{ secrets.registryHostName }}/${{ github.event.repository.name }}:${{ github.sha }}-${{ inputs.environment }}"
           imagepullsecrets: |
-            "${{ needs.build.outputs.appName }}-pull-secret"
+            ${{ needs.build.outputs.appName }}-pull-secret
           pull-images: false
 
       - name: Unlock and untag previous ACR image
@@ -961,23 +967,23 @@ jobs:
         run: |
           # Create or Update Public DNS Record
 
-          # Set AKS cluster ingress
-          AKS_CLUSTER_NAME="${{ secrets.azureClusterName }}"
+          # Set K8s cluster ingress
+          K8S_CLUSTER_NAME="${{ secrets.azureClusterName }}"
           if [ "${ENVIRONMENT_NAMESPACE}" == "true" ]; then
-            INGRESS="${AKS_CLUSTER_NAME}-${ENVIRONMENT}"
+            INGRESS="${K8S_CLUSTER_NAME}-${ENVIRONMENT}"
           else
-            INGRESS="${AKS_CLUSTER_NAME}"
+            INGRESS="${K8S_CLUSTER_NAME}"
           fi
 
-          # Set AKS ingress FQDN
+          # Set K8S ingress FQDN
           ENVIRONMENT_INGRESS=$(echo "${{ inputs.environmentIngress }}" | tr -d "'\"")
           if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ] && [ "$ENVIRONMENT_INGRESS" == "true" ]; then
-            AKS_INGRESS="${INGRESS}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
+            K8S_INGRESS="${INGRESS}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
           else
-            AKS_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
+            K8S_INGRESS="${INGRESS}-ingress.${DATACENTER_LOCATION}.cloudapp.azure.com."
           fi
-          echo "aksIngress=${AKS_INGRESS}"
-          echo "aksIngress=${AKS_INGRESS}" >> "$GITHUB_OUTPUT"
+          echo "k8sIngress=${K8S_INGRESS}"
+          echo "k8sIngress=${K8S_INGRESS}" >> "$GITHUB_OUTPUT"
 
           # Populate INGRESSES array safely
           mapfile -t INGRESSES < <(echo "${INGRESS_DOMAINS}" | sed "s/ $//g" | tr ' ' '\n' | sort -u)
@@ -994,12 +1000,12 @@ jobs:
               echo "Empty ingress found, skipping DNS update for this entry."
               continue
             fi
-            echo "Updating DNS record for ${INGRESS} to ${AKS_INGRESS}"
+            echo "Updating DNS record for ${INGRESS} to ${K8S_INGRESS}"
             az network dns record-set cname set-record \
               --resource-group "AMU_DNS_RG" \
               --zone-name "${INGRESS_DOMAIN_NAME}" \
               --record-set-name "${INGRESS}" \
-              --cname "${AKS_INGRESS}" \
+              --cname "${K8S_INGRESS}" \
               --ttl 3600
           done
 
@@ -1083,13 +1089,13 @@ jobs:
           dnsPrimaryDomain: ${{ steps.values-override.outputs.dnsPrimaryDomain }}
           domainName: ${{ needs.build.outputs.domainName }}
           ingress: ${{ needs.build.outputs.ingress }}
-          aksIngress: ${{ steps.dns.outputs.aksIngress }}
-          aksResourceGroup: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
+          k8sIngress: ${{ steps.dns.outputs.k8sIngress }}
+          k8sResourceGroup: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
           date: ${{ steps.date.outputs.date }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
         run: |
           # Record deployment information in Azure Storage Table
-          $azureClusterName = "${{ secrets.azureClusterName }}"
+          $k8sClusterName = "${{ secrets.azureClusterName }}"
           $storageAccountKey = ${{ secrets.storageAccountKey }}
           $storageContext = New-AzStorageContext -StorageAccountName $env:storageAccountName -StorageAccountKey $storageAccountKey
 
@@ -1113,9 +1119,9 @@ jobs:
               "HostName"="$env:dnsPrimaryDomain";
               "DomainName"="$env:domainName";
               "IngressFqdn"="$env:ingress";
-              "AksIngress"="$env:aksIngress";
-              "Cluster"="$azureClusterName";
-              "ClusterResourceGroup"="$env:aksResourceGroup";
+              "AksIngress"="$env:k8sIngress";
+              "Cluster"="$k8sClusterName";
+              "ClusterResourceGroup"="$env:k8sResourceGroup";
               "LastDeploy"="$env:date"
               "ActiveBlueGreenDeployment"="$env:blueGreenInactiveDeployment"
               } -UpdateExisting | Out-Null
