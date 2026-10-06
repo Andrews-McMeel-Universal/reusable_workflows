@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       environment:
-        required: true
+        required: false
         type: string
         description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
         default: ${{ vars.REMOTE_DISPATCH_ENVIRONMENT }}
