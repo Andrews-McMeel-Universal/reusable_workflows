@@ -647,7 +647,7 @@ jobs:
                   ingressClassName = $item.ingressClassName
                   annotations = $item.annotations
               }
-              if ($item.redirectToWWW -eq "true" -and $env:environment -eq "production") {
+              if ($item.redirectToWWW -eq $true -and $env:environment -eq "production") {
                   # Add secondary host for www subdomain in production environment
                   if ($subDomain -ne "") {
                       $subDomain = "${subDomain}."
