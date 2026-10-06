@@ -20,7 +20,7 @@ on:
         required: false
         type: string
         description: "Relative path to Dockerfile."
-        default: "."
+        default: ${{ vars.DOCKER_FILE_PATH || '.' }}
       maximumReplicas:
         required: false
         type: string
@@ -99,7 +99,7 @@ on:
         required: false
         type: string
         description: "Use organization's remote Helm templates"
-        default: ${{ vars.REMOTE_HELM_TEMPLATES }}
+        default: ${{ vars.REMOTE_HELM_TEMPLATES || 'true' }}
       blueGreenDeployment:
         required: false
         type: string
@@ -127,9 +127,9 @@ on:
         required: false
       azureCredentials:
         required: true
-      registryUserName:
-        required: true
       registryHostName:
+        required: true
+      registryUserName:
         required: true
       registryPassword:
         required: true
@@ -218,11 +218,11 @@ jobs:
         with:
           creds: "${{ secrets.azureCredentials }}"
 
-      - name: Get K8S cluster info
+      - name: Get K8s cluster info
         id: k8s-info
         shell: bash
         run: |
-          # Get K8S cluster info
+          # Get K8s cluster info
 
           K8S_LOCATION="boley"
           echo "datacenterLocation=${K8S_LOCATION}" >> $GITHUB_ENV
@@ -342,17 +342,19 @@ jobs:
               }
           }
 
-          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:haIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
-              $wwwIngress = "true"
-              $ingress = "www.$ingress"
-          }
-
           Write-Output "domainName=$domainName"
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
           Write-Output "ingress=$ingress"
           Write-Output "ingress=$ingress" >> $env:GITHUB_ENV
-          Write-Output "wwwIngress=$wwwIngress"
-          Write-Output "wwwIngress=$wwwIngress" >> $env:GITHUB_ENV
+
+      - name: Check if SENTRY_AUTH_TOKEN is set
+        id: check-sentry-token
+        run: |
+          if [[ -n "${{ secrets.sentryAuthToken }}" ]]; then
+            echo "sentryAuthTokenExists=true" >> $GITHUB_OUTPUT
+          else
+            echo "sentryAuthTokenExists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Generate .env file from Azure Key Vaults
         id: get-envs
@@ -364,18 +366,35 @@ jobs:
           contentTypes: BuildArg Env
           buildArgPredicate: ";"
 
+      - name: Add SENTRY_RELEASE to .env file if SENTRY_AUTH_TOKEN is set
+        if: ${{ steps.check-sentry-token.outputs.sentryAuthTokenExists == 'true' }}
+        shell: bash
+        env:
+          SENTRY_RELEASE: ${{ github.event.release.tag_name || github.sha }}
+        run: |
+          # Add SENTRY_RELEASE to .env file if SENTRY_AUTH_TOKEN is set
+
+          echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> $GITHUB_ENV
+          echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> .env
+
       - name: Insert new line after build arguments
         id: insert-new-line
         shell: bash
+        env:
+          SENTRY_RELEASE: ${{ github.event.release.tag_name || github.sha }}
+          SENTRY_AUTH_TOKEN_EXISTS: ${{ steps.check-sentry-token.outputs.sentryAuthTokenExists }}
         run: |
           # Insert new line after build arguments
 
           buildArguments=$(echo "${{ steps.get-envs.outputs.buildArguments }}" | sed 's/^ ; //g' | sed 's/; /\n/g')
           echo 'buildArguments<<EOF' >> $GITHUB_ENV
           echo "$buildArguments" >> $GITHUB_ENV
+          if [[ "${SENTRY_AUTH_TOKEN_EXISTS}" == 'true' ]]; then
+            echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> $GITHUB_ENV
+          fi
           echo 'EOF' >> $GITHUB_ENV
 
-      - name: Login to GitHub Container Registry
+      - name: Login to Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ${{ secrets.registryHostName }}
@@ -428,9 +447,10 @@ jobs:
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
       repositoryOwner: ${{ env.repositoryOwner }}
-      wwwIngress: ${{ env.wwwIngress }}
       blueGreenInactiveDeployment: ${{ env.blueGreenInactiveDeployment }}
       datacenterLocation: ${{ env.datacenterLocation }}
+      keyVaultName: ${{ steps.get-envs.outputs.keyVaultName }}
+      sentryAuthTokenExists: ${{ steps.check-sentry-token.outputs.sentryAuthTokenExists }}
 
   deploy:
     name: K8s Deploy
@@ -465,7 +485,6 @@ jobs:
           serviceIngressWhitelist: ${{ inputs.serviceIngressWhitelist }}
           datacenterLocation: ${{ needs.build.outputs.datacenterLocation }}
           domainName: ${{ needs.build.outputs.domainName }}
-          wwwIngress: ${{ needs.build.outputs.wwwIngress }}
           ingress: ${{ needs.build.outputs.ingress }}
           ingressWhitelist: ${{ inputs.ingressWhitelist }}
           remoteHelmTemplates: ${{ inputs.remoteHelmTemplates }}
@@ -540,7 +559,7 @@ jobs:
                   $ingressWhitelist = "0.0.0.0/0"
 
                   Write-Output "Adding basic auth to $($item.name)"
-                  $item.annotations."ingress.kubernetes.io/auth-type"="basic"
+                  $item.annotations."ingress.kubernetes.io/auth-type"="basic-auth"
                   $item.annotations."ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
                   $item.annotations."ingress.kubernetes.io/auth-realm"="Authentication Required"
               }
@@ -579,10 +598,12 @@ jobs:
                   if ($env:adminIngressWhitelist -ne "") {
                       $item.annotations."ingress.kubernetes.io/allow-list" = $env:adminIngressWhitelist
                   }
-                  else {
+                  elseif ($item.privateIngress -ne $false -and $webAuthentication -ne "true" -and $env:externalIngress -eq "true") {
                       $item.annotations."ingress.kubernetes.io/allow-list" = "207.67.20.252"
                   }
-                  Write-Output "Setting ingress whitelist for $($item.name) to: $($item.annotations."ingress.kubernetes.io/allow-list")"
+
+                  $ingressWhitelist = $item.annotations."ingress.kubernetes.io/allow-list"
+                  Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
               }
 
               # Set domain name and subdomain
@@ -635,47 +656,35 @@ jobs:
               $item.ingressClassName = "$ingressClassName"
               $item.annotations."cert-manager.io/cluster-issuer" = "$clusterIssuer"
 
-              # Set DNS primary domain
+              # Get primary domain
               if ($item.name -eq "ingress") {
-                  # Add WWW to ingress
-                  if (($item.redirectToWWW -eq $true) -and ($env:environment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
-                      # Add www redirect ingress
-                      $updatedIngress += [PSCustomObject]@{
-                          name = "wwwredirect"
-                          host = $item.host
-                          path = "/(.*)"
-                          ingressClassName = $ingressClassName
-                          annotations = @{
-                              "ingress.kubernetes.io/rewrite-target" = "https://www.$($item.host)/$1"
-                              "cert-manager.io/cluster-issuer" = $clusterIssuer
-                          }
-                      }
-
-                      Write-Output "Adding www to $($item.name) host"
-                      $item.host = "www.$($item.host)"
-                  }
-
                   # Set ingress host to primary domain variable
                   $dnsPrimaryDomain = $item.host -replace "$env:domainName", '' -replace "\.$", ""
-              }
-              else {
-                if (($env:wwwIngress -eq "true") -and ($item.redirectToWWW -ne $false) -and ("$env:ingress" -match $item.host) -and ($env:appEnvironment -eq "production") -and ($environmentIngress -ne "true") -and ($env:blueGreenDeployment -ne "true")) {
-                    Write-Output "Adding www to $($item.name) host"
-                    $item.host = "www.$($item.host)"
-                }
               }
 
               # Add whitelist annotation
               $item.annotations."ingress.kubernetes.io/rate-limit-whitelist" = "$env:adminIngressWhitelist"
 
               # Add updated ingress to list
-              $updatedIngress += [PSCustomObject]@{
+              $ingress = [PSCustomObject]@{
                   name = $item.name
                   host = $item.host
                   path = $item.path
                   ingressClassName = $item.ingressClassName
                   annotations = $item.annotations
               }
+              # Add secondary host for www subdomain in production environment
+              if ($subDomain -ne "") {
+                  $subDomain = "${subDomain}."
+              }
+              $redirectToWWW = $item.redirectToWWW
+              if ($redirectToWWW -eq "true" -and $env:environment -eq "production") {
+                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.${subDomain}${domainName}"
+              }
+              elseif ($redirectToWWW -ne "true" -and $env:environment -eq "production" -and $environmentIngress -eq "true") {
+                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "${subDomain}${domainName}"
+              }
+              $updatedIngress += $ingress
 
               # Add hostnames to domains variable
               if ($item.host -replace "$env:domainName", '' -replace "\.$", "" -eq "" -or $item.host -replace "$env:domainName", '' -replace "\.$", "" -eq " " -or $item.host -replace "$env:domainName", '' -replace "\.$", "" -eq $null) {
@@ -746,14 +755,24 @@ jobs:
             image.tag:${{ github.sha }}-${{ inputs.environment }}
             autoscaling.maxReplicas:${{ needs.build.outputs.maxReplicas }}
             autoscaling.minReplicas:${{ needs.build.outputs.minReplicas }}
-            service.type:ClusterIP
 
       - name: Generate .env file from Azure Key Vaults
         uses: Andrews-McMeel-Universal/get-envs@v1
         with:
           azurecredentials: ${{ secrets.azureCredentials }}
           environment: ${{ inputs.environment }}
-          environmentKeyVault: ${{ inputs.environmentKeyVault }}
+          environmentKeyVault: ${{ needs.build.outputs.keyVaultName || inputs.environmentKeyVault }}
+
+      - name: Add SENTRY_RELEASE to .env file if SENTRY_AUTH_TOKEN is set
+        if: ${{ needs.build.outputs.sentryAuthTokenExists == 'true' }}
+        shell: bash
+        env:
+          SENTRY_RELEASE: ${{ github.event.release.tag_name || github.sha }}
+        run: |
+          # Add SENTRY_RELEASE to .env file if SENTRY_AUTH_TOKEN is set
+
+          echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> $GITHUB_ENV
+          echo "SENTRY_RELEASE=${SENTRY_RELEASE}" >> .env
 
       - name: Retrieve K8s cluster configuration
         id: k8s-config
@@ -826,8 +845,7 @@ jobs:
           if kubectl get secret "${APP_NAME}-basic-auth" > /dev/null 2>&1; then
               kubectl delete secret "${APP_NAME}-basic-auth"
           fi
-          printf '%s:%s\n' "$WEB_AUTHENTICATION_USERNAME" "$(openssl passwd -5 "$WEB_AUTHENTICATION_PASSWORD")" > auth
-          kubectl create secret generic "${APP_NAME}-basic-auth" --from-file=auth
+          kubectl create secret generic "${APP_NAME}-basic-auth" --from-literal="${WEB_AUTHENTICATION_USERNAME}=$(openssl passwd -1 $WEB_AUTHENTICATION_PASSWORD)"
 
       - name: Create K8s Image Pull Secret
         shell: bash
@@ -880,7 +898,7 @@ jobs:
             INGRESS="${K8S_CLUSTER_NAME}"
           fi
 
-          # Set K8s ingress FQDN
+          # Set K8S ingress FQDN
           ENVIRONMENT_INGRESS=$(echo "${{ inputs.environmentIngress }}" | tr -d "'\"")
           if [ "${BLUE_GREEN_DEPLOYMENT}" == "true" ] && [ "${ENVIRONMENT}" == "production" ] && [ "$ENVIRONMENT_INGRESS" == "true" ]; then
             K8S_INGRESS="${ENVIRONMENT}-${BLUE_GREEN_INACTIVE_DEPLOYMENT}.${K8S_CLUSTER_NAME}.amuniversal.com."
@@ -1061,7 +1079,6 @@ jobs:
           JIRA_AUTOMATIONS_EMAIL: ${{ vars.JIRA_AUTOMATIONS_EMAIL }}
           JIRA_AUTOMATIONS_DOMAIN: ${{ vars.JIRA_AUTOMATIONS_DOMAIN }}
           JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
-
 
       - name: Send Failed Deployment report to Teams
         if: failure() && (inputs.environment != 'development')
