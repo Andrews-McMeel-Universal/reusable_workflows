@@ -342,7 +342,8 @@ jobs:
               }
           }
 
-          if ($appConfig.ingress.redirectToWWW -eq "true" -and $env:appEnvironment -eq "production") {
+          $redirectToWWW = ($appConfig.ingress | Where-Object { $_.Name -eq "ingress" }).redirectToWWW
+          if ($redirectToWWW -eq "true" -and $env:appEnvironment -eq "production") {
               $wwwIngress = "true"
           }
 
