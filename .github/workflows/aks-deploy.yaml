@@ -334,7 +334,7 @@ jobs:
               }
           }
 
-          if (($appConfig.ingress.redirectToWWW -eq $true) -and ($env:appEnvironment -eq "production")) {
+          if ($appConfig.ingress.redirectToWWW -eq "true" -and $env:appEnvironment -eq "production") {
               $wwwIngress = "true"
           }
 
@@ -623,7 +623,7 @@ jobs:
                   Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
               }
 
-              # Add datacenter location to ingress if HA hostname is enabled
+              # Set domain name and subdomain
               $domainName = $env:domainName
               $subDomain = $item.host -replace "$domainName", '' -replace "\.$", ""
               if (($env:haIngress -eq "true") -and ($subDomain -notmatch "$env:datacenterLocation")) {
@@ -686,12 +686,12 @@ jobs:
                   ingressClassName = $item.ingressClassName
                   annotations = $item.annotations
               }
-              if ($env:wwwIngress -eq $true -and $env:environment -eq "production") {
+              if ($env:wwwIngress -eq "true" -and $env:environment -eq "production") {
                   # Add secondary host for www subdomain in production environment
                   if ($subDomain -ne "") {
                       $subDomain = "${subDomain}."
                   }
-                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.$subDomain$domainName"
+                  $ingress | Add-Member -NotePropertyName secondaryHost -NotePropertyValue "www.${subDomain}${domainName}"
               }
               $updatedIngress += $ingress
 
