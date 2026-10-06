@@ -47,6 +47,11 @@ on:
         required: false
         type: string
         default: ${{ vars.APPLICATION_CI_YARN_INSTALL || 'false' }}
+      SETUP_MYSQL_DATABASE:
+        required: false
+        type: string
+        description: "Toggle setting up the MySQL database"
+        default: ${{ vars.APPLICATION_CI_SETUP_MYSQL_DATABASE || 'false' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -93,6 +98,16 @@ jobs:
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
         with:
           enable-corepack: false
+
+      - name: Set up MySQL database
+        if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
+        uses: shogo82148/actions-setup-mysql@v1
+        with:
+          mysql-version: "11.4"
+          password: ${{ env.DATABASE_PASSWORD }}
+          user: ${{ env.DATABASE_USERNAME }}
+          distribution: mariadb
+          root-password: ${{ env.DATABASE_ROOT_PASSWORD }}
 
       - name: Run Webpack Asset Precompilation
         if: ${{ inputs.WEBPACK_ASSET_PRECOMPILATION != 'false' }}
