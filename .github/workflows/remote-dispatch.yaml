@@ -7,6 +7,7 @@ on:
         required: true
         type: string
         description: "Deploy Environment.  This is used to pull in and set the github environment. Can be development, staging, or production."
+        default: ${{ vars.REMOTE_DISPATCH_ENVIRONMENT }}
       targetRepository:
         type: string
         description: 'Input a repository name'
@@ -20,6 +21,8 @@ on:
     secrets:
       PAT_ACTION_CI:
         required: true
+  release:
+    types: [published]
 
 jobs:
   trigger:
@@ -28,10 +31,10 @@ jobs:
     steps:
       - name: Trigger Workflow in Another Repository
         env:
-          TARGET_REPOSITORY: ${{ inputs.targetRepository }}
-          REPOSITORY_OWNER: ${{ inputs.targetRepositoryOwner }}
-          REPOSITORY_NAME: ${{ inputs.targetRepository }}
-          ENVIRONMENT: ${{ inputs.environment }}
+          TARGET_REPOSITORY: ${{ inputs.targetRepository || vars.REMOTE_DISPATCH_TARGET_REPOSITORY }}
+          REPOSITORY_OWNER: ${{ inputs.targetRepositoryOwner || vars.REMOTE_DISPATCH_TARGET_REPOSITORY_OWNER }}
+          REPOSITORY_NAME: ${{ inputs.targetRepository || vars.REMOTE_DISPATCH_TARGET_REPOSITORY }}
+          ENVIRONMENT: ${{ inputs.environment || vars.REMOTE_DISPATCH_ENVIRONMENT }}
         run: |
           # Pass Inputs as Client Payload
           CLIENT_PAYLOAD="{\"environment\": \"${ENVIRONMENT}\"}"
