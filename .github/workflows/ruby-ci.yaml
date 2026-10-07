@@ -101,8 +101,16 @@ jobs:
             --health-cmd="mysqladmin ping --silent" \
             --health-interval=10s \
             --health-timeout=5s \
-            --health-retries=3 \
+            --health-retries=10 \
             mariadb:${{ inputs.MYSQL_VERSION }}
+
+      - name: Wait for MySQL
+        if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
+        run: |
+          until [ "$(docker inspect --format='{{.State.Health.Status}}' mysql)" = "healthy" ]; do
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
