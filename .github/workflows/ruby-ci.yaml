@@ -98,7 +98,7 @@ jobs:
             -e MYSQL_ROOT_PASSWORD="${{ env.DATABASE_ROOT_PASSWORD }}" \
             -e MYSQL_USER="${{ env.DATABASE_USERNAME }}" \
             -e MYSQL_PASSWORD="${{ env.DATABASE_PASSWORD }}" \
-            --health-cmd="mysqladmin ping --silent" \
+            --health-cmd="healthcheck.sh --connect --innodb_initialized" \
             --health-interval=10s \
             --health-timeout=5s \
             --health-retries=10 \
