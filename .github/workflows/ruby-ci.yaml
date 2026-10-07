@@ -57,6 +57,11 @@ on:
         type: string
         description: "Toggle setting up the MySQL database"
         default: ${{ vars.APPLICATION_CI_SETUP_MYSQL_DATABASE || 'false' }}
+      MYSQL_VERSION:
+        required: false
+        type: string
+        description: "MySQL version to use"
+        default: ${{ vars.APPLICATION_CI_MYSQL_VERSION || '11.4' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -67,10 +72,41 @@ env:
   RAILS_ENV: ${{ inputs.environment }}
 
 jobs:
-  build:
-    name: Build and Test
-    if: ${{ github.actor != 'dependabot[bot]' }}
+  vars:
+    name: Retrieve Environment Variables
     runs-on: ${{ inputs.GITHUB_RUNNER }}
+    steps:
+      - name: Use .env cache action
+        id: get-envs
+        uses: Andrews-McMeel-Universal/get-envs@v1
+        with:
+          azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ inputs.environment }}
+    outputs:
+      DATABASE_ROOT_PASSWORD: ${{ steps.get-envs.outputs.DATABASE_ROOT_PASSWORD }}
+      DATABASE_USERNAME: ${{ steps.get-envs.outputs.DATABASE_USERNAME }}
+      DATABASE_PASSWORD: ${{ steps.get-envs.outputs.DATABASE_PASSWORD }}
+      DATABASE_NAME: ${{ steps.get-envs.outputs.DATABASE_NAME }}
+      KEYVAULT_NAME: ${{ steps.get-envs.outputs.keyVaultName }}
+  ci:
+    name: Build and Test
+    needs: [vars]
+    runs-on: ${{ inputs.GITHUB_RUNNER }}
+    services:
+      mysql:
+        image: mysql:${{ inputs.MYSQL_VERSION }}
+        env:
+          MYSQL_DATABASE: ${{ needs.vars.outputs.DATABASE_NAME }}
+          MYSQL_ROOT_PASSWORD: ${{ needs.vars.outputs.DATABASE_ROOT_PASSWORD }}
+          MYSQL_USER: ${{ needs.vars.outputs.DATABASE_USERNAME }}
+          MYSQL_PASSWORD: ${{ needs.vars.outputs.DATABASE_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -83,6 +119,7 @@ jobs:
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
+          environmentKeyVault: ${{ needs.vars.outputs.KEYVAULT_NAME }}
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -103,16 +140,6 @@ jobs:
         uses: Andrews-McMeel-Universal/cache-yarn-install@v1
         with:
           enable-corepack: false
-
-      - name: Set up MySQL database
-        if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
-        uses: shogo82148/actions-setup-mysql@v1
-        with:
-          mysql-version: "11.4"
-          password: ${{ env.DATABASE_PASSWORD }}
-          user: ${{ env.DATABASE_USERNAME }}
-          distribution: mariadb
-          root-password: ${{ env.DATABASE_ROOT_PASSWORD }}
 
       - name: Run Webpack Asset Precompilation
         if: ${{ inputs.WEBPACK_ASSET_PRECOMPILATION != 'false' }}
