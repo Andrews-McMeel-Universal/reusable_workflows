@@ -713,8 +713,12 @@ jobs:
           # Ensure the service annotations are set properly
           if ($appConfig.service) {
               # Ensure the service has annotations
-              if ($null -eq $appConfig.service.annotations) {
-                  $appConfig.service.annotations = @{}
+              $services = @($appConfig.service)
+
+              foreach ($service in $services) {
+                  if ($null -eq $service.annotations) {
+                      $service | Add-Member -MemberType NoteProperty -Name annotations -Value @{}
+                  }
               }
               # Ensure the service has the correct internal load balancer annotation
               if (-not $appConfig.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal") {
