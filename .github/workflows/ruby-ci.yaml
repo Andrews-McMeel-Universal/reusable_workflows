@@ -144,7 +144,7 @@ jobs:
         env:
           RSPEC_TESTS: ${{ inputs.RSPEC_TESTS }}
         run: |
-          bundle exec rails s -b 0.0.0.0 -p 3000 &
+          RAILS_ENV=test bundle exec rails s -b 127.0.0.1 -p 3000 > log/ci.log 2>&1 &
           PID=$!
           HEALTHCHECK_URL="${{ inputs.HEALTHCHECK_URL }}"
           if [[ "${HEALTHCHECK_URL}" == *","* ]]; then
@@ -155,9 +155,18 @@ jobs:
           for URL in "${URLS[@]}"; do
             echo "Checking healthcheck URL: ${URL}"
             for i in {1..5}; do
-              STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${URL}")
+              if ! kill -0 "$PID" 2>/dev/null; then
+                cat log/ci.log
+                exit 1
+              fi
 
-              if [[ "$STATUS_CODE" -eq 200 ]]; then
+              if STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "${URL}"); then
+                :
+              else
+                STATUS_CODE=000
+              fi
+
+              if [[ "$STATUS_CODE" == "200" ]]; then
                 echo "✅ [PASSED] Healthcheck passed for ${URL}" | tee -a "$GITHUB_STEP_SUMMARY"
                 break
               fi
