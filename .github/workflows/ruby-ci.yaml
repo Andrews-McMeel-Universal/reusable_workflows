@@ -93,6 +93,21 @@ jobs:
     name: Build and Test
     needs: [vars]
     runs-on: ${{ inputs.GITHUB_RUNNER }}
+    services:
+      mysql:
+        image: mysql:${{ inputs.MYSQL_VERSION }}
+        env:
+          MYSQL_DATABASE: ${{ needs.vars.outputs.DATABASE_NAME }}
+          MYSQL_ROOT_PASSWORD: ${{ needs.vars.outputs.DATABASE_ROOT_PASSWORD }}
+          MYSQL_USER: ${{ needs.vars.outputs.DATABASE_USERNAME }}
+          MYSQL_PASSWORD: ${{ needs.vars.outputs.DATABASE_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -131,10 +146,9 @@ jobs:
         if: ${{ inputs.WEBPACK_ASSET_PRECOMPILATION != 'false' }}
         run: bundle exec rake assets:precompile
       
-      - name: Set up MySQL Database
+      - name: Run Rails database migrations
         if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
-        run: |
-          bundle exec rails db:migrate && bundle exec rails db:seed
+        run: bundle exec rails db:migrate && bundle exec rails db:seed
 
       - name: Boot Rails server
         env:
