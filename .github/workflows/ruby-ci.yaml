@@ -57,6 +57,11 @@ on:
         type: string
         description: "Toggle setting up the MySQL database"
         default: ${{ vars.APPLICATION_CI_SETUP_MYSQL_DATABASE || 'false' }}
+      MYSQL_VERSION:
+        required: false
+        type: string
+        description: "MySQL version to use"
+        default: ${{ vars.APPLICATION_CI_MYSQL_VERSION || 'latest' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -67,9 +72,8 @@ env:
   RAILS_ENV: ${{ inputs.environment }}
 
 jobs:
-  build:
+  ci:
     name: Build and Test
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ inputs.GITHUB_RUNNER }}
     steps:
       - name: Checkout
@@ -83,6 +87,30 @@ jobs:
         with:
           azurecredentials: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ inputs.environment }}
+
+      - name: Start MySQL
+        if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
+        run: |
+          docker run -d \
+            --name mysql \
+            -p 3306:3306 \
+            -e MYSQL_DATABASE="${{ env.DATABASE_NAME }}" \
+            -e MYSQL_ROOT_PASSWORD="${{ env.DATABASE_ROOT_PASSWORD }}" \
+            -e MYSQL_USER="${{ env.DATABASE_USERNAME }}" \
+            -e MYSQL_PASSWORD="${{ env.DATABASE_PASSWORD }}" \
+            --health-cmd="healthcheck.sh --connect --innodb_initialized" \
+            --health-interval=10s \
+            --health-timeout=5s \
+            --health-retries=10 \
+            mariadb:${{ inputs.MYSQL_VERSION }}
+
+      - name: Wait for MySQL
+        if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
+        run: |
+          until [ "$(docker inspect --format='{{.State.Health.Status}}' mysql)" = "healthy" ]; do
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -104,19 +132,13 @@ jobs:
         with:
           enable-corepack: false
 
-      - name: Set up MySQL database
-        if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
-        uses: shogo82148/actions-setup-mysql@v1
-        with:
-          mysql-version: "11.4"
-          password: ${{ env.DATABASE_PASSWORD }}
-          user: ${{ env.DATABASE_USERNAME }}
-          distribution: mariadb
-          root-password: ${{ env.DATABASE_ROOT_PASSWORD }}
-
       - name: Run Webpack Asset Precompilation
         if: ${{ inputs.WEBPACK_ASSET_PRECOMPILATION != 'false' }}
         run: bundle exec rake assets:precompile
+      
+      - name: Run Rails database migrations
+        if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
+        run: bundle exec rails db:schema:load && bundle exec rails db:migrate && bundle exec rails db:seed
 
       - name: Boot Rails server
         env:
