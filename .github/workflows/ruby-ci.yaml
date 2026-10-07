@@ -140,45 +140,45 @@ jobs:
         if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
         run: bundle exec rails db:schema:load && bundle exec rails db:migrate && bundle exec rails db:seed
 
-      - name: Boot Rails server
+      - name: Boot Rails server and run tests
         env:
           RSPEC_TESTS: ${{ inputs.RSPEC_TESTS }}
         run: |
           bundle exec rails s -b 0.0.0.0 -p 3000 &
           PID=$!
-          sleep 10
           HEALTHCHECK_URL="${{ inputs.HEALTHCHECK_URL }}"
           if [[ "${HEALTHCHECK_URL}" == *","* ]]; then
             IFS=',' read -ra URLS <<< "${HEALTHCHECK_URL}"
           else
             URLS=("${HEALTHCHECK_URL}")
           fi
-          if [[ "${RSPEC_TESTS}" == "true" ]]; then
-            bundle exec rspec
-          fi
           for URL in "${URLS[@]}"; do
             echo "Checking healthcheck URL: ${URL}"
             for i in {1..5}; do
               STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${URL}")
+
               if [[ "$STATUS_CODE" -eq 200 ]]; then
-                echo "✅ [PASSED] Healthcheck passed for ${URL}" | tee -a $GITHUB_STEP_SUMMARY
+                echo "✅ [PASSED] Healthcheck passed for ${URL}" | tee -a "$GITHUB_STEP_SUMMARY"
                 break
-              else
-                echo "❌ [FAILED] Healthcheck not ready yet for ${URL} (status: $STATUS_CODE). Retrying in 2 seconds..." | tee -a $GITHUB_STEP_SUMMARY
-                sleep 2
               fi
+              echo "❌ [FAILED] Healthcheck not ready yet for ${URL} (status: $STATUS_CODE). Retrying in 5 seconds..." | tee -a "$GITHUB_STEP_SUMMARY"
               if [[ $i -eq 5 ]]; then
-                echo "❌ [FAILED] Healthcheck failed for ${URL} after multiple attempts." | tee -a $GITHUB_STEP_SUMMARY
-                kill -2 $PID
+                echo "❌ [FAILED] Healthcheck failed for ${URL} after multiple attempts." | tee -a "$GITHUB_STEP_SUMMARY"
+                kill -2 "$PID"
                 exit 1
               fi
+              sleep 5
             done
           done
-          sleep 10
-          if [[ $(ps -p $PID) ]] ; then 
-            kill -2 $PID
-            exit 0
+
+          if [[ "${RSPEC_TESTS}" == "true" ]]; then
+            bundle exec rspec
+            RSPEC_STATUS=$?
           else
-            echo "App failed to start."
-            exit 1
+            RSPEC_STATUS=0
           fi
+
+          sleep 10
+          kill -2 "$PID"
+
+          exit "$RSPEC_STATUS"
