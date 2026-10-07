@@ -61,7 +61,7 @@ on:
         required: false
         type: string
         description: "MySQL version to use"
-        default: ${{ vars.APPLICATION_CI_MYSQL_VERSION || '11.4' }}
+        default: ${{ vars.APPLICATION_CI_MYSQL_VERSION || 'latest' }}
     secrets:
       AZURE_CREDENTIALS:
         required: true
