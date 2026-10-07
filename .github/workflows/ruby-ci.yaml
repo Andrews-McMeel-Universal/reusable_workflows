@@ -138,7 +138,7 @@ jobs:
       
       - name: Run Rails database migrations
         if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
-        run: bundle exec rails db:migrate && bundle exec rails db:seed
+        run: bundle exec rails db:schema:load && bundle exec rails db:migrate && bundle exec rails db:seed
 
       - name: Boot Rails server
         env:
