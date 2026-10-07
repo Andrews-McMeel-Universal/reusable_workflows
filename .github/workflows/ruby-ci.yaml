@@ -144,6 +144,10 @@ jobs:
       - name: Run Webpack Asset Precompilation
         if: ${{ inputs.WEBPACK_ASSET_PRECOMPILATION != 'false' }}
         run: bundle exec rake assets:precompile
+      
+      - name: Run Rails database migrations
+        if: ${{ inputs.SETUP_MYSQL_DATABASE == 'true' }}
+        run: bundle exec rails db:migrate && bundle exec rails db:seed
 
       - name: Boot Rails server
         env:
