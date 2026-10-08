@@ -174,7 +174,7 @@ jobs:
           if ($env:blueGreenDeployment -eq 'true' -and $env:environment -eq 'production' -and $env:environmentIngress -ne 'false') {
             $installModules += @("AzTable","Az.Storage","Az.Resources")
           }
-          Install-Module -Name $installModules
+          Install-Module -Name $installModules -Force
 
       - name: Get Blue/Green Deployment Info
         id: bg-deployment
@@ -472,7 +472,7 @@ jobs:
           $installModules = @(
             "powershell-yaml","AzTable","Az.Storage","Az.Resources"
           )
-          Install-Module -Name $installModules
+          Install-Module -Name $installModules -Force
 
       - name: Create values override file
         id: values-override
