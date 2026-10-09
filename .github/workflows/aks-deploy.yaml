@@ -710,24 +710,33 @@ jobs:
           # Ensure ingress is an array
           $appConfig.ingress = @($updatedIngress)
 
-          # Ensure the service annotations are set properly
-          if ($appConfig.service) {
-              # Ensure the service has annotations
+          # Ensure the service has annotations
+          if ($appConfig.service.services) {
+              $services = @($appConfig.service.services)
+          }
+          else {
               $services = @($appConfig.service)
+          }
 
-              foreach ($service in $services) {
-                  if ($null -eq $service.annotations) {
-                      $service | Add-Member -MemberType NoteProperty -Name annotations -Value @{}
+          foreach ($service in $services) {
+              if ($null -eq $service.annotations) {
+                  $service | Add-Member -MemberType NoteProperty -Name annotations -Value @{}
+              }
+          }
+          # Ensure the service has the correct internal load balancer annotation
+          if ($appConfig.service.services) {
+              foreach ($service in $appConfig.service.services) {
+                  if (-not $service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal") {
+                      Write-Output "Setting service.beta.kubernetes.io/azure-load-balancer-internal annotation for the service"
+                      $service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal" = "true"
                   }
               }
-              # Ensure the service has the correct internal load balancer annotation
+          }
+          elseif ($appConfig.service) {
               if (-not $appConfig.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal") {
                   Write-Output "Setting service.beta.kubernetes.io/azure-load-balancer-internal annotation for the service"
                   $appConfig.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal" = "true"
               }
-          }
-          else {
-              Write-Output "No service found in values.yaml to set internal load balancer annotation."
           }
 
           # Store keys to remove in a separate list

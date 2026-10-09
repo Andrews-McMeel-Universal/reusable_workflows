@@ -698,14 +698,16 @@ jobs:
           # Ensure ingress is an array
           $appConfig.ingress = @($updatedIngress)
 
-          # Ensure the service annotations are set properly
-          if ($appConfig.service) {
+          # Ensure the service has annotations
+          if ($appConfig.service.services) {
+              $services = @($appConfig.service.services)
+          }
+          else {
               $services = @($appConfig.service)
-
-              foreach ($service in $services) {
-                  if ($null -eq $service.annotations) {
-                      $service | Add-Member -MemberType NoteProperty -Name annotations -Value @{}
-                  }
+          }
+          foreach ($service in $services) {
+              if ($null -eq $service.annotations) {
+                  $service | Add-Member -MemberType NoteProperty -Name annotations -Value @{}
               }
           }
 
