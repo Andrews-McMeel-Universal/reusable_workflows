@@ -698,22 +698,11 @@ jobs:
           # Ensure ingress is an array
           $appConfig.ingress = @($updatedIngress)
 
-          # Ensure the service annotations are set properly
-          if ($appConfig.service) {
-              $services = @($appConfig.service)
-
-              foreach ($service in $services) {
-                  if ($null -eq $service.annotations) {
-                      $service | Add-Member -MemberType NoteProperty -Name annotations -Value @{}
-                  }
-              }
-          }
-
           # Store keys to remove in a separate list
           $keysToRemove = @()
 
           foreach ($key in $appConfig.Keys) {
-              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "service") -and ($key -ne "nodeSelector")) {
+              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "nodeSelector")) {
                   $keysToRemove += $key
               }
           }
