@@ -702,7 +702,7 @@ jobs:
           $keysToRemove = @()
 
           foreach ($key in $appConfig.Keys) {
-              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "service") -and ($key -ne "nodeSelector")) {
+              if (($key -ne "ingress") -and ($key -ne "environment") -and ($key -ne "nodeSelector")) {
                   $keysToRemove += $key
               }
           }
