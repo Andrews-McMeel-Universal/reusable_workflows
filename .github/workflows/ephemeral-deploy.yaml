@@ -453,7 +453,7 @@ jobs:
 
       - name: Link ephemeral deployment in Jira ticket
         if: ${{ steps.check-jira-comments.outputs.comment-found != 'true' }}
-        uses: atlassian/gajira-comment@76589d6b6d0b94b1ca6b01171c01a6affb5d6701
+        uses: atlassian/gajira-comment@164913891625fe50e9836957902e0bf7d9ef99a8
         with:
           issue: ${{ needs.prepare.outputs.jiraTicketId }}
           comment: |
