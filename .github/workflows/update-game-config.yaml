@@ -61,7 +61,7 @@ jobs:
           $StorageAccountName = "gameconfigs"
           $StorageAccountTable = "GameConfigs"
           $UpdatedBy = "AMU Agents"
-          $CDNBasePath = "gameconfigs.amuniversal.com"
+          $CDNBasePath = "configs.games.gocomics.com"
           $CacheControl = "max-age=86400"
 
           Import-Module SimplySql
