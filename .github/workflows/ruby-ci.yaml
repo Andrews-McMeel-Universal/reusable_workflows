@@ -160,11 +160,7 @@ jobs:
                 exit 1
               fi
 
-              if STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "${URL}"); then
-                :
-              else
-                STATUS_CODE=000
-              fi
+              STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "${URL}") || STATUS_CODE="000"
 
               if [[ "$STATUS_CODE" == "200" ]]; then
                 echo "✅ [PASSED] Healthcheck passed for ${URL}" | tee -a "$GITHUB_STEP_SUMMARY"
