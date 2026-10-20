@@ -144,7 +144,7 @@ jobs:
         env:
           RSPEC_TESTS: ${{ inputs.RSPEC_TESTS }}
         run: |
-          RAILS_ENV=test bundle exec rails s -b 127.0.0.1 -p 3000 > log/ci.log 2>&1 &
+          RAILS_ENV="test" bundle exec rails s -b 127.0.0.1 -p 3000 > log/ci.log 2>&1 &
           PID=$!
           HEALTHCHECK_URL="${{ inputs.HEALTHCHECK_URL }}"
           if [[ "${HEALTHCHECK_URL}" == *","* ]]; then
