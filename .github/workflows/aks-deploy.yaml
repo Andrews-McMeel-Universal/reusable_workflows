@@ -717,13 +717,13 @@ jobs:
 
               foreach ($service in $services) {
                   if ($null -eq $service.annotations) {
-                      $service | Add-Member -MemberType NoteProperty -Name annotations -Value @{}
+                      $service.annotations = @{}
                   }
-              }
-              # Ensure the service has the correct internal load balancer annotation
-              if (-not $appConfig.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal") {
-                  Write-Output "Setting service.beta.kubernetes.io/azure-load-balancer-internal annotation for the service"
-                  $appConfig.service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal" = "true"
+                  # Ensure the service has the correct internal load balancer annotation
+                  if (-not $service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal") {
+                      Write-Output "Setting service.beta.kubernetes.io/azure-load-balancer-internal annotation for the service"
+                      $service.annotations."service.beta.kubernetes.io/azure-load-balancer-internal" = "true"
+                  }
               }
           }
           else {
