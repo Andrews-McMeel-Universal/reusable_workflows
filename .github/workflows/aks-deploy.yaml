@@ -340,6 +340,13 @@ jobs:
               }
           }
 
+          # Get health check endpoint
+          $healthCheckPath = "$appConfig.livenessProbe.httpGet.path"
+          if ($healthCheckPath) {
+              Write-Output "healthCheckPath=$healthCheckPath"
+              Write-Output "healthCheckPath=$healthCheckPath" >> $env:GITHUB_ENV
+          }
+
           Write-Output "domainName=$domainName"
           Write-Output "domainName=$domainName" >> $env:GITHUB_ENV
           Write-Output "ingress=$ingress"
@@ -460,6 +467,7 @@ jobs:
       appVersion: ${{ env.appVersion }}
       ingress: ${{ env.ingress }}
       domainName: ${{ env.domainName }}
+      healthCheckPath: ${{ env.healthCheckPath }}
       release: ${{ env.release }}
       maxReplicas: ${{ env.maxReplicas }}
       minReplicas: ${{ env.minReplicas }}
@@ -1094,6 +1102,7 @@ jobs:
           k8sResourceGroup: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
           date: ${{ steps.date.outputs.date }}
           blueGreenInactiveDeployment: ${{ needs.build.outputs.blueGreenInactiveDeployment }}
+          healthCheckPath: ${{ needs.build.outputs.healthCheckPath }}
         run: |
           # Record deployment information in Azure Storage Table
           $k8sClusterName = "${{ secrets.azureClusterName }}"
@@ -1123,8 +1132,9 @@ jobs:
               "AksIngress"="$env:k8sIngress";
               "Cluster"="$k8sClusterName";
               "ClusterResourceGroup"="$env:k8sResourceGroup";
-              "LastDeploy"="$env:date"
-              "ActiveBlueGreenDeployment"="$env:blueGreenInactiveDeployment"
+              "LastDeploy"="$env:date";
+              "ActiveBlueGreenDeployment"="$env:blueGreenInactiveDeployment";
+              "HealthCheckPath"="$env:healthCheckPath"
               } -UpdateExisting | Out-Null
 
       - name: Create deployment summary
