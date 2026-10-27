@@ -341,7 +341,7 @@ jobs:
           }
 
           # Get health check endpoint
-          $healthCheckPath = "$appConfig.livenessProbe.httpGet.path"
+          $healthCheckPath = "${appConfig.livenessProbe.httpGet.path}"
           if ($healthCheckPath) {
               Write-Output "healthCheckPath=$healthCheckPath"
               Write-Output "healthCheckPath=$healthCheckPath" >> $env:GITHUB_ENV
