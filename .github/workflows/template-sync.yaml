@@ -39,7 +39,7 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI }}
 
       - name: Sync with Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}
-        uses: AndreasAugustin/actions-template-sync@8a0f668b83c32a0f673353086d74f12b8853d4f5
+        uses: AndreasAugustin/actions-template-sync@6e1d0089686f8940604fc15baae62367bf6ee860
         with:
           source_gh_token: ${{ secrets.PAT_ACTION_CI }}
           source_repo_path: Andrews-McMeel-Universal/${{ inputs.syncRepository || vars.SYNC_REPO }}
