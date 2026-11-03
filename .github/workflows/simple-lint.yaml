@@ -36,7 +36,7 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Get Corepack status
+      - name: Enable Corepack
         if: inputs.corepackInstall == 'true'
         run: corepack enable
 
