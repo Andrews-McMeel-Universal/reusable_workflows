@@ -15,6 +15,10 @@ on:
       onlyChanged:
         default: ${{ vars.SIMPLE_LINT_ONLY_CHANGED || 'true' }}
         type: string
+      corepackInstall:
+        required: false
+        type: string
+        default: ${{ vars.APPLICATION_CI_COREPACK_INSTALL || 'false' }}
     secrets:
       PAT_ACTION_CI:
         required: true
@@ -31,6 +35,10 @@ jobs:
           token: ${{ secrets.PAT_ACTION_CI || github.token }}
           ref: ${{ github.head_ref }}
           fetch-depth: 0
+
+      - name: Get Corepack status
+        if: inputs.corepackInstall == 'true'
+        run: corepack enable
 
       - name: Get Prettier version
         id: prettier-version
