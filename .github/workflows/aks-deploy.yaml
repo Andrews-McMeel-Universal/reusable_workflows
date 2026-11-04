@@ -582,22 +582,7 @@ jobs:
                   Write-Output "Using provided ingress whitelist for $($item.name)"
                   $ingressWhitelist = $env:ingressWhitelist
               }
-              else {
-                  # Default to 0.0.0.0/0
-                  Write-Output "Defaulting to 0.0.0.0/0 ingress whitelist for $($item.name)"
-                  $ingressWhitelist = "0.0.0.0/0"
-              }
-
-              if ($webAuthentication -eq "true") {
-                  Write-Output "Web authentication is enabled, setting ingress whitelist to '0.0.0.0/0' for $($item.name)"
-                  $ingressWhitelist = "0.0.0.0/0"
-
-                  Write-Output "Adding basic auth to $($item.name)"
-                  $item.annotations."ingress.kubernetes.io/auth-type"="basic-auth"
-                  $item.annotations."ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
-                  $item.annotations."ingress.kubernetes.io/auth-realm"="Authentication Required"
-              }
-              elseif ($item.privateIngress -eq $true) {
+              elseif ($item.privateIngress -eq $true -or $item.name -match "admin") {
                   Write-Output "Private ingress is enabled, setting ingress whitelist to service whitelist for $($item.name)"
                   if ($env:adminIngressWhitelist -ne "") {
                       $ingressWhitelist = $env:adminIngressWhitelist
@@ -607,23 +592,21 @@ jobs:
                   }
               }
               else {
-                  if ($item.name -notmatch "admin") {
-                      # Add ingressWhitelist to ingress
-                      Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
-                      $item.annotations."ingress.kubernetes.io/allow-list" = $ingressWhitelist
-                  }
-                  elseif ($item.name -match "admin") {
-                      if ($env:adminIngressWhitelist -ne "") {
-                          $item.annotations."ingress.kubernetes.io/allow-list" = $env:adminIngressWhitelist
-                      }
-                      elseif ($item.privateIngress -ne $false -and $webAuthentication -ne "true") {
-                          $item.annotations."ingress.kubernetes.io/allow-list" = "207.67.20.252"
-                      }
-
-                      $ingressWhitelist = $item.annotations."ingress.kubernetes.io/allow-list"
-                      Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
-                  }
+                  Write-Output "Defaulting to 0.0.0.0/0 ingress whitelist for $($item.name)"
+                  $ingressWhitelist = "0.0.0.0/0"
               }
+              if ($webAuthentication -eq "true") {
+                  Write-Output "Web authentication is enabled, setting ingress whitelist to '0.0.0.0/0' for $($item.name)"
+                  $ingressWhitelist = "0.0.0.0/0"
+
+                  Write-Output "Adding basic auth to $($item.name)"
+                  $item.annotations."ingress.kubernetes.io/auth-type"="basic-auth"
+                  $item.annotations."ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
+                  $item.annotations."ingress.kubernetes.io/auth-realm"="Authentication Required"
+              }
+              # Add ingressWhitelist to ingress
+              Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
+              $item.annotations."ingress.kubernetes.io/allow-list" = $ingressWhitelist
 
               # Set domain name and subdomain
               $domainName = $env:domainName
