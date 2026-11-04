@@ -567,18 +567,29 @@ jobs:
                       $allIPsValid = $true
                   }
               }
+              if (($env:ingressWhitelist -eq "service") -or ($appConfigWhitelist -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
+                  # Use service whitelist
+                  Write-Output "Overriding ingress whitelist with service whitelist for $($item.name)"
+                  $ingressWhitelist = $env:serviceIngressWhitelist
+              }
+              elseif ($appConfigWhitelist) {
+                  # Use existing whitelist
+                  Write-Output "Using existing ingress whitelist for $($item.name)"
+                  $ingressWhitelist = $appConfigWhitelist
+              }
+              elseif (($env:ingressWhitelist -ne "") -and ($allIPsValid)) {
+                  # Use provided whitelist
+                  Write-Output "Using provided ingress whitelist for $($item.name)"
+                  $ingressWhitelist = $env:ingressWhitelist
+              }
+              else {
+                  # Default to 0.0.0.0/0
+                  Write-Output "Defaulting to 0.0.0.0/0 ingress whitelist for $($item.name)"
+                  $ingressWhitelist = "0.0.0.0/0"
+              }
 
               # Set ingress whitelist
-              if ($item.privateIngress -eq $true) {
-                  Write-Output "Private ingress is enabled, setting ingress whitelist to service whitelist for $($item.name)"
-                  if ($env:adminIngressWhitelist -ne "") {
-                      $ingressWhitelist = $env:adminIngressWhitelist
-                  }
-                  else {
-                      $ingressWhitelist = $env:serviceIngressWhitelist
-                  }
-              }
-              elseif ($webAuthentication -eq "true") {
+              if ($webAuthentication -eq "true") {
                   Write-Output "Web authentication is enabled, setting ingress whitelist to '0.0.0.0/0' for $($item.name)"
                   $ingressWhitelist = "0.0.0.0/0"
 
@@ -587,47 +598,33 @@ jobs:
                   $item.annotations."ingress.kubernetes.io/auth-secret"="$appName-basic-auth"
                   $item.annotations."ingress.kubernetes.io/auth-realm"="Authentication Required"
               }
-              else {
-                  Write-Output "Ingress whitelist not set for $($item.name)"
-                  
-                  if (($env:ingressWhitelist -eq "service") -or ($appConfigWhitelist -match "207.67.20.239,40.86.103.124,40.77.105.170")) {
-                      # Use service whitelist
-                      Write-Output "Overriding ingress whitelist with service whitelist for $($item.name)"
-                      $ingressWhitelist = $env:serviceIngressWhitelist
-                  }
-                  elseif ($appConfigWhitelist) {
-                      # Use existing whitelist
-                      Write-Output "Using existing ingress whitelist for $($item.name)"
-                      $ingressWhitelist = $appConfigWhitelist
-                  }
-                  elseif (($env:ingressWhitelist -ne "") -and ($allIPsValid)) {
-                      # Use provided whitelist
-                      Write-Output "Using provided ingress whitelist for $($item.name)"
-                      $ingressWhitelist = $env:ingressWhitelist
+              elseif ($item.privateIngress -eq $true) {
+                  Write-Output "Private ingress is enabled, setting ingress whitelist to service whitelist for $($item.name)"
+                  if ($env:adminIngressWhitelist -ne "") {
+                      $ingressWhitelist = $env:adminIngressWhitelist
                   }
                   else {
-                      # Default to 0.0.0.0/0
-                      Write-Output "Defaulting to 0.0.0.0/0 ingress whitelist for $($item.name)"
-                      $ingressWhitelist = "0.0.0.0/0"
+                      $ingressWhitelist = $env:serviceIngressWhitelist
                   }
               }
-
-              # Configure the ingress whitelist
-              if ($item.name -notmatch "admin") {
-                  # Add ingressWhitelist to ingress
-                  Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
-                  $item.annotations."ingress.kubernetes.io/allow-list" = $ingressWhitelist
-              }
-              elseif ($item.name -match "admin") {
-                  if ($env:adminIngressWhitelist -ne "") {
-                      $item.annotations."ingress.kubernetes.io/allow-list" = $env:adminIngressWhitelist
+              else {
+                  # Configure the ingress whitelist
+                  if ($item.name -notmatch "admin") {
+                      # Add ingressWhitelist to ingress
+                      Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
+                      $item.annotations."ingress.kubernetes.io/allow-list" = $ingressWhitelist
                   }
-                  elseif ($item.privateIngress -ne $false -and $webAuthentication -ne "true") {
-                      $item.annotations."ingress.kubernetes.io/allow-list" = "207.67.20.252"
-                  }
+                  elseif ($item.name -match "admin") {
+                      if ($env:adminIngressWhitelist -ne "") {
+                          $item.annotations."ingress.kubernetes.io/allow-list" = $env:adminIngressWhitelist
+                      }
+                      elseif ($item.privateIngress -ne $false -and $webAuthentication -ne "true") {
+                          $item.annotations."ingress.kubernetes.io/allow-list" = "207.67.20.252"
+                      }
 
-                  $ingressWhitelist = $item.annotations."ingress.kubernetes.io/allow-list"
-                  Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
+                      $ingressWhitelist = $item.annotations."ingress.kubernetes.io/allow-list"
+                      Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
+                  }
               }
 
               # Set domain name and subdomain
