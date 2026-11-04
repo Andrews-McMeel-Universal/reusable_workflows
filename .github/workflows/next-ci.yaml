@@ -340,7 +340,7 @@ jobs:
 
       - name: Link Jest Report in Jira ticket
         if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' && steps.jest-report.outputs.jest-report-exists == 'true' }}
-        uses: atlassian/gajira-comment@76589d6b6d0b94b1ca6b01171c01a6affb5d6701
+        uses: atlassian/gajira-comment@164913891625fe50e9836957902e0bf7d9ef99a8
         with:
           issue: ${{ needs.vars.outputs.jira-ticket-id }}
           comment: |
@@ -466,7 +466,7 @@ jobs:
 
       - name: Link Playwright Report in Jira ticket
         if: ${{ needs.vars.outputs.jira-ticket-id != '' && steps.check-jira-comments.outputs.comment-found != 'true' }}
-        uses: atlassian/gajira-comment@76589d6b6d0b94b1ca6b01171c01a6affb5d6701
+        uses: atlassian/gajira-comment@164913891625fe50e9836957902e0bf7d9ef99a8
         with:
           issue: ${{ needs.vars.outputs.jira-ticket-id }}
           comment: |
