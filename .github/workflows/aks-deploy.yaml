@@ -791,7 +791,7 @@ jobs:
           echo "AKS_RESOURCE_GROUP=${AKS_RESOURCE_GROUP}" >> $GITHUB_OUTPUT
 
       - name: Set target K8s cluster
-        uses: azure/aks-set-context@60623acbdcbbdcf799ad50a1adf8703874339f8b
+        uses: azure/aks-set-context@883bdc8d8d1d0fd87e66cc4ba6f0b618f9eb5281
         with:
           cluster-name: ${{ secrets.azureClusterName }}
           resource-group: ${{ steps.aks-resource-group.outputs.AKS_RESOURCE_GROUP }}
