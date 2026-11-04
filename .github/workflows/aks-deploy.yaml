@@ -588,7 +588,6 @@ jobs:
                   $ingressWhitelist = "0.0.0.0/0"
               }
 
-              # Set ingress whitelist
               if ($webAuthentication -eq "true") {
                   Write-Output "Web authentication is enabled, setting ingress whitelist to '0.0.0.0/0' for $($item.name)"
                   $ingressWhitelist = "0.0.0.0/0"
@@ -608,7 +607,6 @@ jobs:
                   }
               }
               else {
-                  # Configure the ingress whitelist
                   if ($item.name -notmatch "admin") {
                       # Add ingressWhitelist to ingress
                       Write-Output "Setting ingress whitelist for $($item.name) to: $ingressWhitelist"
