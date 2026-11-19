@@ -12,9 +12,9 @@ on:
   workflow_call:
     inputs:
       isdryrun:
-        type: boolean
+        type: string
         description: Dry run
-        default: false
+        default: 'false'
       syncRepository:
         type: string
         description: The repository to sync with
