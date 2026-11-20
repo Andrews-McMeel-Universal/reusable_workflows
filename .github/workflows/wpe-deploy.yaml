@@ -50,7 +50,7 @@ jobs:
           ref: ${{ inputs.checkoutRef }}
 
       - name: Deploy to WP Engine
-        uses: wpengine/github-action-wpe-site-deploy@7bdbfb62eb657ae92afb91cb889d9c3fb36ef6c0
+        uses: wpengine/github-action-wpe-site-deploy@996a3648a51f37dd54078741f46257fe9610a82c
         with:
           # Deploy vars
           WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPENGINE_ED25514 }}
